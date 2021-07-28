@@ -1,0 +1,29 @@
+Package: enchantr
+Type: Package
+Version: 0.0.0
+Date: 2021-07-28
+Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"), 
+                    email="susanna.marquez@yale.edu"),
+            person("Steven", "Kleinstein", role=c("aut", "cph"), 
+                    email="steven.kleinstein@yale.edu"))
+Title: enchantr 
+Description: Tools to evaluate the credibility of immune repertoires
+License: AGPL-3
+LazyData: true
+BuildVignettes: true
+VignetteBuilder: knitr
+Encoding: UTF-8
+Depends:
+    R (>= 3.1.2),
+Imports:
+    airr,
+    bookdown,
+    dplyr,
+    knitr,
+    optparse,
+    plotly,
+    rmarkdown,
+    stringr
+Suggests:
+    testthat
+RoxygenNote: 7.1.1
