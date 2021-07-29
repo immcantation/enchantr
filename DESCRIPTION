@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.0.0
-Date: 2021-07-28
+Date: 2021-07-29
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"), 
                     email="susanna.marquez@yale.edu"),
             person("Steven", "Kleinstein", role=c("aut", "cph"), 
@@ -19,6 +19,7 @@ Imports:
     airr,
     bookdown,
     dplyr,
+    DT,
     knitr,
     optparse,
     plotly,
