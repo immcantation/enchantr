@@ -46,7 +46,7 @@ params:
    reassign: 
       label: '`reassign`: if `input` is a .tsv repertoire, will gene calls be reassigned later in the pipeline?'
       input: checkbox
-      value: TRUE   
+      value: FALSE   
    output: 'validated_input'
    miairr: 
       label: "`miairr`: Path to AIRR standard mapping file."
@@ -264,6 +264,10 @@ if (!params$reassign) {
          TRUE
       }
    })
+} else {
+   # If reassign, sequence_alignment will be created later
+   # in the pipeline, and will have imgt gaps 
+   input$valid_sequence_alignment <- TRUE
 }
 ```
 
