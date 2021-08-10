@@ -1,2 +1,2 @@
 filename	species	subject_id	sample_id	tissue	sex	age	biomaterial_provider	pcr_target_locus	single_cell
-example_airr.tsv.gz									
+example_airr.tsv	human	ib	s1	blood	male	NA	NA	igh	false

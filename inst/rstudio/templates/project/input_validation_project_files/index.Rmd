@@ -16,9 +16,20 @@ output:
             scroll_highlight: yes
             collapse: subsection
             depth: 4
+            before: |
+               <!-- <li><a href="javascript:window.location.href='./'">Report contents</a></li> -->
+            after: |
+               </a></li>
+               <li><a href="http://immcantation.readthedocs.io" target="blank"><img src='logo.png'></a></li>
          download: no
          sharing: no
          keep_md: false
+      fontsettings:
+         theme: white
+         family: sans
+         size: 1
+      highlight: pygments
+      css: style.css
          # self_contained: true
          # split_by: none
 params:
@@ -29,7 +40,13 @@ params:
    collapseby: 
       label: "`collapseby`: Fields in `input` that group data to collapse duplicated sequences"
       value: 'sample_id'
-   cloneby: 'subject_id'
+   cloneby:
+      label: "`cloneby`: Fields in `input` that group data to identify groups of clonally related sequences"
+      value: 'subject_id'
+   reassign: 
+      label: '`reassign`: if `input` is a .tsv repertoire, will gene calls be reassigned later in the pipeline?'
+      input: checkbox
+      value: TRUE   
    output: 'validated_input'
    miairr: 
       label: "`miairr`: Path to AIRR standard mapping file."
@@ -37,11 +54,20 @@ params:
       value: "mapping_MiAIRR_BioSample_v1.3.1.tsv"
    outdir:
       label: '`outdir`: Output directory'
+      input: text
       value: !r file.path(getwd(),'enchantr')
    date: 
       label: '`date`: Run date'
       input: date
-      value: !r date()
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: "logo.png"
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
@@ -50,6 +76,8 @@ params:
       label: '`cache`: Use cached results'
       input: checkbox
       value: FALSE
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -63,6 +91,7 @@ library(dplyr)
 library(airr)
 library(DT)
 library(plotly)
+file.copy(params$logo, file.path(params$outdir,paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))))
 ```
 
 # Input parameters
@@ -73,12 +102,10 @@ dir.create(params$outdir, recursive = T)
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-# Is valid metadata
+# Metadata validation
 
 
 ```{r}
-getwd()
-
 # Settings
 # Valid species. Use lower case.
 valid_species <- list("human"=c("human", "homo sapiens", "h. sapiens", "hs"),
@@ -222,6 +249,25 @@ if (sum(!is_single_cell)>0) {
 input[['valid_pcr_target_locus']]  <- tolower(input[['pcr_target_locus']]) %in% tolower(c("IGH", "IGI", "IGK", "IGL", "TRA", "TRB", "TRD", "TRG", "IG", "TR"))
 input[['locus']] <- tolower(substr(input[['pcr_target_locus']],1,2))
 
+
+# If reassign is false, check that tsv files have 
+# all fields required by Immcantation (TODO)
+# and sequence_alignment has IMGT gaps
+if (!params$reassign) {
+   input$valid_sequence_alignment <- apply(input, 1, function(x) {
+      if (x[['filetype']] == "tsv") {
+         # if tsv files, look for presence of imgt gaps (.) in the
+         # first rows
+         any(grepl("\\.",read_rearrangement(x[['filename']], n_max=200)[['sequence_alignment']]))
+      } else {
+         # for non tsv files
+         TRUE
+      }
+   })
+}
+```
+
+```{r}
 # Write validation results to a file
 write.table(input, file=file.path(params$outdir, paste0(params$output,".tsv")), sep="\t",
             quote=FALSE, row.names = FALSE)
@@ -230,7 +276,7 @@ write.table(input, file=file.path(params$outdir, paste0(params$output,".tsv")), 
 ```
 
 ```{r}
-check_fields <- c("valid_filename", "valid_species", "valid_collapseby", "valid_cloneby", "valid_single_cell", "valid_pcr_target_locus")
+check_fields <- c("valid_filename", "valid_species", "valid_collapseby", "valid_cloneby", "valid_single_cell", "valid_pcr_target_locus", "valid_sequence_alignment")
 not_valid_rows <- which(rowSums(input[, check_fields, drop=FALSE]) < length(check_fields))
 ```
 
@@ -256,4 +302,8 @@ dt <- DT::datatable(input,
    )
 dt
 ```
+
+```{r, child=c('references.Rmd', 'versions.Rmd')}
+```
+
 
