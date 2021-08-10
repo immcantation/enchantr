@@ -253,7 +253,7 @@ input[['locus']] <- tolower(substr(input[['pcr_target_locus']],1,2))
 # If reassign is false, check that tsv files have 
 # all fields required by Immcantation (TODO)
 # and sequence_alignment has IMGT gaps
-if (!params$reassign) {
+if (params$reassign %in% c(TRUE, "true", "TRUE", T, "t", "T", 1, "1")) {
    input$valid_sequence_alignment <- apply(input, 1, function(x) {
       if (x[['filetype']] == "tsv") {
          # if tsv files, look for presence of imgt gaps (.) in the
