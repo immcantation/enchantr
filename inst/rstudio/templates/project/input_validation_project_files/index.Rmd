@@ -1,5 +1,6 @@
 --- 
 title: "Immcantation - enchantR"
+subtitle: "Input validation"
 author: ""
 date: "Updated: `r date()`"
 site: bookdown::bookdown_site
@@ -17,10 +18,7 @@ output:
             collapse: subsection
             depth: 4
             before: |
-               <!-- <li><a href="javascript:window.location.href='./'">Report contents</a></li> -->
-            after: |
-               </a></li>
-               <li><a href="http://immcantation.readthedocs.io" target="blank"><img src='logo.png'></a></li>
+               <li class="toc-logo"><a href="http://immcantation.readthedocs.io" target="blank"><img src='logo.png'></a></li>
          download: no
          sharing: no
          keep_md: false
