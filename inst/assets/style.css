@@ -203,7 +203,7 @@ div.rstudio-tip, div.tip, div.gotcha, div.design, div.hat{
   background-color: #fcfcfc;
 }
 
-
+/*
 div.rstudio-tip {
   background-image: url("../images/divs/rstudio.png");
 }
@@ -223,6 +223,7 @@ div.design {
 div.hat {
   background-image: url("../images/divs/hat.png");
 }
+*/
 
 /* for fancy bookdown cookbook */
 
@@ -239,6 +240,7 @@ div.puzzle, div.fyi, div.demo, div.note {
   border: solid 5px #dfedff;
 }
 
+/*
 div.puzzle {
   background-image: url("../images/illos/Your-turn.png");
 }
@@ -254,7 +256,7 @@ div.demo {
 div.note {
   background-image: url("../images/illos/lightbulb2.png");
 }
-
+*/
 
 /* .book .book-body .page-wrapper .page-inner section.normal is needed
    to override the styles produced by gitbook, which are ridiculously

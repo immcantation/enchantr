@@ -3,6 +3,7 @@ title: "Immcantation - enchantR"
 subtitle: "Input validation"
 author: ""
 date: "Updated: `r date()`"
+knit: "bookdown::render_book"
 site: bookdown::bookdown_site
 documentclass: book
 bibliography: "references.bib"
@@ -10,26 +11,7 @@ biblio-style: apalike
 link-citations: yes
 description: "enchantr input validation report"
 output:
-   bookdown::gitbook:
-      config:
-         fig_caption: yes
-         toc:
-            scroll_highlight: yes
-            collapse: subsection
-            depth: 4
-            before: |
-               <li class="toc-logo"><a href="http://immcantation.readthedocs.io" target="blank"><img src='logo.png'></a></li>
-         download: no
-         sharing: no
-         keep_md: false
-      fontsettings:
-         theme: white
-         family: sans
-         size: 1
-      highlight: pygments
-      css: style.css
-         # self_contained: true
-         # split_by: none
+   enchantr::immcantation:
 params:
    input: 
       label: "`input`: Path to input metadata file"
@@ -61,7 +43,7 @@ params:
    logo:
       label: "`logo`: Path to report logo"
       input: file
-      value: "logo.png"
+      value: !r file.path("assets", "logo.png")
    logolink:
       label: "`logolink`: URL to be added to the logo"
       input: text
@@ -89,7 +71,9 @@ library(dplyr)
 library(airr)
 library(DT)
 library(plotly)
-file.copy(params$logo, file.path(params$outdir,paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))))
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
 ```
 
 # Input parameters

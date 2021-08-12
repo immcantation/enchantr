@@ -1,0 +1,14 @@
+image:
+  name: immcantation/suite:base
+
+pipelines:
+  default:
+    - step:
+      name: Build and push immcantation/suite:devel
+      script:
+        - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+        - wget https://bitbucket.org/kleinstein/immcantation/raw/678a53dc2826b507ee9de17dc10abb4ebc575515/docker/suite/Dockerfile
+        - docker build -t immcantation/suite:devel .
+        - docker push immcantation/suite:devel
+      services:
+        - docker

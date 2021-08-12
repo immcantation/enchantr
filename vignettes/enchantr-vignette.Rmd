@@ -39,7 +39,8 @@ from RStudio to create project templates.
 ### Command line
 
 ```
-Rscript -e "enchantr:::enchantr_report('report_name', report_params=list('input'='report_input', 'outdir'=getwd()))"
+Rscript -e "enchantr:::enchantr_report('report_name', \
+  report_params=list('input'='report_input', 'outdir'=getwd()))"
 ```
 
 ### RStudio
