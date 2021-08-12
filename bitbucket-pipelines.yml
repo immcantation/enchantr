@@ -1,5 +1,5 @@
 image:
-  name: immcantation/suite:base
+  name: immcantation/base:latest
 
 pipelines:
   default:
