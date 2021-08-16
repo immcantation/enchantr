@@ -18,7 +18,6 @@ immcantation = function(...) {
         file.path(getwd(), "enchantr"),
         recursive = T)
     user_args <- list(...)
-    save(user_args, file="user_args.RData")
     immcantation_config <- list(
         "config" = list (
           "fig_caption" = T,
@@ -39,7 +38,6 @@ immcantation = function(...) {
         ),
         "highlight"="pygments"
     )
-    save(immcantation_config, file="immcantation_config_default.RData")
     if (!is.null(user_args)){
       immcantation_config <- modifyList(
         immcantation_config, 
@@ -47,7 +45,6 @@ immcantation = function(...) {
         keep.null = T) 
     }
     
-    save(immcantation_config, file="immcantation_config.RData")
     # call the base html_document function
     b <- bookdown::gitbook(
                       toc_depth= immcantation_config[['config']][['toc']][['depth']],
@@ -57,10 +54,5 @@ immcantation = function(...) {
                       keep_md = immcantation_config[['config']][['keep_md']],
                       config=c(immcantation_config[['config']],immcantation_config['fontsettings'])
                       )
-    # file.copy(
-    #   file.path("assets", "logo.png"),
-    #   file.path(getwd(), "enchantr", "assets"),
-    #   recursive = T)
-    save(b,file="b.RData") 
     invisible(b)
 }
