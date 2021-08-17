@@ -10,5 +10,5 @@ pipelines:
         - docker build -t immcantation/suite:devel .
         - docker push immcantation/suite:devel
         services:
-        - docker:
+        - docker
         size: 2x
