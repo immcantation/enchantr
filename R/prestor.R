@@ -43,4 +43,3 @@ loadConsoleLog <- function(log_file) {
     
     return(log_df)
 }
-

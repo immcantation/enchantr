@@ -14,7 +14,8 @@ enchantr_report <- function(name, report_params) {
     
     # Create project in outdir
     switch (name,
-            "validate_input" = invisible(validate_input_project(outdir))
+            "validate_input" = invisible(validate_input_project(outdir)),
+            "file_size" = invisible(file_size_project(outdir))
     )
     
     # render

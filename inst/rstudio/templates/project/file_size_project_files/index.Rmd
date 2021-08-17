@@ -1,0 +1,80 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "File size tracker"
+author: ""
+date: "Updated: `r date()`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr file size tracker report"
+output:
+   enchantr::immcantation:
+params:
+   input: 
+      label: "`input`: Path to input metadata file"
+      input: file
+      value: !r log_files <- list.files(system.file("extdata", package="enchantr"), full.names=T)
+   output: 'tmp_input'
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: FALSE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+library(enchantr)
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters}
+params
+dir.create(params$outdir, recursive = T)
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+## Tabbed Example {.tabset}
+
+```{r}
+plot_list <- plotConsoleLogs(params$input)
+plot_list
+```
+
+
+```{r, child=c('versions.Rmd')}
+```
+
+

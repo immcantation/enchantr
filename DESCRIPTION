@@ -2,11 +2,11 @@ Package: enchantr
 Type: Package
 Version: 0.0.0
 Date: 2021-08-16
-Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"), 
+Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
-            person("Steven", "Kleinstein", role=c("aut", "cph"), 
+            person("Steven", "Kleinstein", role=c("aut", "cph"),
                     email="steven.kleinstein@yale.edu"))
-Title: enchantr 
+Title: enchantr
 Description: Tools to evaluate the credibility of immune repertoires
 License: AGPL-3
 LazyData: true
@@ -20,10 +20,13 @@ Imports:
     bookdown,
     dplyr,
     DT,
+    ggraph,
+    igraph,
     knitr,
     optparse,
     plotly,
     rmarkdown,
+    stringi,
     stringr
 Suggests:
     testthat
