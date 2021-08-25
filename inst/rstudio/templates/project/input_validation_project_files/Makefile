@@ -1,5 +1,5 @@
 build:
-	Rscript -e "bookdown::render_book('index.Rmd','bookdown::gitbook', params=list('cache'=TRUE))"
+	Rscript -e "bookdown::render_book('index.Rmd','enchantr::immcantation', params=list('cache'=TRUE))"
 	
 build-no-cache:
-	Rscript -e "bookdown::render_book('index.Rmd','bookdown::gitbook', params=list('cache'=FALSE))"
+	Rscript -e "bookdown::render_book('index.Rmd','enchantr::immcantation', params=list('cache'=FALSE))"

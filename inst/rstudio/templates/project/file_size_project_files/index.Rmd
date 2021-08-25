@@ -10,8 +10,7 @@ bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
 description: "enchantr file size tracker report"
-output:
-   enchantr::immcantation:
+output: enchantr::immcantation
 params:
    input: 
       label: "`input`: Path to input metadata file"

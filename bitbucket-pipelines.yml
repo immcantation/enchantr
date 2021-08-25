@@ -11,4 +11,4 @@ pipelines:
         - docker push immcantation/suite:devel
         services:
         - docker
-        size: 2x
+        # size: 2x

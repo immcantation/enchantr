@@ -3,7 +3,9 @@
 #' @param  name report name
 #' @param  report_params params list, needed by report. must include outdir
 #' @export
-enchantr_report <- function(name, report_params) {
+enchantr_report <- function(name=c("validate_input", "file_size"), report_params=list('outdir'=getwd())) {
+    
+    name <- match.arg(name)
     
     if (!dir.exists(report_params$outdir)) {
         message("Creating outdir ", report_params$outdir)
@@ -23,7 +25,7 @@ enchantr_report <- function(name, report_params) {
         outdir,
         book <- bookdown::render_book(
             "index.Rmd",
-            output_format='bookdown::gitbook',
+            output_format='enchantr::immcantation',
             config_file = "_bookdown.yml",
             clean=FALSE,
             new_session=FALSE,
