@@ -24,7 +24,7 @@ formatConsoleLog <- function(log_file){
         stop("TODO: current version of the code expects one task in each log file.")
     }
     input <- log_table %>%
-        filter(field == "FILE") %>%
+        filter(field %in% c("FILE", "ALIGNER_FILE")) %>%
         select(value) %>%
         as.character()
     if (length(input)>1) {
@@ -37,15 +37,19 @@ formatConsoleLog <- function(log_file){
     if (length(output)>1) {
         stop("TODO: current version of the code expects one output file.")
     }
-    output_size <- log_table %>%
-        filter(grepl("PASS",field)) %>%
-        pull(value) %>%
-        as.numeric()
+    
     input_size <- log_table %>%
         filter(grepl("PASS|FAIL",field)) %>%
         pull(value) %>%
         as.numeric() %>%
         sum()
+    
+    output_size <- log_table %>%
+        filter(grepl("PASS",field)) %>%
+        pull(value) %>%
+        as.numeric()
+    
+    
     data.frame(
         "input"=input,
         "output"=output,

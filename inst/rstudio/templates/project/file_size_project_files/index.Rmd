@@ -13,9 +13,9 @@ description: "enchantr file size tracker report"
 output: enchantr::immcantation
 params:
    input: 
-      label: "`input`: Path to input metadata file"
+      label: "`input`: Path(s) to log file(s)"
       input: file
-      value: !r log_files <- list.files(system.file("extdata", package="enchantr"), full.names=T)
+      value: ""
    output: 'tmp_input'
    outdir:
       label: '`outdir`: Output directory'
@@ -55,13 +55,18 @@ library(enchantr)
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
           recursive = T, overwrite=T)
+if (params[['input']] == "") {
+   params[['input']] <- list.files(system.file("extdata", package="enchantr"), full.names=T)
+}
 ```
 
 # Input parameters
 
 ```{r input-parameters}
 params
-dir.create(params$outdir, recursive = T)
+if (!dir.exists(params$outdir)) {
+   dir.create(params$outdir, recursive = T)
+}
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 

@@ -3,16 +3,20 @@
 #' @param  name report name
 #' @param  report_params params list, needed by report. must include outdir
 #' @export
-enchantr_report <- function(name=c("validate_input", "file_size"), report_params=list('outdir'=getwd())) {
+enchantr_report <- function(name=c("validate_input", "file_size"), report_params=list()) {
     
     name <- match.arg(name)
     
-    if (!dir.exists(report_params$outdir)) {
-        message("Creating outdir ", report_params$outdir)
-        dir.create(report_params$outdir, recursive = T)
+    if (is.null(report_params[['outdir']])) {
+        report_params[['outdir']] <- getwd()
+    }
+    if (!dir.exists(report_params[['outdir']])) {
+        message("Creating outdir ", report_params[['outdir']])
+        dir.create(report_params[['outdir']], recursive = T)
     }
     
-    outdir <- normalizePath(report_params$outdir)
+    outdir <- normalizePath(report_params[['outdir']])
+    report_params[['outdir']] <- outdir
     
     # Create project in outdir
     switch (name,

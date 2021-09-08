@@ -76,7 +76,9 @@ file.copy(params$logo,
 
 ```{r input-parameters}
 params
-dir.create(params$outdir, recursive = T)
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
