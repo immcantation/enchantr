@@ -20,43 +20,74 @@ file_size_project <- function(path,...) {
 formatConsoleLog <- function(log_file){
     log_table <- loadConsoleLog(log_file)
     task <- unique(log_table[['task']])
+    
     if (length(task)>1) {
         stop("TODO: current version of the code expects one task in each log file.")
     }
-    input <- log_table %>%
+    input_df <- log_table %>%
         filter(field %in% c("FILE", "ALIGNER_FILE")) %>%
         select(value) %>%
-        as.character()
-    if (length(input)>1) {
+        rename(input=value)
+
+    if (nrow(input_df)>1) {
         stop("TODO: current version of the code expects one input file.")
     }
-    output <- log_table %>%
+    
+    output_df <- log_table %>%
         filter(grepl("OUTPUT",field)) %>%
         select(value) %>%
-        as.character()
-    if (length(output)>1) {
-        stop("TODO: current version of the code expects one output file.")
+        rename(output=value)
+    
+    if (any(grepl("PASS|FAIL",log_table[['field']]))) {
+        input_size <- log_table %>%
+            filter(grepl("PASS|FAIL",field)) %>%
+            summarize(input_size = sum(as.numeric(value))) %>%
+            mutate(input=input_df[['input']])
+    } else if ((any(grepl("RECORDS",log_table[['field']])))) {
+        input_size <- log_table %>%
+            filter(field == "RECORDS") %>%
+            select(value) %>%
+            rename(input_size=value) %>%
+            mutate(input=input_df[['input']],
+                   input_size=as.numeric(input_size))
+    } else {
+        input_size <- NA
+        stop("Unknown input size")
     }
-    
-    input_size <- log_table %>%
-        filter(grepl("PASS|FAIL",field)) %>%
-        pull(value) %>%
-        as.numeric() %>%
-        sum()
-    
-    output_size <- log_table %>%
-        filter(grepl("PASS",field)) %>%
-        pull(value) %>%
-        as.numeric()
-    
-    
+
+    if (any(grepl("PASS|FAIL",log_table[['field']]))) {
+        if (nrow(output_df) == 1) {
+            output_size <- log_table %>%
+                filter(grepl("PASS",field)) %>%
+                summarize(output_size=as.numeric(value)) %>%
+                mutate(output=output_df[['output']])
+        } else {
+            stop("TODO")
+        }
+    } else {
+        if (any(grepl("OUTPUT|SIZE",log_table[['field']])) ) {
+            output_size <- log_table %>%
+                select(field, value) %>%
+                filter(grepl("OUTPUT|SIZE", field)) %>%
+                mutate(field=gsub("([1-9]+$)","-\\1",field)) %>%
+                tidyr::separate(col=field, c("type", "id"), sep="-") %>%
+                tidyr::pivot_wider(id_cols=id, names_from = type) %>%
+                rename(output=OUTPUT,
+                       output_size=SIZE) %>%
+                mutate(output_size=as.numeric(output_size)) %>%
+                select(-id)
+        } else {
+            output_size <- NA
+            stop("Unknown output size")   
+        }
+    }
     data.frame(
-        "input"=input,
-        "output"=output,
-        "input_size"=input_size,
-        "output_size"=output_size,
+        "input"=input_df,
+        "output"=output_df,
         "task"=task
-    )
+    ) %>%
+    left_join(input_size, by="input") %>%
+    left_join(output_size, by="output")
 }
 
 getConsoleLogsGraph <- function(logs) {
