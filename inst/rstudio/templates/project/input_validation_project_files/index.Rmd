@@ -110,7 +110,7 @@ not_valid_rows <- which(rowSums(input$table[, check_fields, drop=FALSE]) < lengt
 if (length(not_valid_rows) > 0) {
    write.table(input$table[not_valid_rows,], file=file.path(params$outdir, paste0(params$output,"_not-valid.tsv")), sep="\t",
                quote=FALSE, row.names = FALSE)
-   stop("Please review your input data. Invalid information found.")
+   message("Please review your input data. Invalid information found.")
 }
 ```
 
