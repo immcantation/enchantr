@@ -3,7 +3,7 @@
 #' @param  name report name
 #' @param  report_params params list, needed by report. must include outdir
 #' @export
-enchantr_report <- function(name=c("validate_input", "file_size"), report_params=list()) {
+enchantr_report <- function(name=c("validate_input", "file_size", "chimera_analysis", "single_cell_qc"), report_params=list()) {
     
     name <- match.arg(name)
     
@@ -21,7 +21,9 @@ enchantr_report <- function(name=c("validate_input", "file_size"), report_params
     # Create project in outdir
     switch (name,
             "validate_input" = invisible(validate_input_project(outdir)),
-            "file_size" = invisible(file_size_project(outdir))
+            "file_size" = invisible(file_size_project(outdir)),
+            "chimera_analysis" = invisible(chimera_analysis_project(outdir)),
+            "single_cell_qc" = invisible(single_cell_qc_project(outdir))
     )
     
     # render

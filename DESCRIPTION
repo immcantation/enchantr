@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.0.0
-Date: 2021-9-09
+Date: 2021-09-10
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
             person("Steven", "Kleinstein", role=c("aut", "cph"),
@@ -14,7 +14,7 @@ BuildVignettes: true
 VignetteBuilder: knitr
 Encoding: UTF-8
 Depends:
-    R (>= 3.1.2),
+    R (>= 3.5.0),
 Imports:
     airr,
     bookdown,
@@ -27,7 +27,8 @@ Imports:
     plotly,
     rmarkdown,
     stringi,
-    stringr
+    stringr,
+    tidyr
 Suggests:
     testthat
 RoxygenNote: 7.1.2

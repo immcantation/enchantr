@@ -1,0 +1,171 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Chimera detection"
+author: ""
+date: "Updated: `r date()`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr chimera detection report"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoire file"
+      input: file
+      value: "ExampleDb.tsv"
+   outname:
+      label: "`outname`"
+      input: text
+      value: "chimera"
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: FALSE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+library(enchantr)
+library(DT)
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters}
+params
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Chimera Filter
+
+```{r}
+# Libraries
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("shazam"))
+
+mutThresh <- 6
+windowSize <- 10
+mutThreshRange <- 2:5
+windowSizeRange <- 5:10
+
+# Check input file
+if (!file.exists(params$input)) {
+    stop(paste0("File ", basename(params$input), " doesn't exist."))
+}
+
+# Read metadata file
+db <- read_rearrangement(params[['input']])
+
+is_chimeric <- slideWindowDb(
+    db,
+    sequenceColumn = "sequence_alignment",
+    germlineColumn = "germline_alignment_d_mask",
+    mutThresh,
+    windowSize
+)
+
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_chimera-pass.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_chimera-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_chimera-pass.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+write_rearrangement(db[!is_chimeric,] %>% select(-germline_alignment_d_mask), file=output_fn)
+
+db$is_chimeric <- is_chimeric
+write_rearrangement(db %>% select(sequence_id, is_chimeric, sequence_alignment, germline_alignment_d_mask), file=sub(".tsv$",".log.txt",output_fn))
+```
+
+```{r log}
+cat("START> RemoveChimeric", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",sum(!is_chimeric)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",sum(is_chimeric)), file=log_fn, append=T)
+```
+
+# Slide Window Tune
+
+```{r swt}
+swt <- slideWindowTune(
+   db,
+   sequenceColumn = "sequence_alignment",
+   germlineColumn = "germline_alignment_d_mask",
+   dbMutList = NULL,
+   mutThreshRange,
+   windowSizeRange,
+   verbose = FALSE
+)
+```
+
+```{r swtplot}
+slideWindowTunePlot(
+   swt,
+   plotFiltered = TRUE,
+   percentage = FALSE,
+   jitter.x = FALSE,
+   jitter.x.amt = 0.1,
+   jitter.y = FALSE,
+   jitter.y.amt = 0.1,
+   pchs = 1,
+   ltys = 2,
+   cols = 1,
+   plotLegend = TRUE,
+   legendPos = "topright",
+   legendHoriz = FALSE,
+   legendCex = 1,
+   title = NULL
+)
+```
+
+```{r, child=c('versions.Rmd')}
+```
+
+

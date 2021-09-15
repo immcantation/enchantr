@@ -1,0 +1,153 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Single cell qc"
+author: ""
+date: "Updated: `r date()`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr single cell qc report"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoire file"
+      input: file
+      value: "scExampleDb.tsv"
+   outname:
+      label: "`outname`"
+      input: text
+      value: "scqc"
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: FALSE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+library(enchantr)
+library(DT)
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters}
+params
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+
+```{r}
+# Libraries
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("plotly"))
+```
+
+```{r}
+# Check input file
+if (!file.exists(params$input)) {
+    stop(paste0("File ", basename(params$input), " doesn't exist."))
+}
+
+# Read metadata file
+db <- read_rearrangement(params[['input']])
+
+```
+
+# Number of sequences per cell and locus
+
+```{r}
+reads_per_cell <- db %>%
+   group_by(cell_id, locus) %>%
+   summarize(cell_num_sequences=n(), 
+             cell_num_isotypes=length(unique(c_call)),
+             cell_isotypes=paste(unique(c_call),sep=",",collapse=",")) %>%
+   arrange(desc(cell_num_sequences)) %>%
+   ungroup() %>%
+   arrange(desc(cell_num_sequences))
+
+```
+
+```{r seqspercell, fig.width=8, fig.height=4, fig.cap="Number of sequences per cell and locus."}
+ggplotly(
+   p=ggplot(reads_per_cell,aes(x=cell_num_sequences)) +
+   geom_histogram(binwidth = 1) +
+   facet_wrap(~locus) +
+   xlab("Number of sequences in a cell.") +
+   ylab("Count")
+)
+```
+
+```{r dbpass}
+
+pass <- rep(T, nrow(db))
+
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_scqc-pass.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_scqc-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+write_rearrangement(db[pass,], file=output_fn)
+```
+
+```{r log}
+cat("START> SingleCellQC", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
+```
+
+```{r, child=c('versions.Rmd')}
+```
+
+
