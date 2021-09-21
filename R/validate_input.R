@@ -126,7 +126,11 @@ validate_input <- function(input, miairr, collapseby, cloneby, reassign=TRUE) {
     # If reassign is false, check that tsv files have 
     # all fields required by Immcantation (TODO)
     # and sequence_alignment has IMGT gaps
+    # If reassign is true, sequence_alignment will be created later
+    # in the pipeline, and will have imgt gaps
     if (reassign %in% c(TRUE, "true", "TRUE", T, "t", "T", 1, "1")) {
+        input$valid_sequence_alignment <- TRUE
+    } else {
         input$valid_sequence_alignment <- apply(input, 1, function(x) {
             if (x[['filetype']] == "tsv") {
                 # if tsv files, look for presence of imgt gaps (.) in the
@@ -137,13 +141,7 @@ validate_input <- function(input, miairr, collapseby, cloneby, reassign=TRUE) {
                 TRUE
             }
         })
-    } else {
-        # If reassign, sequence_alignment will be created later
-        # in the pipeline, and will have imgt gaps 
-        input$valid_sequence_alignment <- TRUE
     }
-    
-    
     
     check_fields <- c("valid_filename", 
                       "valid_species", 
