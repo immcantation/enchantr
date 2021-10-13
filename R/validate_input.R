@@ -33,7 +33,7 @@ validate_input <- function(input, miairr, collapseby, cloneby, reassign=TRUE) {
             message("Missing 'species' field, using 'organism' field instead.")
             input[['species']] <- input[['organism']]
         } else {
-            stop("Missing MiAIRR fields: ", paste(missing_fields,collapse=", "))
+            warning("Missing MiAIRR fields: ", paste(missing_fields,collapse=", "))
         }
     }
     
