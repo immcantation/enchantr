@@ -29,12 +29,12 @@ validate_input <- function(input, miairr, collapseby, cloneby, reassign=TRUE) {
     
     if (!all(mandatory_fields %in% colnames(input))) {
         missing_fields <- mandatory_fields[mandatory_fields %in% colnames(input) == FALSE]
-        if ((missing_fields == "species") & ("organism" %in% colnames(input))) {
-            message("Missing 'species' field, using 'organism' field instead.")
+        if (("species" %in% missing_fields) & ("organism" %in% colnames(input))) {
+            warning("Missing 'species' field, using 'organism' field instead.")
             input[['species']] <- input[['organism']]
-        } else {
-            warning("Missing MiAIRR fields: ", paste(missing_fields,collapse=", "))
-        }
+            missing_fields <- setdiff(missing_fields, "species")
+        } 
+        warning("Missing MiAIRR fields: ", paste(missing_fields,collapse=", "))
     }
     
     # Add filetype
