@@ -38,7 +38,7 @@ eeplot <- function(p, outdir=NULL, file=NULL) {
 
 #' @export
 eetable <- function(df, caption) {
-    element_id <- deparse1(substitute(p))
+    element_id <- deparse1(substitute(df))
     caption <- paste0(paste0("(\\#tab:",element_id,"-table"),caption)
     DT::datatable(df,
                   filter="top", elementId = element_id, 
