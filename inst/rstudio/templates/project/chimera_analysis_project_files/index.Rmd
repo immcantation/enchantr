@@ -20,6 +20,10 @@ params:
       label: "`outname`"
       input: text
       value: "chimera"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: "chimera"      
    log:
       label: "`log`"
       input: text
@@ -102,7 +106,8 @@ is_chimeric <- slideWindowDb(
     sequenceColumn = "sequence_alignment",
     germlineColumn = "germline_alignment_d_mask",
     mutThresh,
-    windowSize
+    windowSize,
+    nproc=params$nproc
 )
 
 if (!is.null(params$outname)) {
