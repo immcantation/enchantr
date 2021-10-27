@@ -29,10 +29,14 @@ validate_input <- function(input, miairr, collapseby, cloneby, reassign=TRUE) {
     
     if (!all(mandatory_fields %in% colnames(input))) {
         missing_fields <- mandatory_fields[mandatory_fields %in% colnames(input) == FALSE]
-        if (("species" %in% missing_fields) & ("organism" %in% colnames(input))) {
-            warning("Missing 'species' field, using 'organism' field instead.")
-            input[['species']] <- input[['organism']]
-            missing_fields <- setdiff(missing_fields, "species")
+        if ("species" %in% missing_fields) {
+            if ("organism" %in% colnames(input)) {
+                warning("Missing 'species' field, using 'organism' field instead.")
+                input[['species']] <- input[['organism']]
+                missing_fields <- setdiff(missing_fields, "species")
+            } else {
+                stop("Missing mandatory field 'species'")
+            }
         } 
         warning("Missing MiAIRR fields: ", paste(missing_fields,collapse=", "))
     }
@@ -51,8 +55,6 @@ validate_input <- function(input, miairr, collapseby, cloneby, reassign=TRUE) {
     if (length(dup_filenames)>0) {
         input$valid_filename[input[,'filename'] %in% dup_filenames] <- FALSE
     }
-    
-    #TODO validate MiAIRR fields
     
     # Validate `species`
     species <- get_valid_species(valid_species, input[['species']])
