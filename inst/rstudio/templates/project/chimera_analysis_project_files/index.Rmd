@@ -23,7 +23,7 @@ params:
    nproc:
       label: "`nproc`"
       input: numeric
-      value: "chimera"      
+      value: 1
    log:
       label: "`log`"
       input: text
