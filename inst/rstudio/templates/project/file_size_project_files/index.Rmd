@@ -13,9 +13,9 @@ description: "enchantr file size tracker report"
 output: enchantr::immcantation
 params:
    input: 
-      label: "`input`: Path(s) to log file(s)"
+      label: "`input`: Path a file of files, with paths to the log files."
       input: file
-      value: ""
+      value: "example-input.txt"
    output: 'tmp_input'
    outdir:
       label: '`outdir`: Output directory'
@@ -55,9 +55,6 @@ library(enchantr)
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
           recursive = T, overwrite=T)
-if (params[['input']] == "") {
-   params[['input']] <- list.files(system.file("extdata", package="enchantr"), full.names=T)
-}
 ```
 
 # Input parameters
@@ -70,15 +67,24 @@ if (!dir.exists(params$outdir)) {
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-## Tabbed Example {.tabset}
-
 ```{r}
-plot_list <- plotConsoleLogs(params$input)
-plot_list
+log_files <- read.delim(params[['input']], header=F)[[1]]
+log_files
 ```
 
+# File processing 
+
+```{r, results="asis", echo=FALSE}
+plot_list <- plotConsoleLogs(log_files)
+for (i in 1:length(plot_list)) {
+   plot_data <- plot_list[[i]]$data
+   input_filename <- plot_data[['name']][which(plot_data[[".ggraph.index"]] == 1)]
+   cat(paste0("## ",input_filename,"\n\n"))
+   print(plot_list[[i]])
+   cat("\n\n")
+}
+```
 
 ```{r, child=c('versions.Rmd')}
 ```
-
 

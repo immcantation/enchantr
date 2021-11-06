@@ -1,0 +1,15 @@
+   START> AssignGenes
+ COMMAND> igblast
+ VERSION> 1.17.1
+    FILE> 6079e75120652127e6351598_sequences.fasta
+ORGANISM> human
+    LOCI> ig
+   NPROC> 2
+
+
+PROGRESS> 11:38:13 |Running IgBLAST          | 0.0 min
+PROGRESS> 11:39:18 |Done                     | 1.1 min
+
+  PASS> 2551
+OUTPUT> input_id_1_igblast.fmt7
+   END> AssignGenes

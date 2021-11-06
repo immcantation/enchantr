@@ -114,7 +114,7 @@ plotLog <- function(g) {
 #' @export
 getConsoleLogs <- function(log_files, format=c("df", "graph")) {
     format <- match.arg(format)
-    log_files <-  strsplit(log_files,"[ ,]")[[1]]
+    #log_files <-  strsplit(log_files,"[ ,]")[[1]]
     logs <- bind_rows(lapply(log_files, formatConsoleLog))
     if (format=="df") {
         logs

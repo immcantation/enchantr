@@ -1,0 +1,36 @@
+      START> ConvertDb
+    COMMAND> fasta
+       FILE> 6079e75120652127e6351598.tsv
+   ID_FIELD> sequence_id
+  SEQ_FIELD> sequence
+META_FIELDS> cell_id,consensus_count,duplicate_count,c_call,c_cigar,c_sequence_start,c_sequence_end
+
+PROGRESS> 11:38:02 |                    |   0% (    0) 0.0 min
+PROGRESS> 11:38:02 |#                   |   5% (  128) 0.0 min
+PROGRESS> 11:38:02 |##                  |  10% (  256) 0.0 min
+PROGRESS> 11:38:02 |###                 |  15% (  384) 0.0 min
+PROGRESS> 11:38:02 |####                |  20% (  512) 0.0 min
+PROGRESS> 11:38:02 |#####               |  25% (  640) 0.0 min
+PROGRESS> 11:38:02 |######              |  30% (  768) 0.0 min
+PROGRESS> 11:38:02 |#######             |  35% (  896) 0.0 min
+PROGRESS> 11:38:02 |########            |  40% (1,024) 0.0 min
+PROGRESS> 11:38:02 |#########           |  45% (1,152) 0.0 min
+PROGRESS> 11:38:02 |##########          |  50% (1,280) 0.0 min
+PROGRESS> 11:38:02 |###########         |  55% (1,408) 0.0 min
+PROGRESS> 11:38:02 |############        |  60% (1,536) 0.0 min
+PROGRESS> 11:38:02 |#############       |  65% (1,664) 0.0 min
+PROGRESS> 11:38:02 |##############      |  70% (1,792) 0.0 min
+PROGRESS> 11:38:02 |###############     |  75% (1,920) 0.0 min
+PROGRESS> 11:38:02 |################    |  80% (2,048) 0.0 min
+PROGRESS> 11:38:02 |#################   |  85% (2,176) 0.0 min
+PROGRESS> 11:38:02 |##################  |  90% (2,304) 0.0 min
+PROGRESS> 11:38:02 |################### |  95% (2,432) 0.0 min
+PROGRESS> 11:38:02 |####################| 100% (2,551) 0.0 min
+
+ OUTPUT> 6079e75120652127e6351598_sequences.fasta
+RECORDS> 2551
+   PASS> 2551
+   FAIL> 0
+    END> ConvertDb
+
+
