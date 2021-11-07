@@ -110,6 +110,26 @@ plotLog <- function(g) {
                        arrow = arrow(type = "closed", length = unit(3, 'mm'))) 
 }
 
+plotWorkflow <- function(g) {
+    root_nodes <- which(degree(g, mode = "in") == 0)
+    g <- add_vertices(g, 1, attr = list("name"="Input"))
+    input_node <- vcount(g)
+    for (i in root_nodes) {
+        g <- add_edges(g, c(input_node,i), task="Input")
+    }
+    g2 <- make_line_graph(g) 
+    V(g2)$name <- E(g)$task
+    g3 <- graph_from_edgelist(unique(as_edgelist(g2)))
+    p <- ggraph(g3, layout = "auto") +
+    # geom_edge_link0(aes(col=1,edge_width=2), arrow = arrow(length = unit(8, 'mm')))+
+        geom_edge_link(color="darkblue",edge_width=3, arrow = arrow(length = unit(6, 'mm')))+
+        geom_node_point(shape=21,col="white",fill="black",size=5,stroke=1)+
+        geom_node_label(aes(label = name), repel = FALSE) +
+        theme_graph(plot_margin = margin(5, 50, 5, 40)) +
+        coord_cartesian(clip = "off") 
+    p
+}
+
 # log_files <- list.files(system.file("extdata", package="enchantr"), full.names=T)
 #' @export
 getConsoleLogs <- function(log_files, format=c("df", "graph")) {
@@ -124,7 +144,13 @@ getConsoleLogs <- function(log_files, format=c("df", "graph")) {
 }
 
 #' @export
-plotConsoleLogs <- function(log_files) {
+plotConsoleLogs <- function(log_files, style=c("decompose", "workflow")) {
+    style <- match.arg(style)
     logs <- getConsoleLogs(log_files, format="graph")
-    lapply(decompose(logs), plotLog)
+    if (style == "decompose") {
+        lapply(decompose(logs), plotLog)
+    } else {
+        plotWorkflow(logs)
+    }
+
 }

@@ -72,6 +72,13 @@ log_files <- read.delim(params[['input']], header=F)[[1]]
 log_files
 ```
 
+# Workflow
+
+```{r, fig.width=5}
+plotConsoleLogs(log_files, "workflow")
+```
+
+
 # File processing 
 
 ```{r, results="asis", echo=FALSE}

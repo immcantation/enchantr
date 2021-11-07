@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.0.0
-Date: 2021-09-21
+Date: 2021-11-06
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
             person("Steven", "Kleinstein", role=c("aut", "cph"),
@@ -17,15 +17,21 @@ Depends:
     R (>= 3.5.0),
 Imports:
     airr,
+    alakazam,
     bookdown,
     dplyr,
     DT,
     ggraph,
+    ggplot2,
+    gridExtra,
     igraph,
     knitr,
     optparse,
     plotly,
+    RColorBrewer,
+    reshape,
     rmarkdown,
+    scales,
     stringi,
     stringr,
     tidyr
