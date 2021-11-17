@@ -146,7 +146,8 @@ swt <- slideWindowTune(
    dbMutList = NULL,
    mutThreshRange,
    windowSizeRange,
-   verbose = FALSE
+   verbose = FALSE,
+   nproc=params$nproc
 )
 ```
 

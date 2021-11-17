@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.0.0
-Date: 2021-11-06
+Date: 2021-11-15
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
             person("Steven", "Kleinstein", role=c("aut", "cph"),
@@ -32,6 +32,7 @@ Imports:
     reshape,
     rmarkdown,
     scales,
+    shazam (> 1.1.0),
     stringi,
     stringr,
     tidyr
