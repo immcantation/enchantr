@@ -128,6 +128,8 @@ db$is_chimeric <- is_chimeric
 write_rearrangement(db %>% select(sequence_id, is_chimeric, sequence_alignment, germline_alignment_d_mask), file=sub(".tsv$",".log.txt",output_fn))
 ```
 
+Total number of chimeric sequences detected: `r sum(db$is_chimeric)`.
+
 ```{r log}
 cat("START> RemoveChimeric", file=log_fn, append=F)
 cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
@@ -136,7 +138,7 @@ cat(paste0("\nPASS> ",sum(!is_chimeric)), file=log_fn, append=T)
 cat(paste0("\nFAIL> ",sum(is_chimeric)), file=log_fn, append=T)
 ```
 
-# Slide Window Tune
+## Slide Window Tune
 
 ```{r swt}
 swt <- slideWindowTune(
@@ -151,7 +153,33 @@ swt <- slideWindowTune(
 )
 ```
 
-```{r swtplot}
+## Slide Window Tune Plot
+
+### `plotFiltered=NULL`
+
+```{r swtplotNull}
+#slideWindowTunePlot(
+#   swt,
+#   plotFiltered = NULL,
+#   percentage = FALSE,
+#   jitter.x = FALSE,
+#   jitter.x.amt = 0.1,
+#   jitter.y = FALSE,
+#   jitter.y.amt = 0.1,
+#   pchs = 1,
+#   ltys = 2,
+#   cols = 1,
+#   plotLegend = TRUE,
+#   legendPos = "topright",
+#   legendHoriz = FALSE,
+#   legendCex = 1,
+#   title = NULL
+#)
+```
+
+### `plotFiltered=TRUE`
+
+```{r swtplotTrue}
 slideWindowTunePlot(
    swt,
    plotFiltered = TRUE,
