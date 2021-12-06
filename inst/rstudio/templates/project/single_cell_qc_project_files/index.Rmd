@@ -13,9 +13,9 @@ description: "enchantr single cell qc report"
 output: enchantr::immcantation
 params:
    input: 
-      label: "`input`: Path to repertoire file"
+      label: "`input`: Path to repertoires file"
       input: file
-      value: "scExampleDb.tsv"
+      value: "input.tsv"
    outname:
       label: "`outname`"
       input: text
@@ -76,7 +76,7 @@ if (!dir.exists(params[['outdir']])) {
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-# Read repertoire
+# Read repertoires
 
 ```{r}
 # Libraries
@@ -95,8 +95,10 @@ if (!file.exists(params$input)) {
     stop(paste0("File ", basename(params$input), " doesn't exist."))
 }
 
+db_files <- read.delim(params[['input']], header=F)[[1]]
+
 # Read metadata file
-db <- read_rearrangement(params[['input']])
+db <- bind_rows(lapply(db_files, read_rearrangement))
 ```
 
 # Distribution of the number of sequences per cell and locus
@@ -172,6 +174,39 @@ cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
 cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
 cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
 ```
+
+# cell_id + sequence_alignment overlap
+
+```{r eval=TRUE}
+
+# find the number of cells having same seq and cell barcode
+uniqueCell  <- singlecell_sharing_matrix(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
+
+# plot duplicated cells
+p <- enchantr:::plotOverlapSingleCell( list_objOverlap=list(uniqueCell, uniqueCell), titleText="", 
+                           order_by=sort(colnames(uniqueCell@overlap_count)), 
+                           sizeCount=3, sizeDiag=2.5)
+p
+```
+
+```{r}
+
+dim(data)
+# remove duplicated cells
+data = enchantr:::removeSingleCellDuplicates(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
+dim(data)
+# data=rbind(data.ns, data)
+# dim(data)
+# write.table(data,file=paste0(subject,"_remDup.tsv"), quote=FALSE, sep="\t", row.names = FALSE)
+#                            
+# # Check overlap after removing duplicates
+# uniqueCell  <- singlecell_sharing_matrix(data, group="SAMPLE", cell="CELL", seq="SEQUENCE_IMGT")
+# p = plotOverlapSingleCell( list_objOverlap=list(uniqueCell, uniqueCell), titleText="", 
+#                            order_by=sort(colnames(uniqueCell@overlap_count)), 
+#                            sizeCount=3, sizeDiag=2.5)
+# plot(p)
+```
+
 
 ```{r, child=c('versions.Rmd')}
 ```
