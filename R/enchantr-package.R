@@ -5,6 +5,7 @@
 #' @name     enchantr
 #' @docType  package
 
+#' @import      alakazam
 #' @import      dplyr
 #' @import      DT
 #' @import      ggplot2
@@ -16,7 +17,7 @@
 #'                      decompose degree
 #'                      graph_from_data_frame graph_from_edgelist
 #'                      make_line_graph vcount
-#' @importFrom RColorBrewer brewer.pal
+#' @importFrom  RColorBrewer brewer.pal
 #' @importFrom  stringi stri_trim_both stri_split_fixed
 #' @importFrom  stringr str_replace str_replace_all
 NULL

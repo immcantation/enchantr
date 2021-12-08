@@ -109,6 +109,96 @@ cellQC <- function(df) {
 }
 
 
+#' findSingleCellDuplicates(db, "sample_id")
+#' @export
+findSingleCellDuplicates <- function(db, groups, 
+                                     cell = "cell_id", 
+                                     seq="sequence_alignment",
+                                     sequence_id="sequence_id") {
+    # Check for valid columns
+    if (is.null(groups)) { stop("`groups` must be a valid column name")}
+    columns <- c(groups,cell, seq, sequence_id)
+    columns <- columns[!is.null(columns)]
+    check <- alakazam:::checkColumns(db, columns)
+    if (check != TRUE) { stop(check) }
+    
+    # Check that sequence_id are unique, because I will use this id
+    # later to remove the duplicated sequences
+    if (any(duplicated(db[[sequence_id]]))) {
+        stop("Duplicated `sequence_id` found. Expecting unique sequence identifiers.")
+    }
+    
+    # Identify groups
+    db[['group_idx']] <- db %>%
+        dplyr::group_by(!!rlang::sym(groups)) %>% 
+        group_indices()
+    
+    # Identify cells present in more than one group
+    db_shared <- db %>%
+        select(!!!rlang::syms(c(columns, "group_idx"))) %>%
+        group_by(!!rlang::sym(cell)) %>%
+        mutate(is_shared_cell = length(unique(group_idx))>1) %>%
+        ungroup() %>%
+        filter(is_shared_cell)
+    
+    # Helper function to label as duplicate T/F those sequences
+    # that have a 0 distance sequence in other group
+    .isDuplicate <- function(x, seq) {
+        sequences <- x[[seq]]
+        
+        # is_duplicate defaults to FALSE
+        is_duplicate <- rep(F,length(sequences))
+        
+        # Calculate distance between sequences
+        # use gap=0 to treat gaps as Ns
+        # and label as T those with a distance value of 0
+        pwd <- pairwiseDist(sequences, dist_mat=getDNAMatrix(gap=0)) == 0
+        # don't use self comparison
+        diag(pwd) <- NA
+        # Get the indices for the duplicated sequences
+        duplicated_idx <- which(pwd, arr.ind = T)
+        if (nrow(duplicated_idx)>0) {
+            # Group 
+            dup_rows_group <- x[['group_idx']][duplicated_idx[,"row"]]
+            dup_cols_group <- x[['group_idx']][duplicated_idx[,"col"]]
+            dup_sequences <- duplicated_idx[,"row"][dup_rows_group != dup_cols_group]
+            if(length(dup_sequences)>0) {
+                is_duplicate[dup_sequences] <- T
+            }
+            
+        }
+        x$is_duplicate <- is_duplicate
+        x
+    }
+    
+    duplicated_seq_id <- db_shared %>%
+        group_by(!!rlang::sym(cell)) %>%
+        do(.isDuplicate(., seq)) %>%
+        filter(is_duplicate) %>%
+        select(-group_idx) %>%
+        pull(!!rlang::sym(sequence_id))
+    
+    db[['sc_duplicate']] <- F
+    if (length(duplicated_seq_id)>0) {
+        db[['sc_duplicate']][db[[sequence_id]] %in% duplicated_seq_id] <- T
+    }
+    db %>%
+        select(-group_idx)
+}
+
+#' removeSingleCellDuplicates(db, "sample_id")
+#' @export
+removeSingleCellDuplicates <- function(db, groups, 
+                                       cell = "cell_id", 
+                                       seq="sequence_alignment",
+                                       sequence_id="sequence_id") {
+    findSingleCellDuplicates(db, groups, cell, seq, sequence_id) %>%
+        filter(sc_duplicate == F) %>%
+        select(-sc_duplicate)
+}
+
+
+
 ##---------------------- TMP -------------------------- ##
 # This function modified previous overlap heatmap function and is used to show, between two samples 
 # in single cell data, the overlap of cells which has same barcode and sequences
@@ -122,6 +212,7 @@ singlecell_sharing_matrix <- function(db,
 ) {
     
     # Check for valid columns
+    if (is.null(groups)) { stop("`groups` must be a valid column name")}
     columns <- c(groups,cell, seq, order_by)
     columns <- columns[!is.null(columns)]
     check <- alakazam:::checkColumns(db, columns)
@@ -194,107 +285,6 @@ singlecell_sharing_matrix <- function(db,
     return(createOverlap(overlap_count, overlap_total, overlap_percent))
     
 }
-
-if (FALSE) {
-    db <- data.frame(
-        'sample_id' = c("s1","s1","s1", "s2","s2","s2","s2"),
-        'cell_id' = c("cell_1", "cell_2", "cell_3", "cell_1", "cell_2", "cell_4","cell_5"),
-        'sequence_alignment' = c("AA","AA","CC","AA","TT","CC","GG")
-    )
-    singlecell_sharing_matrix(db)
-
-    library(igraph)
-    if (any(db$sample_id %in% db$cell_id)) {
-        stop("`sample_id` and `cell_id` overlap. Can't use this method to create a bipartite graph.")
-    }
-    g <- graph.data.frame(db %>% select(sample_id, cell_id), directed = F)
-    V(g)$type <- V(g)$name %in% db[['cell_id']] #the second column of edges is TRUE type
-    plot(g)
-    sample_g <- bipartite_projection(g, which=F)
-    cell_g <- bipartite_projection(g, which=T)
-    as.matrix(sample_g[])
-}
-
-# Remove cells with same 1) barcode and 2) sequences between samples (group)
-removeSingleCellDuplicate <- function(clip_df, group, cell = "CELL",seq="SEQUENCE_IMGT") {
-    # checking the validity of input parameters
-    if (! (group %in% names(clip_df))) {
-        stop("Please supply a valid column label for the 'group' parameter")
-    }
-    GROUPS = unique(clip_df[,group])
-    # index of duplicates 
-    dup_index = c()
-    # cells with same 1) barcode and 2) sequences between samples (group)
-    for (ii in GROUPS) {    
-        for (jj in GROUPS) {
-            if(ii != jj){
-                #cat("sample: ",ii, "\n")
-                #cat("sample: ",jj, "\n")
-                # cell in groups i and j
-                cells_ii = clip_df[clip_df[,group] == ii, cell]
-                cells_jj = clip_df[clip_df[,group] == jj, cell]
-                # seqs in groups i and j
-                seqs_ii = clip_df[clip_df[,group] == ii, seq]
-                seqs_jj = clip_df[clip_df[,group] == jj, seq]
-                
-                # find the number of cells having same seq and cell barcode shared between groups i and j
-                # TO reduce match time, find shared cells first and then compare seq for those cells
-                shared_cells = unique(intersect(cells_ii, cells_jj))
-                #cat("shared_cells: ", length(shared_cells),"\n")
-                if(length(shared_cells) !=0){
-                    #find index of shared cells in original data
-                    index_ii = match(shared_cells, cells_ii)
-                    index_jj = match(shared_cells, cells_jj)
-                    
-                    for(i in 1:length(shared_cells)){
-                        #cat("shared_cells1: ", seqs_ii[index_ii[i]],"\n")
-                        #cat("shared_cells2: ", seqs_jj[index_jj[i]],"\n")
-                        # indicate removal if seqs are same too
-                        if(seqs_ii[index_ii[i]] == seqs_jj[index_jj[i]]){
-                            index_tmp1 = intersect(which(clip_df[,cell]==shared_cells[i]), 
-                                                   which(clip_df[,seq]==seqs_ii[index_ii[i]]))
-                            # indicate removal from both samples
-                            if(ii=="P05_PBMC_2_5_Y1" &&  jj=="P05_PBMC_2_0_Y1"){
-                                dup_index = c(dup_index, intersect(index_tmp1, which(clip_df[,group]==jj)))
-                            }else if(jj=="P05_PBMC_2_5_Y1" &&  ii=="P05_PBMC_2_0_Y1"){
-                                dup_index = c(dup_index, intersect(index_tmp1, which(clip_df[,group]==ii)))
-                            }else{
-                                dup_index = c(dup_index, intersect(index_tmp1, which(clip_df[,group]==ii)))
-                                dup_index = c(dup_index, intersect(index_tmp1, which(clip_df[,group]==jj)))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    dup_index = unique(dup_index)
-    #cat("Totally  ", length(dup_index)," cells were removed.\n")
-    if(length(dup_index)==0){# no duplicate is found
-        return(clip_df)
-    }else{
-        return(clip_df[-dup_index,])
-    }
-}
-
-# This is the main function to remove duplicates in single cell data, it calls
-# function removeSingleCellDuplicate to remove duplicates until none is found
-removeSingleCellDuplicates <- function(clip_df, group, cell = "CELL",seq="SEQUENCE_IMGT") {
-    # may need multiple cycles to remove duplicate
-    cycle.index = 1
-    cat("Remove duplicates - cycle ", cycle.index, "\n")
-    df1 = removeSingleCellDuplicate(clip_df, group, cell,seq)
-    df2 = removeSingleCellDuplicate(df1, group, cell,seq)
-    
-    while(dim(df1)[1] != dim(df2)[1]){# stop until no dupicate is found
-        cycle.index = cycle.index + 1
-        cat("De-duplication cycle ", cycle.index, ".\n")
-        df1 = df2
-        df2 = removeSingleCellDuplicate(df1, group, cell,seq)
-    }
-    return(df2)
-}
-
 
 # S4 class defining a Overlap object
 setClass("Overlap", 

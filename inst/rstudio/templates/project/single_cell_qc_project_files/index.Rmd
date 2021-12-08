@@ -113,25 +113,7 @@ p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir, knitr::opts_current$ge
 ggplotly(p_seqs_per_cell)
 ```
 
-# QC
-
-```{r}
-qc_results <-scQC(db)
-if (qc_results$fail>0) {
-  cells_with_fail <- unique(qc_results$log$cell_id[!qc_results$log$scqc_pass])
-}
-```
-
-`r qc_results$pass` sequences pass and `r qc_results$fail` sequences fail.
-
-```{r eval=qc_results$fail>0, class.output="bg-warning"}
-fail_cell_ids <- unique(qc_results$log$cell_id[!qc_results$log$scqc_pass])
-eetable(qc_results$log %>%
-          filter(cell_id %in% cells_with_fail),
-        caption=paste0("Sequences of ",length(cells_with_fail), " cell_ids with failed sequences."))
-```
-
-## Cells with paired chains
+# Cells with paired chains
 
 
 ```{r}
@@ -147,35 +129,10 @@ eetable(qc_results$log %>%
 #         )
 ```
 
-# Save results
-
-```{r dbpass}
-pass <- qc_results$log$scqc_pass
-
-if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_scqc-pass.tsv")
-} else {
-    output_fn <- sub(".tsv$", "_scqc-pass.tsv", basename(params$input))
-}
-
-if (!is.null(params$log)) {
-    log_fn <- paste0(params$log,".txt")
-} else {
-    log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
-}
-
-write_rearrangement(db[pass,], file=output_fn)
-```
-
-```{r log}
-cat("START> SingleCellQC", file=log_fn, append=F)
-cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
-cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
-cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
-cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
-```
 
 # cell_id + sequence_alignment overlap
+
+## overlap matrix
 
 ```{r eval=TRUE}
 
@@ -189,22 +146,41 @@ p <- enchantr:::plotOverlapSingleCell( list_objOverlap=list(uniqueCell, uniqueCe
 p
 ```
 
-```{r}
+## stacked bar
 
-dim(data)
-# remove duplicated cells
-data = enchantr:::removeSingleCellDuplicates(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
-dim(data)
-# data=rbind(data.ns, data)
-# dim(data)
-# write.table(data,file=paste0(subject,"_remDup.tsv"), quote=FALSE, sep="\t", row.names = FALSE)
-#                            
-# # Check overlap after removing duplicates
-# uniqueCell  <- singlecell_sharing_matrix(data, group="SAMPLE", cell="CELL", seq="SEQUENCE_IMGT")
-# p = plotOverlapSingleCell( list_objOverlap=list(uniqueCell, uniqueCell), titleText="", 
-#                            order_by=sort(colnames(uniqueCell@overlap_count)), 
-#                            sizeCount=3, sizeDiag=2.5)
-# plot(p)
+```{r}
+db <- findSingleCellDuplicates(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
+ggplot(db, aes(x=sample_id, fill=sc_duplicate)) +
+    geom_bar()
+```
+
+# Remove duplicate sequences
+
+```{r dbpass}
+#pass <- qc_results$log$scqc_pass
+pass <- db[['sc_duplicate']] == FALSE
+
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_scqc-pass.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_scqc-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+write_rearrangement(db[pass,] %>% select(-sc_duplicate), file=output_fn)
+```
+
+```{r log}
+cat("START> SingleCellQC", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
 ```
 
 
