@@ -20,4 +20,5 @@
 #' @importFrom  RColorBrewer brewer.pal
 #' @importFrom  stringi stri_trim_both stri_split_fixed
 #' @importFrom  stringr str_replace str_replace_all
+#' @importFrom  tidyr pivot_longer pivot_wider
 NULL

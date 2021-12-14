@@ -59,8 +59,16 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       eval.after="fig.cap",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
-library(enchantr)
-library(DT)
+
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("plotly"))
+
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
           recursive = T, overwrite=T)
@@ -78,16 +86,6 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 # Read repertoires
 
-```{r}
-# Libraries
-suppressPackageStartupMessages(library("enchantr"))
-suppressPackageStartupMessages(library("DT"))
-suppressPackageStartupMessages(library("dplyr"))
-suppressPackageStartupMessages(library("airr"))
-suppressPackageStartupMessages(library("alakazam"))
-suppressPackageStartupMessages(library("shazam"))
-suppressPackageStartupMessages(library("plotly"))
-```
 
 ```{r}
 # Check input file
@@ -132,33 +130,38 @@ ggplotly(p_seqs_per_cell)
 
 # cell_id + sequence_alignment overlap
 
+
+## stacked bar
+
+```{r}
+dups <- findSingleCellDuplicates(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
+if (nrow(dups[['dups']])>0) {
+    ggplot(dups[['dups']], aes(x=sample_id, fill=sc_duplicate)) +
+        geom_bar()
+}
+```
+
 ## overlap matrix
 
 ```{r eval=TRUE}
 
 # find the number of cells having same seq and cell barcode
-uniqueCell  <- singlecell_sharing_matrix(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
+dup_count <- singleCellSharingCounts(dups)
 
 # plot duplicated cells
-p <- enchantr:::plotOverlapSingleCell( list_objOverlap=list(uniqueCell, uniqueCell), titleText="", 
-                           order_by=sort(colnames(uniqueCell@overlap_count)), 
-                           sizeCount=3, sizeDiag=2.5)
+p <- plotOverlapSingleCell(dup_count)
 p
-```
-
-## stacked bar
-
-```{r}
-db <- findSingleCellDuplicates(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
-ggplot(db, aes(x=sample_id, fill=sc_duplicate)) +
-    geom_bar()
 ```
 
 # Remove duplicate sequences
 
 ```{r dbpass}
 #pass <- qc_results$log$scqc_pass
-pass <- db[['sc_duplicate']] == FALSE
+if (nrow(dups[['dups']]>0)) {
+    pass <- dups[['dups']][['sc_duplicate']] == FALSE
+} else {
+    pass <- rep(T, nrow(db))
+}
 
 if (!is.null(params$outname)) {
     output_fn <- paste0(params$outname,"_scqc-pass.tsv")
@@ -172,7 +175,7 @@ if (!is.null(params$log)) {
     log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-write_rearrangement(db[pass,] %>% select(-sc_duplicate), file=output_fn)
+write_rearrangement(db[pass,], file=output_fn)
 ```
 
 ```{r log}

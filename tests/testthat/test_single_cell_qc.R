@@ -13,12 +13,12 @@ test_that("file_size report runs", {
         # "seq_3" and "seq_4" stay because duplicated in the same group s1
     )
     
-    db <- findSingleCellDuplicates(db, 
+    dups <- findSingleCellDuplicates(db, 
                              groups="sample_id", 
                              cell="cell_id", 
                              seq="sequence_alignment",
                              sequence_id="sequence_id")
-    expect_equal(sum(db[['sc_duplicate']]),length(expected_removed))
+    expect_equal(sum(dups[['dups']][['sc_duplicate']]),length(expected_removed))
     
     db <- removeSingleCellDuplicates(db, 
                                      groups="sample_id", 
