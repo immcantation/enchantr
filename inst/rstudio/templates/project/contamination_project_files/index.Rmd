@@ -1,0 +1,134 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Detect contamination"
+author: ""
+date: "Updated: `r date()`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "detect sequences present in multiple samples"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoire file(s)"
+      input: file
+      value: "input_id_1_meta-pass.tsv,input_id_2_meta-pass.tsv,input_id_3_meta-pass.tsv"
+   input_id: 
+      label: "`input_id`: Name of the column in `input` that contains input identifiers."
+      input: text
+      value: "input_id"      
+   outname:
+      label: "`outname`"
+      input: text
+      value: "cont"
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: FALSE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+library(enchantr)
+library(DT)
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters}
+params
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoire
+
+```{r}
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("plotly"))
+```
+
+```{r}
+input_files <- strsplit(params[['input']],",")[[1]]
+
+# Check input files exist
+sapply(input_files, function(x) {
+   missing_files <- c()
+   if (!file.exists(x)) {
+      e <- (paste0("File ", basename(x), " doesn't exist."))
+      missing_files <- append(missing_files, e)
+   }
+   if (length(missing_files)>0) {
+     stop("File(s) not found:\n", paste("-",missing_files, collapse="\n")) 
+   }
+   NULL
+})
+
+# Load repertoire file(s)
+db <- bind_rows(lapply(input_files,read_rearrangement))
+```
+
+# Identify contaminants
+
+```{r}
+
+```
+
+# Summary
+
+```{r summary}
+summary <- db %>% group_by(!!rlang::sym(params$input_id)) %>%
+   summarize(n=n())
+eetable(summary, "Number of input sequences and flagged sequences per input sample.")
+```
+
+
+```{r, child=c('versions.Rmd')}
+```
+
+

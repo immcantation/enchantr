@@ -19,6 +19,7 @@ Imports:
     airr,
     alakazam,
     bookdown,
+    doParallel,
     dplyr,
     DT,
     ggraph,

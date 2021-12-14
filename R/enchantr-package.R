@@ -6,6 +6,7 @@
 #' @docType  package
 
 #' @import      alakazam
+#' @importFrom  foreach foreach %dopar% registerDoSEQ
 #' @import      dplyr
 #' @import      DT
 #' @import      ggplot2

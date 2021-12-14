@@ -1,0 +1,156 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Collapse Duplicates"
+author: ""
+date: "Updated: `r date()`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr single cell qc report"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoires file"
+      input: file
+      value: "input.tsv"
+   collapseby:
+      label: "`collapseby`"
+      input: text
+      value: "sample_id"      
+   outname:
+      label: "`outname`"
+      input: text
+      value: "collapse"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1      
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: FALSE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("plotly"))
+
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters}
+params
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoires
+
+
+```{r}
+# Check input file
+if (!file.exists(params$input)) {
+    stop(paste0("File ", basename(params$input), " doesn't exist."))
+}
+
+db_files <- read.delim(params[['input']], header=F)[[1]]
+
+# Read metadata file
+db <- bind_rows(lapply(db_files, read_rearrangement))
+```
+
+# Collapse Duplicates
+
+```{r findDuplicates}
+num_fields <- c("conscount","dupcount")
+num_fields <- num_fields[num_fields %in% colnames(db)]
+if (length(num_fields)<1) {num_fields <- NULL}
+
+db <- findDuplicates(db, groups=params$collapseby, 
+               text_fields=NULL,
+               num_fields=num_fields,
+               seq_fields=NULL,
+               nproc=params[['nproc']])
+```
+
+# Remove duplicate sequences
+
+```{r dbpass}
+pass <- db[['collapse_pass']]
+
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_collapse-pass.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_collapse-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_collapse-pass.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+write_rearrangement(db[pass,], file=output_fn)
+```
+
+```{r log}
+cat("START> CollapseDuplicates", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
+```
+
+
+```{r, child=c('versions.Rmd')}
+```
+
+
