@@ -13,11 +13,11 @@ description: "detect sequences present in multiple samples"
 output: enchantr::immcantation
 params:
    input: 
-      label: "`input`: Path to repertoire file(s)"
+      label:  "`input`: Path to repertoires file(s)"
       input: file
       value: "input_id_1_meta-pass.tsv,input_id_2_meta-pass.tsv,input_id_3_meta-pass.tsv"
    input_id: 
-      label: "`input_id`: Name of the column in `input` that contains input identifiers."
+      label: "`input_id`: Name of the column in the data files that contains input identifiers."
       input: text
       value: "input_id"      
    outname:
@@ -63,8 +63,15 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       eval.after="fig.cap",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
-library(enchantr)
-library(DT)
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("plotly"))
+
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
           recursive = T, overwrite=T)
@@ -82,49 +89,68 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 # Read repertoire
 
-```{r}
-# Libraries
-suppressPackageStartupMessages(library("enchantr"))
-suppressPackageStartupMessages(library("DT"))
-suppressPackageStartupMessages(library("dplyr"))
-suppressPackageStartupMessages(library("airr"))
-suppressPackageStartupMessages(library("alakazam"))
-suppressPackageStartupMessages(library("shazam"))
-suppressPackageStartupMessages(library("plotly"))
-```
 
 ```{r}
-input_files <- strsplit(params[['input']],",")[[1]]
 
-# Check input files exist
-sapply(input_files, function(x) {
-   missing_files <- c()
-   if (!file.exists(x)) {
-      e <- (paste0("File ", basename(x), " doesn't exist."))
-      missing_files <- append(missing_files, e)
-   }
-   if (length(missing_files)>0) {
-     stop("File(s) not found:\n", paste("-",missing_files, collapse="\n")) 
-   }
-   NULL
-})
+# Check input file
+if (!file.exists(params$input)) {
+    stop(paste0("File ", basename(params$input), " doesn't exist."))
+}
+
+db_files <- read.delim(params[['input']], header=F)[[1]]
 
 # Load repertoire file(s)
-db <- bind_rows(lapply(input_files,read_rearrangement))
+db <- bind_rows(lapply(db_files, read_rearrangement))
 ```
 
-# Identify contaminants
+# Identify possible contaminants
 
-```{r}
-
+```{r overlapSeqInHeavy}
+db_ovl <- plotDbOverlap(db %>% dplyr::filter(locus %in% c("IGH", "igh")),
+                        group = c("sample_id"), 
+                        features="sequence_alignment",  
+                        plot_order=c("sample_id"), 
+                        exact=FALSE, similarity = "min", 
+                        title="auto", silent=T)
+db_ovl
 ```
 
 # Summary
 
 ```{r summary}
-summary <- db %>% group_by(!!rlang::sym(params$input_id)) %>%
-   summarize(n=n())
-eetable(summary, "Number of input sequences and flagged sequences per input sample.")
+# TODO
+# summary <- db %>% group_by(!!rlang::sym(params$input_id)) %>%
+#    summarize(n=n())
+# eetable(summary, "Number of input sequences and flagged sequences per input sample.")
+```
+
+```{r dbpass}
+# TODO
+# Currently this report is just for FYI
+# need to enable the option to remove flagged
+pass <- rep(T, nrow(db))
+
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_cont-flag.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_cont-flag.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_cont-flag.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+write_rearrangement(db[pass,], file=output_fn)
+```
+
+```{r log}
+cat("START> BulkOverlap", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
 ```
 
 
