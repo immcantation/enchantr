@@ -43,6 +43,23 @@ plotSequencesPerCell <- function(seqs_per_cell) {
 }
 
 #' @export
+removeDoublets <- function(db, cell_id="cell_id", locus="locus", sequence_id='sequence_id', fields=NULL) {
+    db_h <- db %>%
+        filter(grepl("[hHBbDc]", !!rlang::sym(locus))) #IGH, TRB, TRD
+    groups <- c(locus, fields)
+    if (any(duplicated(db_h[[sequence_id]]))) {
+        stop("Duplicated sequence ids found.")
+    }
+    doublets <- db_h %>%
+        group_by(!!!rlang::syms(groups)) %>%
+        mutate(heavy_seqs_per_cell=n()) %>%
+        mutate(is_doublet=heavy_seqs_per_cell>1) %>%
+        select(!!!rlang::syms(c(groups, 'sequence_id')))
+    db %>%
+        anti_join(doublets, by=sequence_id)
+}
+
+#' @export
 scQC <- function(db, cell_id="cell_id") {
     db[['chain']] <- getChain(db[["locus"]])
     db[['tmp_scqc_row']] <- 1:nrow(db)

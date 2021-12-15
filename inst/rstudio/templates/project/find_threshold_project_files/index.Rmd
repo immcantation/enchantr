@@ -1,0 +1,222 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Find Threshold"
+author: ""
+date: "Updated: `r date()`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr single cell qc report"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoires file"
+      input: file
+      value: "input.tsv"
+   cloneby:
+      label: "`cloneby`"
+      input: text
+      value: "sample_id"    
+   singlecell:
+      label: "`singlecell`"
+      input: text
+      value: "single_cell"          
+   outname:
+      label: "`outname`"
+      input: text
+      value: "find-threshold"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1      
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: FALSE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("plotly"))
+
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters}
+params
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoires
+
+
+```{r}
+# Read repertoires
+db_files <- strsplit(params[['input']], ",")[[1]]
+
+# Check input file
+lapply(db_files, function(x) {
+    if (!file.exists(x)) {
+        stop(paste0("File ", basename(x), " doesn't exist."))
+    }
+})
+
+
+db <- bind_rows(lapply(db_files, read_rearrangement))
+
+input_size <- nrow(db)
+is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
+
+# Fix possible presence of bulk and single cell data
+na_single <- is.na(db[[params$singlecell]])
+if (length(na_single)>0) {
+    db[[params$singlecell]][na_single] <- FALSE
+}
+```
+
+# Distance to nearest
+
+```{r distToNearest_bulk}
+if (any(db[[params$singlecell]] == F)) {
+    dist_bulk <- distToNearest(db[is_heavy & db[[params$singlecell]] == F,] , 
+                          fields=params$cloneby,
+                          sequenceColumn="junction", 
+                          vCallColumn="v_call", jCallColumn="j_call",
+                          model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
+                          nproc=params$nproc)
+        
+} else {
+    dist_bulk <- data.frame()
+}
+```
+
+```{r distToNearest_single}
+if (any(db[[params$singlecell]] == T)) {
+    dist_single <- distToNearest(db[!is_heavy & db[[params$singlecell]] == T,] , 
+                          fields=params$cloneby,
+                          sequenceColumn="junction", 
+                          vCallColumn="v_call", jCallColumn="j_call",
+                          model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
+                          nproc=params$nproc,
+                          cellIdColumn = params$singlecell,
+                          locusColumn = "locus",
+                          onlyHeavy = TRUE)
+    dist_single[[params$singlecell]] <- as.logical(dist_single[[params$singlecell]])
+} else {
+    dist_single <- data.frame()
+}
+```
+
+# Find threshold
+
+
+```{r}
+db <- bind_rows(dist_bulk,dist_single)
+```
+
+
+```{r threshold}
+threshold <- findThresholdDb(db, distanceColumn="dist_nearest", method="gmm", 
+                            model="gamma-gamma",
+                            edge = 0.9, subsample=NULL, 
+                            nproc=params$nproc, fields=params$cloneby)
+
+threshold_summary <- gmmSummary(threshold) %>%
+    mutate(mean_threshold=mean(threshold))
+eetable(threshold_summary, "Summary of threshold values.")
+```
+
+```{r}
+lapply(threshold, '[[', 'plot')
+```
+
+# Save
+
+```{r dbpass}
+# pass <- db[['collapse_pass']]
+
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_threshold-pass.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_threshold-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_threshold-pass.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+write_rearrangement(db , file=output_fn)
+write.table(threshold_summary, 
+            sub("_threshold-pass.tsv$", "_threshold-summary.tsv" ,output_fn),
+            quote=FALSE,sep="\t", row.names=FALSE)
+cat(threshold_summary[['mean_threshold']], 
+    file=sub("_threshold-pass.tsv$", "_threshold-mean.tsv" ,output_fn),
+    append=F
+)
+```
+
+
+```{r log}
+cat("START> FindThreshold", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",input_size-nrow(db)), file=log_fn, append=T)
+```
+
+
+```{r, child=c('versions.Rmd')}
+```
+
+

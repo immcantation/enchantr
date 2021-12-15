@@ -8,6 +8,7 @@
 #' @import      alakazam
 #' @importFrom  foreach foreach %dopar% registerDoSEQ
 #' @import      dplyr
+#' @import      data.table
 #' @import      DT
 #' @import      ggplot2
 #' @import      ggraph

@@ -1,6 +1,6 @@
 --- 
 title: "Immcantation - enchantR"
-subtitle: "Detect contamination"
+subtitle: "Define Clones"
 author: ""
 date: "Updated: `r date()`"
 knit: "bookdown::render_book"
@@ -9,21 +9,29 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "detect sequences present in multiple samples"
+description: "enchantr single cell qc report"
 output: enchantr::immcantation
 params:
    input: 
-      label:  "`input`: Path to repertoires file(s)"
+      label: "`input`: Path to repertoires file"
       input: file
-      value: "input_id_1_meta-pass.tsv,input_id_2_meta-pass.tsv,input_id_3_meta-pass.tsv"
-   input_id: 
-      label: "`input_id`: Name of the column in the data files that contains input identifiers."
+      value: "input.tsv"
+   cloneby:
+      label: "`cloneby`"
       input: text
-      value: "id"      
+      value: "sample_id"    
+   singlecell:
+      label: "`singlecell`"
+      input: text
+      value: "single_cell"          
    outname:
       label: "`outname`"
       input: text
-      value: "cont"
+      value: "define-clones"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1      
    log:
       label: "`log`"
       input: text
@@ -63,6 +71,7 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       eval.after="fig.cap",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
 # Libraries
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("DT"))
@@ -70,6 +79,7 @@ suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("scoper"))
 suppressPackageStartupMessages(library("plotly"))
 
 file.copy(params$logo, 
@@ -87,70 +97,55 @@ if (!dir.exists(params[['outdir']])) {
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-# Read repertoire
+# Read repertoires
 
 
 ```{r}
-
 # Check input file
 if (!file.exists(params$input)) {
     stop(paste0("File ", basename(params$input), " doesn't exist."))
 }
 
-db_files <- read.delim(params[['input']], header=F)[[1]]
+# Read repertoire
+db <- read_rearrangement(params[['input']])
 
-# Load repertoire file(s)
-db <- bind_rows(lapply(db_files, read_rearrangement))
+input_size <- nrow(db)
+is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
+
+# Fix possible presence of bulk and single cell data
+na_single <- is.na(db[[params$singlecell]])
+if (length(na_single)>0) {
+    db[[params$singlecell]][na_single] <- FALSE
+}
 ```
 
-# Identify possible contaminants
-
-```{r overlapSeqInHeavy}
-db_ovl <- plotDbOverlap(db %>% dplyr::filter(locus %in% c("IGH", "igh")),
-                        group = c("sample_id"), 
-                        features="sequence_alignment",  
-                        plot_order=c("sample_id"), 
-                        exact=FALSE, similarity = "min", 
-                        title="auto", silent=T)
-db_ovl
-```
-
-# Summary
-
-```{r summary}
-# TODO
-# summary <- db %>% group_by(!!rlang::sym(params$input_id)) %>%
-#    summarize(n=n())
-# eetable(summary, "Number of input sequences and flagged sequences per input sample.")
-```
+# Save
 
 ```{r dbpass}
-# TODO
-# Currently this report is just for FYI
-# need to enable the option to remove flagged
-pass <- rep(T, nrow(db))
+# pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_cont-flag.tsv")
+    output_fn <- paste0(params$outname,"_clone-pass.tsv")
 } else {
-    output_fn <- sub(".tsv$", "_cont-flag.tsv", basename(params$input))
+    output_fn <- sub(".tsv$", "_clone-pass.tsv", basename(params$input))
 }
 
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("_cont-flag.tsv$", "_command_log.txt", basename(output_fn))
+    log_fn <- sub("_clone-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-write_rearrangement(db[pass,], file=output_fn)
+write_rearrangement(db , file=output_fn)
 ```
 
+
 ```{r log}
-cat("START> BulkOverlap", file=log_fn, append=F)
+cat("START> ClonePass", file=log_fn, append=F)
 cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
 cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
-cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
-cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",input_size-nrow(db)), file=log_fn, append=T)
 ```
 
 

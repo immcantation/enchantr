@@ -97,6 +97,7 @@ db_files <- read.delim(params[['input']], header=F)[[1]]
 
 # Read metadata file
 db <- bind_rows(lapply(db_files, read_rearrangement))
+input_size <- nrow(db)
 ```
 
 # Distribution of the number of sequences per cell and locus
@@ -111,21 +112,15 @@ p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir, knitr::opts_current$ge
 ggplotly(p_seqs_per_cell)
 ```
 
-# Cells with paired chains
-
+# Remove doublets
 
 ```{r}
-# TODO: WIP
-# ggplot(qc_results$log, aes(x=cell_num_sequences)) +
-#         geom_histogram(binwidth = 1) +
-#         scale_x_continuous(breaks=1:max(seqs_per_cell$cell_num_sequences)) +
-#         facet_wrap(~locus) +
-#         labs(
-#             x= "Number of sequences in a cell.",
-#             y=" Count",
-#             caption="Distribution of the number of sequences per cell and locus."
-#         )
+db <- removeDoublets(db, cell_id="cell_id", 
+                     locus="locus", 
+                     sequence_id='sequence_id', 
+                     fields='id' )
 ```
+
 
 
 # cell_id + sequence_alignment overlap
@@ -183,7 +178,7 @@ cat("START> SingleCellQC", file=log_fn, append=F)
 cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
 cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
 cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
-cat(paste0("\nFAIL> ",sum(!pass)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",input_size-sum(pass)), file=log_fn, append=T)
 ```
 
 

@@ -8,7 +8,9 @@ enchantr_report <- function(name=c("validate_input",
                                    "chimera_analysis", 
                                    "single_cell_qc", 
                                    "contamination",
-                                   "collapse_duplicates"), report_params=list()) {
+                                   "collapse_duplicates",
+                                   "find_threshold",
+                                   "define_clones"), report_params=list()) {
     
     name <- match.arg(name)
     
@@ -30,7 +32,9 @@ enchantr_report <- function(name=c("validate_input",
             "chimera_analysis" = invisible(chimera_analysis_project(outdir)),
             "single_cell_qc" = invisible(single_cell_qc_project(outdir)),
             "contamination" = invisible(contamination_project(outdir)),
-            "collapse_duplicates" = invisible(collapse_duplicates_project(outdir))
+            "collapse_duplicates" = invisible(collapse_duplicates_project(outdir)),
+            "find_threshold" = invisible(find_threshold_project(outdir)),
+            "define_clones" = invisible(define_clones_project(outdir))
     )
     
     # render
