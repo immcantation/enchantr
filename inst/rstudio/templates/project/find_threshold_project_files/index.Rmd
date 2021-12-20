@@ -79,7 +79,6 @@ suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
-suppressPackageStartupMessages(library("plotly"))
 
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
@@ -171,7 +170,7 @@ threshold <- findThresholdDb(db, distanceColumn="dist_nearest", method="gmm",
                             nproc=params$nproc, fields=params$cloneby)
 
 threshold_summary <- gmmSummary(threshold) %>%
-    mutate(mean_threshold=mean(threshold))
+    summarize(mean_threshold=mean(threshold, na.rm=TRUE))
 eetable(threshold_summary, "Summary of threshold values.")
 ```
 

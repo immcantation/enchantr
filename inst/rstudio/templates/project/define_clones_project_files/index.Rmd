@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr single cell qc report"
+description: "enchantr define clones"
 output: enchantr::immcantation
 params:
    input: 
@@ -24,6 +24,22 @@ params:
       label: "`singlecell`"
       input: text
       value: "single_cell"          
+   threshold:
+      label: "`threshold`"
+      input: numeric
+      value: 1
+   model:
+      label: "`model`"
+      input: text
+      value: "hierarchical" 
+   method:
+       label: "`method`"
+       input: text
+       value: "nt"
+   linkage:
+       label: "`linkage`"
+       input: text
+       value: "single"
    outname:
       label: "`outname`"
       input: text
@@ -80,7 +96,6 @@ suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("scoper"))
-suppressPackageStartupMessages(library("plotly"))
 
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
@@ -108,16 +123,44 @@ if (!file.exists(params$input)) {
 
 # Read repertoire
 db <- read_rearrangement(params[['input']])
-
 input_size <- nrow(db)
-is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
+```
 
-# Fix possible presence of bulk and single cell data
-na_single <- is.na(db[[params$singlecell]])
-if (length(na_single)>0) {
-    db[[params$singlecell]][na_single] <- FALSE
+# Define Clones
+
+```{r}
+if (params$model == "hierarchical") {
+    if (all(c(T,F) %in% db[[ params$singlecell ]])) {
+        stop("Unhandled situation: mix of single and bulk data.")
+    }
+    if (all(db[[ params$singlecell ]] == T )) {
+        cell_id <- 'cell_id'
+    } else {
+        cell_id <- NULL
+    }
+    hierarchicalClones(db, 
+                       params$threshold, 
+                       method=params$method,
+                       linkage=params$linkage, 
+                       normalize="len",
+                       junction="junction", 
+                       v_call="v_call", j_call="j_call", 
+                       clone="clone_id", 
+                       fields=params$cloneby,
+                       cell_id=cell_id, 
+                       locus="locus", 
+                       only_heavy=TRUE, 
+                       split_light=TRUE,
+                       first=FALSE, 
+                       cdr3=FALSE, mod3=FALSE, 
+                       max_n=0, nproc=params$nproc,
+                       verbose=FALSE, log=NULL,
+                       summarize_clones=FALSE) 
+} else {
+    stop("Unsuported model requested. Supported models: hierarchical")
 }
 ```
+
 
 # Save
 
@@ -141,7 +184,7 @@ write_rearrangement(db , file=output_fn)
 
 
 ```{r log}
-cat("START> ClonePass", file=log_fn, append=F)
+cat("START>ClonePass", file=log_fn, append=F)
 cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
 cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
 cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)

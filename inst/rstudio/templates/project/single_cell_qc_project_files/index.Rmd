@@ -67,7 +67,6 @@ suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
-suppressPackageStartupMessages(library("plotly"))
 
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
@@ -109,7 +108,7 @@ seqs_per_cell <- countSequencesPerCell(db)
 ```{r p-seqs-per-cell, fig.width=8, fig.height=4, fig.cap=p_seqs_per_cell$enchantr$html_caption}
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell)
 p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir, knitr::opts_current$get('label'))
-ggplotly(p_seqs_per_cell)
+p_seqs_per_cell
 ```
 
 # Remove doublets
