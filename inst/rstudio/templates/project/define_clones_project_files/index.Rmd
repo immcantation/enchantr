@@ -16,6 +16,10 @@ params:
       label: "`input`: Path to repertoires file"
       input: file
       value: "input.tsv"
+   imgt_db:
+      label: "`imgt_db`: Path to IMGT reference  database."
+      input: file
+      value: !r NULL
    cloneby:
       label: "`cloneby`"
       input: text
@@ -77,7 +81,7 @@ params:
       input: checkbox
       value: FALSE
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -96,6 +100,7 @@ suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("scoper"))
+suppressPackageStartupMessages(library("dowser"))
 
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
@@ -116,51 +121,105 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 
 ```{r}
-# Check input file
-if (!file.exists(params$input)) {
-    stop(paste0("File ", basename(params$input), " doesn't exist."))
-}
 
 # Read repertoire
-db <- read_rearrangement(params[['input']])
+db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
+    # Check input file
+    if (!file.exists(x)) {
+        stop(paste0("File ", basename(x), " doesn't exist."))
+    }
+    read_rearrangement(x)}
+))
 input_size <- nrow(db)
 ```
 
 # Define Clones
 
 ```{r}
-if (params$model == "hierarchical") {
-    if (all(c(T,F) %in% db[[ params$singlecell ]])) {
-        stop("Unhandled situation: mix of single and bulk data.")
-    }
-    if (all(db[[ params$singlecell ]] == T )) {
-        cell_id <- 'cell_id'
+heavy_chains <- sum(grepl("[hHBbDc]", db[['locus']])) #IGH, TRB, TRD
+if (sum(heavy_chains)>0) {
+    if (params$model == "hierarchical") {
+        if (all(db[[ params$singlecell ]] == T )) {
+            cell_id <- 'cell_id'
+        } else {
+            cell_id <- NULL
+            if (all(c(T,F) %in% db[[ params$singlecell ]])) {
+                warning("Mix of single and bulk data. Setting cell_id=`NULL`.")
+            }
+        }
+        db <- hierarchicalClones(db, 
+                                 params$threshold, 
+                                 method=params$method,
+                                 linkage=params$linkage, 
+                                 normalize="len",
+                                 junction="junction", 
+                                 v_call="v_call", j_call="j_call", 
+                                 clone="clone_id", 
+                                 fields=params$cloneby,
+                                 cell_id=cell_id, 
+                                 locus="locus", 
+                                 only_heavy=TRUE, 
+                                 split_light=TRUE,
+                                 first=FALSE, 
+                                 cdr3=FALSE, mod3=FALSE, 
+                                 max_n=0, nproc=params$nproc,
+                                 verbose=FALSE, log=NULL,
+                                 summarize_clones=FALSE) 
     } else {
-        cell_id <- NULL
+        stop("Unsuported model requested. Supported models: hierarchical")
     }
-    hierarchicalClones(db, 
-                       params$threshold, 
-                       method=params$method,
-                       linkage=params$linkage, 
-                       normalize="len",
-                       junction="junction", 
-                       v_call="v_call", j_call="j_call", 
-                       clone="clone_id", 
-                       fields=params$cloneby,
-                       cell_id=cell_id, 
-                       locus="locus", 
-                       only_heavy=TRUE, 
-                       split_light=TRUE,
-                       first=FALSE, 
-                       cdr3=FALSE, mod3=FALSE, 
-                       max_n=0, nproc=params$nproc,
-                       verbose=FALSE, log=NULL,
-                       summarize_clones=FALSE) 
 } else {
-    stop("Unsuported model requested. Supported models: hierarchical")
+    warning("Unhandled situation: no heavy chain sequences found.")
 }
 ```
 
+# Create germlines
+
+```{r}
+if ( length(unique(db[['species']])) > 1 ) {
+    message("Message: multiple species found.")
+} 
+db[['tmp_nrow']] <- 1:nrow(db)
+db <- bind_rows(lapply(split(db,db[['species']]),
+                 function(db_sp) { 
+                     species <- db_sp[['species']][1]
+                     references <- readIMGT(file.path(params[['imgt_db']], species, "vdj"))
+                     bind_rows(lapply(split(db_sp, db_sp[['locus']]), 
+                                            function(db_locus) {
+                                                locus <- db_locus[['locus']][1]
+                                                db_locus <- createGermlines(
+                                                    db_locus,
+                                                    references,
+                                                    organism = species,
+                                                    locus = locus,
+                                                    nproc = params$nproc,
+                                                    seq = "sequence_alignment",
+                                                    v_call = "v_call",
+                                                    d_call = "d_call",
+                                                    j_call = "j_call",
+                                                    amino_acid = FALSE,
+                                                    id = "sequence_id",
+                                                    clone = "clone_id",
+                                                    v_germ_start = "v_germline_start",
+                                                    v_germ_end = "v_germline_end",
+                                                    v_germ_length = "v_germline_length",
+                                                    d_germ_start = "d_germline_start",
+                                                    d_germ_end = "d_germline_end",
+                                                    d_germ_length = "d_germline_length",
+                                                    j_germ_start = "j_germline_start",
+                                                    j_germ_end = "j_germline_end",
+                                                    j_germ_length = "j_germline_length",
+                                                    np1_length = "np1_length",
+                                                    np2_length = "np2_length",
+                                                    na.rm = TRUE,
+                                                    fields = params$cloneby,
+                                                )
+                                            }))
+                 })) %>%
+    arrange(tmp_nrow) %>%
+    select(-tmp_nrow)
+
+```
 
 # Save
 
@@ -179,7 +238,24 @@ if (!is.null(params$log)) {
     log_fn <- sub("_clone-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-write_rearrangement(db , file=output_fn)
+if (sum(heavy_chains)>0 & nrow(db)>0) {
+    clone_groups <- db %>%
+        select(!!!rlang::syms(params$cloneby)) %>%
+        distinct() %>%
+        rowwise() %>%
+        mutate(cloneby_group = paste(!!!rlang::syms(params$cloneby),collapse = ",")
+        )
+    for (i in 1:nrow(clone_groups))  {
+        prefix <- clone_groups[['cloneby_group']][i]
+        write_rearrangement(right_join(db,clone_groups[i,,drop=F] %>%
+                                           select(-cloneby_group),
+                                       by=params$cloneby),
+                            file=paste0(prefix,"_",output_fn))
+    }
+    
+}
+
+#write_rearrangement(db , file=output_fn)
 ```
 
 

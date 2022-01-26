@@ -17,7 +17,8 @@ find_threshold_project <- function(path,...) {
 
 
 #' @export
-findThresholdDb <- function(db, distanceColumn="dist_nearest", method=c("gmm", "dens"), 
+findThresholdDb <- function(db, distanceColumn="dist_nearest", crossDistanceColumn="cross_dist_nearest",
+                            method=c("gmm", "dens"), 
                             model=c("gamma-gamma"),
                             edge = 0.9, subsample=NULL, nproc=1, fields=NULL ) {
     # Hack for visibility of data.table and foreach index variables
@@ -33,6 +34,10 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest", method=c("gmm", "
     
     check <- alakazam:::checkColumns(db, columns)
     if (check != TRUE) { stop(check) }    
+    
+    if (!crossDistanceColumn %in% colnames(db)) {
+        stop("The column ",crossDistanceColumn," does not exist in `db`")
+    } 
     
     # Convert the db (data.frame) to a data.table & set keys
     # This is an efficient way to get the groups of V J L, instead of doing dplyr
@@ -62,7 +67,7 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest", method=c("gmm", "
     if (nproc > 1) { 
         export_functions <- list("db",
                                  "groups", 
-                                 "distanceColumn", 
+                                 "distanceColumn", "crossDistanceColumn",
                                  "findThreshold",
                                  "method", "edge", "subsample")
         parallel::clusterExport(cluster, export_functions, envir=environment())
@@ -71,7 +76,17 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest", method=c("gmm", "
     list_db <- foreach(idx=iterators::icount(lenGroups), .errorhandling='stop') %dopar% {
         db_group <- db[groups[[idx]], ]
         if (any(!is.na(db_group[[distanceColumn]]))) {
-            threshold <- findThreshold(db_group[[distanceColumn]],method=method, 
+            if (!is.null(crossDistanceColumn)) {
+                cross_distances <- db_group[[crossDistanceColumn]]
+                if (all(is.na(cross_distances))) {
+                    warning("All 'cross_dist_nearest` values are NA, will use cross='NULL'.")
+                    cross_distances <- NULL
+                }
+            } else {
+                cross_distances <- NULL
+            }
+            threshold <- findThreshold(db_group[[distanceColumn]], cross=cross_distances,
+                                       method=method, 
                                        model=model,
                                        edge=edge, subsample=subsample)
             # threshold_vector <- sapply(slotNames(threshold), function(this_slot) {

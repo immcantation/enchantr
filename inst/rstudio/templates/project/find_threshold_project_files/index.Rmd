@@ -110,37 +110,45 @@ lapply(db_files, function(x) {
 })
 
 
-db <- bind_rows(lapply(db_files, read_rearrangement))
+# db <- bind_rows(lapply(db_files, read_rearrangement))
 
 input_size <- nrow(db)
 is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
-
+    
 # Fix possible presence of bulk and single cell data
 na_single <- is.na(db[[params$singlecell]])
 if (length(na_single)>0) {
     db[[params$singlecell]][na_single] <- FALSE
 }
+db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
 ```
 
 # Distance to nearest
 
 ```{r distToNearest_bulk}
 if (any(db[[params$singlecell]] == F)) {
-    dist_bulk <- distToNearest(db[is_heavy & db[[params$singlecell]] == F,] , 
-                          fields=params$cloneby,
-                          sequenceColumn="junction", 
-                          vCallColumn="v_call", jCallColumn="j_call",
-                          model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
-                          nproc=params$nproc)
+    warning("Using ",sum(is_heavy), " heavy chain sequences.")
+    db <- distToNearest(db[is_heavy,] , 
+                               fields=params$cloneby,
+                               sequenceColumn="junction", 
+                               vCallColumn="v_call", jCallColumn="j_call",
+                               model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
+                               nproc=params$nproc)
+    
+    db <- distToNearest(db, 
+                               fields=NULL,
+                               cross=params$cloneby,
+                               sequenceColumn="junction", 
+                               vCallColumn="v_call", jCallColumn="j_call",
+                               model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
+                               nproc=params$nproc)
         
-} else {
-    dist_bulk <- data.frame()
-}
+} 
 ```
 
 ```{r distToNearest_single}
-if (any(db[[params$singlecell]] == T)) {
-    dist_single <- distToNearest(db[!is_heavy & db[[params$singlecell]] == T,] , 
+if (all(db[[params$singlecell]] == T)) {
+    db <- distToNearest(db , 
                           fields=params$cloneby,
                           sequenceColumn="junction", 
                           vCallColumn="v_call", jCallColumn="j_call",
@@ -149,28 +157,22 @@ if (any(db[[params$singlecell]] == T)) {
                           cellIdColumn = params$singlecell,
                           locusColumn = "locus",
                           onlyHeavy = TRUE)
-    dist_single[[params$singlecell]] <- as.logical(dist_single[[params$singlecell]])
-} else {
-    dist_single <- data.frame()
-}
+} 
 ```
+
 
 # Find threshold
 
 
-```{r}
-db <- bind_rows(dist_bulk,dist_single)
-```
-
-
 ```{r threshold}
-threshold <- findThresholdDb(db, distanceColumn="dist_nearest", method="gmm", 
+threshold <- findThresholdDb(db, distanceColumn="dist_nearest", crossDistanceColumn="cross_dist_nearest",
+                            method="gmm", 
                             model="gamma-gamma",
                             edge = 0.9, subsample=NULL, 
                             nproc=params$nproc, fields=params$cloneby)
 
 threshold_summary <- gmmSummary(threshold) %>%
-    summarize(mean_threshold=mean(threshold, na.rm=TRUE))
+    mutate(mean_threshold=mean(threshold, na.rm=TRUE))
 eetable(threshold_summary, "Summary of threshold values.")
 ```
 
@@ -195,11 +197,11 @@ if (!is.null(params$log)) {
     log_fn <- sub("_threshold-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-write_rearrangement(db , file=output_fn)
+# write_rearrangement(db , file=output_fn)
 write.table(threshold_summary, 
             sub("_threshold-pass.tsv$", "_threshold-summary.tsv" ,output_fn),
             quote=FALSE,sep="\t", row.names=FALSE)
-cat(threshold_summary[['mean_threshold']], 
+cat(threshold_summary[['mean_threshold']][1], 
     file=sub("_threshold-pass.tsv$", "_threshold-mean.tsv" ,output_fn),
     append=F
 )
