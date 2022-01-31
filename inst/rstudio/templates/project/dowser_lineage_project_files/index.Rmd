@@ -1,0 +1,174 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Dowser lineage"
+author: ""
+date: "Updated: `r date()`"
+knit: "bookdown::render_book"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "dowser build lineage trees"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoires file"
+      input: file
+      value: "input.tsv"
+   build:
+       label: "`build`"
+       input: text
+       value: "igphyml"
+   minseq:
+       label: "`minseq`"
+       input: numeric
+       value: 5
+   outname:
+      label: "`outname`"
+      input: text
+      value: "define-clones"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1      
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: FALSE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("scoper"))
+suppressPackageStartupMessages(library("dowser"))
+
+file.copy(params$logo, 
+          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters}
+params
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoires
+
+
+```{r}
+# Read repertoire
+db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
+    # Check input file
+    if (!file.exists(x)) {
+        stop(paste0("File ", basename(x), " doesn't exist."))
+    }
+    read_rearrangement(x)}
+))
+input_size <- nrow(db)
+```
+
+# Formatting clones
+
+```{r}
+h <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
+if (sum(h)>0) {
+    heavy <- unique(db[['locus']][h])
+    if (length(heavy)>1) {
+        stop("multiple heavy chain locus found.")
+    } 
+    
+    minseq_pass <- db %>%
+        group_by(clone_id) %>%
+        mutate(clone_size=n()) %>%
+        mutate(minseq_pass=clone_size>=params$minseq) %>%
+        pull(minseq_pass)
+    if (sum(minseq_pass) == 0 ) {
+        warning("No clones with at least ",params$minseq, " (`minseq`) sequences")
+    } else {
+        clones <- formatClones(db,
+                               traits = intersect(c("c_call"),colnames(db)),
+                               # num_fields=intersect(c("duplicate_count", "consensus_count"),colnames(db)), ## TODO: check not all NA
+                               chain="H",
+                               locus='locus',
+                               heavy=heavy[[1]],
+                               minseq=params$minseq, nproc=params$nproc) 
+        trees <- getTrees(clones, build="igphyml", nproc=params$nproc)
+        plots <- plotTrees(trees, tips="c_call", tipsize=2)
+        for (i in 1:length(plots)) {
+            cat(paste0("## Tree ",i,"\n\n"))
+            print(plots[[i]])
+            cat("\n\n")
+        }
+    }
+}
+```
+
+
+# Versions
+
+```{r, child=c('versions.Rmd')}
+```
+
+
+# Log
+
+```{r log}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_clone-pass.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+
+cat("START>DowserPass", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nOUTPUT> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
+#cat(paste0("\nFAIL> ",input_size-sum(output_sizes)), file=log_fn, append=T)
+```

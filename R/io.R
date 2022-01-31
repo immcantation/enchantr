@@ -48,3 +48,16 @@ eetable <- function(df, caption) {
     
 }
 
+
+# db <- data.frame(
+#     'id'=c(1,2),
+#     'subject_id'=c("A","A")
+# )
+#' @export
+makeLabel <- function(db, fields='id'){
+    db_fields <- unique(db[,fields, drop=F])
+    labels <- apply(db_fields, 2, function(label_data) {
+     paste(unique(label_data),collapse="-")
+    })
+    paste(names(labels), labels, sep="_", collapse="_")
+}

@@ -32,6 +32,10 @@ params:
       label: "`threshold`"
       input: numeric
       value: 1
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db."      
+      input: text
+      value: "id"
    model:
       label: "`model`"
       input: text
@@ -217,8 +221,7 @@ db <- bind_rows(lapply(split(db,db[['species']]),
                                             }))
                  })) %>%
     arrange(tmp_nrow) %>%
-    select(-tmp_nrow)
-
+    select(-tmp_nrow) 
 ```
 
 # Save
@@ -238,33 +241,54 @@ if (!is.null(params$log)) {
     log_fn <- sub("_clone-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-if (sum(heavy_chains)>0 & nrow(db)>0) {
-    clone_groups <- db %>%
-        select(!!!rlang::syms(params$cloneby)) %>%
-        distinct() %>%
-        rowwise() %>%
-        mutate(cloneby_group = paste(!!!rlang::syms(params$cloneby),collapse = ",")
-        )
-    for (i in 1:nrow(clone_groups))  {
-        prefix <- clone_groups[['cloneby_group']][i]
-        write_rearrangement(right_join(db,clone_groups[i,,drop=F] %>%
-                                           select(-cloneby_group),
-                                       by=params$cloneby),
-                            file=paste0(prefix,"_",output_fn))
-    }
-    
-}
 
-#write_rearrangement(db , file=output_fn)
+# db <- data.frame(
+#     'id'=c(1,2),
+#     'subject_id'=c("A","A")
+# )
+
+output_files <- c()
+output_sizes <- c()
+if (sum(heavy_chains)>0 & nrow(db)>0) {
+    
+    output_groups <- db %>%
+        ungroup() %>%
+        select(!!!rlang::syms(params$outputby)) %>%
+        distinct() 
+    
+    if (nrow(output_groups)>0) {
+        for (i in 1:nrow(output_groups))  {
+            group_db <- right_join(db,
+                                   output_groups[i,,drop=F],
+                                   by=params$outputby)
+            
+            group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
+            group_fn <- paste0(group_db_label,"_",output_fn)
+            output_files <- c(output_files, group_fn)
+            output_sizes <- c(output_sizes, nrow(group_db))
+            write_rearrangement(group_db, file=group_fn)
+        }
+    } else {
+        write_rearrangement(db, file=output_fn)
+    }
+}
 ```
 
 
 ```{r log}
 cat("START>ClonePass", file=log_fn, append=F)
 cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
-cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
-cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
-cat(paste0("\nFAIL> ",input_size-nrow(db)), file=log_fn, append=T)
+if (length(output_files==1)) {
+    cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+    cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
+} else {
+    for (i in 1:length(output_files)) {
+        cat(paste0("\nOUTPUT",i,"> ",output_files[i]), file=log_fn, append=T)
+        cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
+    }
+}
+cat(paste0("\nPASS> ",sum(output_sizes)), file=log_fn, append=T)
+cat(paste0("\nFAIL> ",input_size-sum(output_sizes)), file=log_fn, append=T)
 ```
 
 
