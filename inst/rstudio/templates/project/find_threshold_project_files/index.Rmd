@@ -166,7 +166,12 @@ if (all(db[[params$singlecell]] == T)) {
 # Find threshold
 
 
-```{r threshold}
+```{r, eval=all(is.na(db[['dist_nearest']]))}
+threshold <- NA
+threshold_summary <- data.frame(mean_threshold = NA)
+```
+
+```{r threshold, eval=!all(is.na(db[['dist_nearest']]))}
 threshold <- findThresholdDb(db, distanceColumn="dist_nearest", crossDistanceColumn="cross_dist_nearest",
                             method="gmm", 
                             model="gamma-gamma",
@@ -178,7 +183,7 @@ threshold_summary <- gmmSummary(threshold) %>%
 eetable(threshold_summary, "Summary of threshold values.")
 ```
 
-```{r}
+```{r, eval=!all(is.na(db[['dist_nearest']]))}
 lapply(threshold, '[[', 'plot')
 ```
 
