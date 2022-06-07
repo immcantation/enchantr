@@ -18,7 +18,10 @@ single_cell_qc_project <- function(path,...) {
 
 # TODO: document
 #' @export
-countSequencesPerCell <- function(db) {
+countSequencesPerCell <- function(db, 
+                                  sample_id="sample_id", 
+                                  cell_id="cell_id",
+                                  locus="locus") {
     seqs_per_cell <- db %>%
         group_by(sample_id, cell_id, locus) %>%
         summarize(cell_num_sequences=n(), 
@@ -46,17 +49,31 @@ plotSequencesPerCell <- function(seqs_per_cell) {
 removeDoublets <- function(db, cell_id="cell_id", locus="locus", sequence_id='sequence_id', fields=NULL) {
     db_h <- db %>%
         filter(grepl("[hHBbDc]", !!rlang::sym(locus))) #IGH, TRB, TRD
+    if ( nrow(db_h) == 0 ) {
+      message("db contains light chain sequences only.")  
+      return (db)
+    } 
     groups <- c(locus, fields)
+
     if (any(duplicated(db_h[[sequence_id]]))) {
-        stop("Duplicated sequence ids found.")
+        warning("Duplicated sequence ids in `db`.")
+    }
+    
+    dup_ids <- sum(duplicated(db_h[, c(sequence_id, groups), drop=FALSE]))
+    if ( dup_ids > 0 ) {
+        stop("Duplicated sequence ids found withing `c(locus,fields)` groups.")
     }
     doublets <- db_h %>%
-        group_by(!!!rlang::syms(groups)) %>%
+        group_by(!!!rlang::syms(c(cell_id, groups))) %>%
         mutate(heavy_seqs_per_cell=n()) %>%
         mutate(is_doublet=heavy_seqs_per_cell>1) %>%
+        filter(is_doublet) %>%
         select(!!!rlang::syms(c(groups, 'sequence_id')))
+    message("db size: ", nrow(db))
+    message("number of heavy chain sequences: ", nrow(db_h))
+    message("number of doublet sequences: ", nrow(doublets))
     db %>%
-        anti_join(doublets, by=sequence_id)
+        anti_join(doublets, by=c(sequence_id,locus,fields))
 }
 
 #' @export
@@ -142,12 +159,14 @@ findSingleCellDuplicates <- function(db, groups,
     # Check that sequence_id are unique, because I will use this id
     # later to remove the duplicated sequences
     if (any(duplicated(db[[sequence_id]]))) {
-        stop("Duplicated `sequence_id` found. Expecting unique sequence identifiers.")
+        warning("Duplicated `sequence_id` found. Expecting unique sequence identifiers. Using `row_id`.")
+        db[["row_id"]] <- stri_join("row",1:nrow(db))
+        sequence_id <- "row_id"
     }
     
     # Identify groups
     db[['group_idx']] <- db %>%
-        dplyr::group_by(!!rlang::sym(groups)) %>% 
+        dplyr::group_by(!!!rlang::syms(groups)) %>% 
         group_indices() %>%
         paste0("gidx_", .)
     
@@ -155,7 +174,7 @@ findSingleCellDuplicates <- function(db, groups,
         select(!!!rlang::syms(c(groups, cell, seq, sequence_id, "group_idx")))
     
     # extract group names
-    groups_table = unique(db[,c("group_idx",groups), drop=F])
+    groups_table <- unique(db[,c("group_idx",groups), drop=F])
     
     groups_table$group_name <- sapply(1:nrow(groups_table), function(g) {
         use <- colnames(groups_table) %in% c(groups) == T
@@ -163,8 +182,10 @@ findSingleCellDuplicates <- function(db, groups,
     } )    
     
     # Identify cells present in more than one group
+    # with same sequence length
     db_shared <- db %>%
-        select(!!!rlang::syms(c(columns, "group_idx"))) %>%
+        mutate(seq_len=nchar(!!rlang::sym(seq))) %>%
+        select(!!!rlang::syms(c(columns, "group_idx", "seq_len"))) %>%
         group_by(!!rlang::sym(cell)) %>%
         mutate(is_shared_cell = length(unique(group_idx))>1) %>%
         ungroup() %>%
@@ -211,10 +232,10 @@ findSingleCellDuplicates <- function(db, groups,
     
     if (nrow(db_shared) > 0 ) {
         db_shared <- db_shared %>%
-            group_by(!!rlang::sym(cell)) %>%
+            group_by(!!!rlang::syms(c(cell, "seq_len"))) %>%
             do(.isDuplicate(., seq, sequence_id)) %>%
             ungroup() %>%
-            select(-group_idx)
+            select(-group_idx, -seq_len)
         
         duplicated_seq_id <- db_shared %>%    
             filter(is_duplicate) %>%

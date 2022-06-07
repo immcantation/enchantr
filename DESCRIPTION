@@ -1,13 +1,13 @@
 Package: enchantr
 Type: Package
 Version: 0.0.0
-Date: 2022-03-03
+Date: 2022-06-07
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
             person("Steven", "Kleinstein", role=c("aut", "cph"),
                     email="steven.kleinstein@yale.edu"))
 Title: enchantr
-Description: Reports to analyze immune repertoires with Immcantation
+Description: QC and reports for the analysis of AIRR-seq data with Immcantation
 License: AGPL-3
 LazyData: true
 BuildVignettes: true
@@ -41,4 +41,4 @@ Imports:
     tidyr
 Suggests:
     testthat
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.0
