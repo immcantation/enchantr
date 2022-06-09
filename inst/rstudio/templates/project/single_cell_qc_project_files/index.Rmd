@@ -94,7 +94,7 @@ if (!file.exists(params$input)) {
 
 db_files <- read.delim(params[['input']], header=F)[[1]]
 
-# Read metadata file
+# Read db file
 db <- bind_rows(lapply(db_files, read_rearrangement))
 input_size <- nrow(db)
 ```
