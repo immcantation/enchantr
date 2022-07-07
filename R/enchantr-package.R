@@ -20,7 +20,7 @@
 #'                      graph_from_data_frame graph_from_edgelist
 #'                      make_line_graph vcount
 #' @importFrom  RColorBrewer brewer.pal
-#' @importFrom  stringi stri_trim_both stri_split_fixed
+#' @importFrom  stringi stri_trim_both stri_split_fixed stri_join
 #' @importFrom  stringr str_replace str_replace_all
 #' @importFrom  tidyr pivot_longer pivot_wider
 NULL
