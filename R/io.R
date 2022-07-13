@@ -26,7 +26,7 @@ eeplot <- function(p, outdir=NULL, file=NULL) {
     assign(plot_name, p)
     if (!is.null(outdir)) {
         if (is.null(file)) {
-            file <- deparse1(substitute(p))
+            file <- plot_name
         }
         p_path <- file.path(outdir, paste0(file,".RData"))
         p_list[[plot_name]][['enchantr']][['html_caption']] <- paste0(p$labels$caption," <a href='",p_path,"'>ggplot file: ",basename(p_path),"</a>")
@@ -44,7 +44,12 @@ eetable <- function(df, caption) {
                   filter="top", elementId = element_id, 
                   rownames = FALSE, fillContainer = F, 
                   options = list(scrollX = TRUE),
-                  caption=caption)
+                  caption = htmltools::tags$caption(
+                      style = 'caption-side: top; text-align: left;',
+                      caption
+                  )                  
+                 
+    )
     
 }
 
@@ -60,4 +65,20 @@ makeLabel <- function(db, fields='id'){
      paste(unique(label_data),collapse="-")
     })
     paste(names(labels), labels, sep="_", collapse="_")
+}
+
+#' @export
+printParams <- function(p) {
+    DT::datatable(
+        stack(p) %>%
+            select(ind, values) %>%
+            rename( parameter = ind,
+                    value = values),
+        filter = "top",
+        options = list(scrollX = TRUE),
+        caption = htmltools::tags$caption(
+            style = 'caption-side: top; text-align: left;',
+            'Table: Input parameters.'
+        )
+    )
 }

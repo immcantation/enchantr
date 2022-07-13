@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "input.tsv"
+      value: "tabs.txt"
    outname:
       label: "`outname`"
       input: text
@@ -43,13 +43,13 @@ params:
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
-      value: FALSE
+      value: TRUE
    cache:
       label: '`cache`: Use cached results'
       input: checkbox
       value: FALSE
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -64,6 +64,7 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("DT"))
 suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
@@ -75,11 +76,12 @@ file.copy(params$logo,
 
 # Input parameters
 
+
 ```{r input-parameters}
-params
 if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
 }
+printParams(params)
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
@@ -97,41 +99,112 @@ db_files <- read.delim(params[['input']], header=F)[[1]]
 # Read db file
 db <- bind_rows(lapply(db_files, read_rearrangement))
 input_size <- nrow(db)
+input_summary <- db %>%
+    group_by(sample_id, locus) %>%
+    summarize(n=n()) %>%
+    pivot_wider(id_cols = sample_id, values_from = n, names_from = locus)
+eetable(
+    input_summary,
+    caption=paste0("Summary of input data. Number of reads per sample and locus. ",
+    nrow(input_summary), " repertoires loaded, with ",input_size," sequences.")
+)
 ```
 
 # Distribution of the number of sequences per cell and locus
 
 ```{r}
 seqs_per_cell <- countSequencesPerCell(db)
+eetable(
+    seqs_per_cell %>% filter(cell_num_sequences > 1),
+    caption="Cells with more than one sequence"
+)
 ```
 
-```{r p-seqs-per-cell, fig.width=8, fig.height=4, fig.cap=p_seqs_per_cell$enchantr$html_caption}
+```{r p-seqs-per-cell, fig.width=5, fig.height=length(unique(seqs_per_cell[['sample_id']]))*1, fig.cap=p_seqs_per_cell$enchantr$html_caption}
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell)
 p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir, knitr::opts_current$get('label'))
 p_seqs_per_cell
 ```
 
-# Remove doublets
+# Remove cells without heavy chains
 
-```{r}
+Since most of the analyses are based on heavy chains, we remove cells with only light chains.
+
+```{r findLightOnlyCells}
+db <- findLightOnlyCells(db, sample_id = "sample_id", 
+                    cell_id="cell_id", locus="locus", 
+                    fields=NULL)
+light_only_size <- sum(db[['light_only_cell']])
+
+light_only <- db %>%
+        rowwise() %>%
+        mutate(light_only_cell= if(light_only_cell == TRUE) {"light_only"} else {"has_heavy"}) %>%
+        select(sample_id, cell_id, light_only_cell) %>%
+        distinct() %>%
+        group_by(sample_id, light_only_cell) %>%
+        summarize(num_cells=n(), .groups = "drop") %>%
+        pivot_wider(names_from=light_only_cell, values_from = num_cells)
+# Remove
+db <- db %>%
+    filter(!light_only_cell)
+db_with_heavy_size <- nrow(db)
+
+eetable(light_only,
+    caption=paste0("Cells with only light chains account for ", light_only_size, " sequences removed.")
+)        
+```
+
+# Remove cells with multiple heavy chains
+
+When calling clones (B cells that descend from a common naive B cell ancestor) from single cell data, SCOPer will throw an error message such as “xxx cell(s) with multiple heavy chains found. One heavy chain per cell is expected” if any cells in the data contain multiple heavy chains and then stop running. A simple solution is just to remove cells with multiple heavy chains from the single cell data.
+
+```{r removeDoublets}
 db <- removeDoublets(db, cell_id="cell_id", 
                      locus="locus", 
                      sequence_id='sequence_id', 
-                     fields='id' )
+                     fields='sample_id')
+db_no_doublets_size <- nrow(db)
 ```
 
-
+`r db_with_heavy_size-db_no_doublets_size` sequences have been removed, because found in cells with multiple heavy chains.
 
 # cell_id + sequence_alignment overlap
 
+Sequences in different samples that share the same cell_id and nucleotide sequence 
+can indicate contamination.
 
 ## stacked bar
 
-```{r}
-dups <- findSingleCellDuplicates(db, group="sample_id", cell="cell_id", seq="sequence_alignment")
-if (nrow(dups[['dups']])>0) {
-    ggplot(dups[['dups']], aes(x=sample_id, fill=sc_duplicate)) +
-        geom_bar()
+```{r p_sc_duplicates, fig.cap=p_sc_duplicates$enchantr$html_caption}}
+dups <- findSingleCellDuplicates(db, fields="sample_id", 
+                                 cell_id="cell_id", 
+                                 seq="sequence_alignment")
+
+dups_summary <- dups[['dups']] %>%
+    group_by(sample_id) %>%
+    summarize(duplicates=sum(sc_duplicate),
+              not_duplicates=sum(!sc_duplicate)) %>%
+    rowwise() %>%
+    mutate(duplication_percent = 100*duplicates/sum(duplicates+not_duplicates))
+
+eetable(dups_summary %>% mutate(duplication_percent=round(duplication_percent, 2)),
+    caption=paste0("Summay of duplicated sequences: sequences that have the same cell_id and sequence across samples.")
+)  %>% formatStyle(
+        'duplication_percent',
+        target = 'cell',
+        backgroundColor = styleInterval(0:100, 
+                                    round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
+                                    {paste0("rgb(255,", ., ",", ., ")")})
+    )
+
+if (sum(dups[['dups']][['sc_duplicate']])>0) {
+    p_sc_duplicates <- ggplot(dups[['dups']], aes(x=sample_id, fill=sc_duplicate)) +
+        geom_bar() + coord_flip() +
+        labs(title = "Number of sequences that share\ncell_id and sequence with other samples.",
+        subtitle = "",
+        caption = "")
+    p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir, knitr::opts_current$get('label'))
+    p_sc_duplicates
 }
 ```
 
@@ -142,6 +215,17 @@ if (nrow(dups[['dups']])>0) {
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
+eetable(
+    dup_count,
+    caption=paste0("Summay of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
+)   %>% formatStyle(
+    'overlap_percent',
+    target = 'cell',
+    backgroundColor = styleInterval(0:100, 
+                                    round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
+                                        {paste0("rgb(255,", ., ",", ., ")")})
+)
+
 # plot duplicated cells
 p <- plotOverlapSingleCell(dup_count)
 p
@@ -151,7 +235,7 @@ p
 
 ```{r dbpass}
 #pass <- qc_results$log$scqc_pass
-if (nrow(dups[['dups']]>0)) {
+if (sum(dups[['dups']][['sc_duplicate']]>0)) {
     pass <- dups[['dups']][['sc_duplicate']] == FALSE
 } else {
     pass <- rep(T, nrow(db))

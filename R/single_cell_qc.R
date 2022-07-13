@@ -16,39 +16,120 @@ single_cell_qc_project <- function(path,...) {
 } 
 
 
-# TODO: document
+#' countSequencesPerCell
+#'
+#' \code{countSequencesPerCell} counts the number of sequences of each isotype in each sample's cell
+#' 
+#' @param    db           data.frame with AIRR-format style columns.
+#' @param    sample_id    column in \code{db} containing sample identifiers
+#' @param    cell_id      column in \code{db} containing cell identifiers
+#' @param    locus        column in \code{db} containing locus assignments
+#' @param    c_call       column in \code{db} containing constant region assignments
+#' 
+#' @return   A data.frame with cell counts
+#' @examples
+#' db <- Example10x
+#' db[['sample_id']] <- 'example_sample'
+#' countSequencesPerCell(db[1:10,])
+#' 
+#' @seealso  See also \link{plotSequencesPerCell}. 
 #' @export
 countSequencesPerCell <- function(db, 
                                   sample_id="sample_id", 
                                   cell_id="cell_id",
-                                  locus="locus") {
+                                  locus="locus",
+                                  c_call="c_call") {
     seqs_per_cell <- db %>%
         group_by(sample_id, cell_id, locus) %>%
         summarize(cell_num_sequences=n(), 
                   cell_num_isotypes=length(unique(c_call)),
-                  cell_isotypes=paste(unique(c_call),sep=",",collapse=",")) %>%
-        ungroup() %>%
-        arrange(sample_id, desc(cell_num_sequences))
+                  cell_isotypes=paste(unique(c_call),sep=",",collapse=","),
+                  .groups="drop") %>%
+        ungroup()
+    seqs_per_cell
 }
 
-# TODO: document
+#' TODO: example
+#' plotSequencesPerCell
+#'
+#' \code{plotSequencesPerCell} plots a histogram of the distribution of the 
+#' number of sequences per cell for each sample and locus.
+#'
+#' @param    seqs_per_cell  data.frame with the number of sequences per cell.
+#' 
+#' @return   A ggplot
+#' 
+#' @seealso  See also \link{countSequencesPerCell}. 
+#' 
 #' @export
 plotSequencesPerCell <- function(seqs_per_cell) {
     ggplot(seqs_per_cell,aes(x=cell_num_sequences)) +
         geom_histogram(binwidth = 1) +
         scale_x_continuous(breaks=1:max(seqs_per_cell$cell_num_sequences)) +
-        facet_wrap(sample_id~locus) +
+        facet_grid(sample_id~locus) +
         labs(
             x= "Number of sequences in a cell.",
-            y=" Count",
+            y=" Number of cells",
             caption="Distribution of the number of sequences per cell and locus."
         )
 }
 
+#' TODO: example
+#' findLightOnlyCells
+#'
+#' \code{findLightOnlyCells} identifies cells with only light chains.
+#'
+#' @param    db          data.frame with AIRR-format style columns.
+#' @param    sample_id   column in \code{db} containing sample identifiers
+#' @param    cell_id     column in \code{db} containing cell identifiers
+#' @param    locus       column in \code{db} containing locus assignments
+#' @param    fields      Columns in \code{db}, in addition to \code{sample_id},
+#'                       that should be used to group sequences to be 
+#'                       analized independently.
+#' @return   The input \code{db} with an additional column named \code{light_only_cell}
+#'           with values TRUE/FALSE.
+#' @export
+findLightOnlyCells <- function(db,
+                             sample_id = "sample_id", 
+                             cell_id="cell_id", locus="locus", 
+                             fields=NULL) {
+
+    groups <- c(sample_id, fields)
+    
+    db <- db %>%
+        group_by(!!!rlang::syms(c(cell_id, groups))) %>%
+        mutate(light_only_cell=sum(grepl("[hHBbDc]", !!rlang::sym(locus))) == 0) %>%
+        ungroup()
+    
+    num_cells <- db %>%
+        filter(light_only_cell) %>%
+        select(!!!rlang::syms(c(sample_id, cell_id, fields))) %>%
+        distinct() %>%
+        nrow()
+        
+    message("db size: ", nrow(db), " sequences.")
+    message("number of light only cells: ", num_cells)
+    
+    db
+}
+
+#' TODO: example
+#' removeDoublets
+#'
+#' \code{removeDoublets} removes cells with multiple heavy chain sequences.
+#'
+#' @param    db          data.frame with AIRR-format style columns.
+#' @param    cell_id     column in \code{db} containing cell identifiers
+#' @param    locus       column in \code{db} containing locus assignments
+#' @param    sequence_id column in \code{db} containing locus assignments
+#' @param    fields      Columns in \code{db}, in addition to \code{sample_id},
+#'                       that should be used to group sequences to be 
+#'                       analyzed independently.
+#'                       
+#' @return   The input data.frame (\code{db}) with doublets removed.
 #' @export
 removeDoublets <- function(db, cell_id="cell_id", locus="locus", sequence_id='sequence_id', fields=NULL) {
-    db_h <- db %>%
-        filter(grepl("[hHBbDc]", !!rlang::sym(locus))) #IGH, TRB, TRD
+    db_h <- db[grepl("[hHBbDc]", db[[locus]]),,drop=F] #IGH, TRB, TRD
     if ( nrow(db_h) == 0 ) {
       message("db contains light chain sequences only.")  
       return (db)
@@ -56,7 +137,7 @@ removeDoublets <- function(db, cell_id="cell_id", locus="locus", sequence_id='se
     groups <- c(locus, fields)
 
     if (any(duplicated(db_h[[sequence_id]]))) {
-        warning("Duplicated sequence ids in `db`.")
+        warning("Duplicated sequence ids in the input `db` (not considering `fields`).")
     }
     
     dup_ids <- sum(duplicated(db_h[, c(sequence_id, groups), drop=FALSE]))
@@ -68,125 +149,150 @@ removeDoublets <- function(db, cell_id="cell_id", locus="locus", sequence_id='se
         mutate(heavy_seqs_per_cell=n()) %>%
         mutate(is_doublet=heavy_seqs_per_cell>1) %>%
         filter(is_doublet) %>%
-        select(!!!rlang::syms(c(groups, 'sequence_id')))
-    message("db size: ", nrow(db))
-    message("number of heavy chain sequences: ", nrow(db_h))
-    message("number of doublet sequences: ", nrow(doublets))
-    db %>%
-        anti_join(doublets, by=c(sequence_id,locus,fields))
-}
-
-#' @export
-scQC <- function(db, cell_id="cell_id") {
-    db[['chain']] <- getChain(db[["locus"]])
-    db[['tmp_scqc_row']] <- 1:nrow(db)
-    db <- db %>%
-        group_by(sample_id, cell_id) %>%
-        mutate(paired_chain= all(c("VL", "VH") %in% chain)) %>%
         ungroup() %>%
-        group_by(sample_id, chain, cell_id) %>%
-        mutate(num_sequences=n(),
-               num_isotypes=length(unique(c_call)),
-               cell_isotypes=paste(unique(c_call),sep=",",collapse=","),
-               max_count=max(consensus_count),
-               perc_of_cell_cons_count=100*consensus_count/sum(consensus_count),
-               is_most_abundant= consensus_count==max(consensus_count) & sum(consensus_count==max(consensus_count)) == 1,
-               cons_count_ratio=consensus_count/max_count) %>%
-        group_by(sample_id, chain, cell_id) %>%   
-        do(cellQC(.)) %>%
-        ungroup() 
-    qclog <- db %>%
-        arrange(tmp_scqc_row) %>%
-        select(
-               sample_id, 
-               cell_id, 
-               sequence_id, 
-               paired_chain,
-               num_sequences, 
-               num_isotypes, 
-               cell_isotypes, 
-               max_count, 
-               perc_of_cell_cons_count, 
-               is_most_abundant, 
-               cons_count_ratio, 
-               scqc_pass)
-    list(
-        "log"= qclog,
-        "pass"=sum(qclog$scqc_pass),
-        "fail"=sum(!qclog$scqc_pass)
-    )
+        select(!!!rlang::syms(c(fields, cell_id))) %>%
+        distinct()
+    message("db size: ", nrow(db), " sequences.")
+    message("number of heavy chain sequences: ", nrow(db_h))
+    message("number of doublet cells: ", nrow(doublets))
+    db %>%
+        anti_join(doublets, by=c(fields, cell_id))
 }
 
-cellQC <- function(df) {
-    if (length(unique(df$sample_id)) > 1) { stop ("Expectig data from one sample_id. Group by sample_id.")}
-    if (length(unique(df$chain)) > 1) { stop ("Expectig data from one chain. Group by chain.")}
-    df$scqc_pass <- FALSE
-    if (nrow(df)==1) {
-        df$scqc_pass <- T
-    } else {
-        df <- df %>%
-            arrange(desc(perc_of_cell_cons_count))
-        if (df$perc_of_cell_cons_count[1] >50) {
-            df$scqc_pass[1] <- TRUE
-        } 
-        if (all(grepl("[LKlk]",df$chain)))  {
-            if (sum(df$perc_of_cell_cons_count[1:2]) > 75 & df$perc_of_cell_cons_count[2] > 25 ) {
-                df$scqc_pass[1:2] <- TRUE
-            }
-        }
-    }
-    if (sum(df$scqc_pass) == 0) {
-        warning("No sequences selected for cell ", unique(df$cell_ide), "consensus_count: ", unique(df$consensus_count))
-    }
-    df %>%
-        arrange(tmp_scqc_row)
-}
+# Not used
+# scQC <- function(db, cell_id="cell_id") {
+#     db[['chain']] <- getChain(db[["locus"]])
+#     db[['tmp_scqc_row']] <- 1:nrow(db)
+#     db <- db %>%
+#         group_by(sample_id, cell_id) %>%
+#         mutate(paired_chain= all(c("VL", "VH") %in% chain)) %>%
+#         ungroup() %>%
+#         group_by(sample_id, chain, cell_id) %>%
+#         mutate(num_sequences=n(),
+#                num_isotypes=length(unique(c_call)),
+#                cell_isotypes=paste(unique(c_call),sep=",",collapse=","),
+#                max_count=max(consensus_count),
+#                perc_of_cell_cons_count=100*consensus_count/sum(consensus_count),
+#                is_most_abundant= consensus_count==max(consensus_count) & sum(consensus_count==max(consensus_count)) == 1,
+#                cons_count_ratio=consensus_count/max_count) %>%
+#         group_by(sample_id, chain, cell_id) %>%   
+#         do(cellQC(.)) %>%
+#         ungroup() 
+#     qclog <- db %>%
+#         arrange(tmp_scqc_row) %>%
+#         select(
+#                sample_id, 
+#                cell_id, 
+#                sequence_id, 
+#                paired_chain,
+#                num_sequences, 
+#                num_isotypes, 
+#                cell_isotypes, 
+#                max_count, 
+#                perc_of_cell_cons_count, 
+#                is_most_abundant, 
+#                cons_count_ratio, 
+#                scqc_pass)
+#     list(
+#         "log"= qclog,
+#         "pass"=sum(qclog$scqc_pass),
+#         "fail"=sum(!qclog$scqc_pass)
+#     )
+# }
+# 
+# cellQC <- function(df) {
+#     if (length(unique(df$sample_id)) > 1) { stop ("Expectig data from one sample_id. Group by sample_id.")}
+#     if (length(unique(df$chain)) > 1) { stop ("Expectig data from one chain. Group by chain.")}
+#     df$scqc_pass <- FALSE
+#     if (nrow(df)==1) {
+#         df$scqc_pass <- T
+#     } else {
+#         df <- df %>%
+#             arrange(desc(perc_of_cell_cons_count))
+#         if (df$perc_of_cell_cons_count[1] >50) {
+#             df$scqc_pass[1] <- TRUE
+#         } 
+#         if (all(grepl("[LKlk]",df$chain)))  {
+#             if (sum(df$perc_of_cell_cons_count[1:2]) > 75 & df$perc_of_cell_cons_count[2] > 25 ) {
+#                 df$scqc_pass[1:2] <- TRUE
+#             }
+#         }
+#     }
+#     if (sum(df$scqc_pass) == 0) {
+#         warning("No sequences selected for cell ", unique(df$cell_ide), "consensus_count: ", unique(df$consensus_count))
+#     }
+#     df %>%
+#         arrange(tmp_scqc_row)
+# }
 
 
-#' findSingleCellDuplicates(db, "sample_id")
+#' findSingleCellDuplicates
+#' 
+#' Finds sequences that share the same identifier and sequence between groups.
+#' 
+#' @param    db    data.frame with AIRR-format style columns.
+#' @param    fields      Columns in \code{db}, in addition to \code{sample_id},
+#'                       that should be used to group sequences to be 
+#'                       analyzed independently.
+#' @param    cell_id  column in \code{db} containing cell identifiers
+#' @param    seq      column in \code{db} containing sequences to be compared
+#' @param    sequence_id column in \code{db} containing sequence identifiers
+#' 
+#' @return   A list with fields: 
+#'           \itemize{
+#'             \item  \code{dups}:    a data.frame with the column \code{sc_duplicate}
+#'                                    with values TRUE/FALSE to indicate whether the 
+#'                                    the row corresponds to a duplicated entry.
+#'             \item  \code{fields}:  a data.frame showing the input fields used
+#'             \item  \code{cell_id}: column in \code{db} containing cell identifiers
+#'             \item  \code{seq}:     column in \code{db} containing sequence data
+#'             \item  \code{sequence_id} column in \code{db} containin sequence identifiers
+#'           }
+#' 
 #' @export
-findSingleCellDuplicates <- function(db, groups, 
-                                     cell = "cell_id", 
+findSingleCellDuplicates <- function(db, fields,
+                                     cell_id = "cell_id",
                                      seq="sequence_alignment",
                                      sequence_id="sequence_id") {
     # Check for valid columns
-    if (is.null(groups)) { stop("`groups` must be a valid column name")}
-    columns <- c(groups,cell, seq, sequence_id)
+    if (is.null(fields)) { stop("`groups` must be valid column name(s)")}
+    columns <- c(fields,cell_id, seq, sequence_id)
     columns <- columns[!is.null(columns)]
     check <- alakazam:::checkColumns(db, columns)
     if (check != TRUE) { stop(check) }
-    
+
     # Check that sequence_id are unique, because I will use this id
     # later to remove the duplicated sequences
     if (any(duplicated(db[[sequence_id]]))) {
-        warning("Duplicated `sequence_id` found. Expecting unique sequence identifiers. Using `row_id`.")
+        message("Duplicated `sequence_id` found. Expecting unique sequence identifiers. Using `row_id` internally.")
         db[["row_id"]] <- stri_join("row",1:nrow(db))
         sequence_id <- "row_id"
     }
-    
+
     # Identify groups
     db[['group_idx']] <- db %>%
-        dplyr::group_by(!!!rlang::syms(groups)) %>% 
+        dplyr::group_by(!!!rlang::syms(fields)) %>%
         group_indices() %>%
         paste0("gidx_", .)
-    
+
     db <- db %>%
-        select(!!!rlang::syms(c(groups, cell, seq, sequence_id, "group_idx")))
-    
+        select(!!!rlang::syms(c(fields, cell_id, seq, sequence_id, "group_idx")))
+
     # extract group names
-    groups_table <- unique(db[,c("group_idx",groups), drop=F])
-    
+    groups_table <- unique(db[,c("group_idx",fields), drop=F])
+
     groups_table$group_name <- sapply(1:nrow(groups_table), function(g) {
-        use <- colnames(groups_table) %in% c(groups) == T
+        use <- colnames(groups_table) %in% c(fields) == T
         paste(as.matrix(groups_table[g,use,drop=F]),collapse="_")
-    } )    
-    
+    } )
+
     # Identify cells present in more than one group
-    # with same sequence length
+    # that have same length sequences (to be able to compare them later
+    # with .isDuplicate (uses pairwiseDist))
     db_shared <- db %>%
         mutate(seq_len=nchar(!!rlang::sym(seq))) %>%
         select(!!!rlang::syms(c(columns, "group_idx", "seq_len"))) %>%
-        group_by(!!rlang::sym(cell)) %>%
+        group_by(!!rlang::sym(cell_id)) %>%
         mutate(is_shared_cell = length(unique(group_idx))>1) %>%
         ungroup() %>%
         filter(is_shared_cell) %>%
@@ -198,7 +304,7 @@ findSingleCellDuplicates <- function(db, groups,
         sequences <- x[[seq]]
         g <- x[['group_idx']]
         # is_duplicate defaults to FALSE
-        
+
         # Calculate distance between sequences
         # use gap=0 to treat gaps as Ns
         # and label as T those with a distance value of 0
@@ -206,9 +312,9 @@ findSingleCellDuplicates <- function(db, groups,
         colnames(pwd) <- rownames(pwd) <- x[[sequence_id]]
         # don't use self comparison
         diag(pwd) <- NA
-        pwd <- as.data.frame(pwd) 
+        pwd <- as.data.frame(pwd)
         pwd[[sequence_id]] <- rownames(pwd)
-        
+
         dup_mat <- pivot_longer(pwd, -!!rlang::sym(sequence_id), names_to="group_seq") %>%
             # filter(value == T) %>%
             left_join(x[,c(sequence_id, "group_idx")], by=sequence_id) %>%
@@ -224,61 +330,74 @@ findSingleCellDuplicates <- function(db, groups,
         x %>%
             left_join(dup_mat, by = sequence_id )
     }
-    
+
     # default to not duplicated
     db[['sc_duplicate']] <- F
     duplicated_seq_id <- c()
     dups <- data.frame()
-    
+
     if (nrow(db_shared) > 0 ) {
         db_shared <- db_shared %>%
-            group_by(!!!rlang::syms(c(cell, "seq_len"))) %>%
+            group_by(!!!rlang::syms(c(cell_id, "seq_len"))) %>%
             do(.isDuplicate(., seq, sequence_id)) %>%
             ungroup() %>%
             select(-group_idx, -seq_len)
-        
-        duplicated_seq_id <- db_shared %>%    
+
+        duplicated_seq_id <- db_shared %>%
             filter(is_duplicate) %>%
             pull(!!rlang::sym(sequence_id))
-        
+
         db_shared[['is_duplicate']] <- NULL
     }
-    
+
     if (length(duplicated_seq_id)>0) {
         db[['sc_duplicate']][db[[sequence_id]] %in% duplicated_seq_id] <- T
         dups <- db %>%
-            left_join(db_shared, by=c(groups, sequence_id, seq, cell)) %>%
+            left_join(db_shared, by=c(fields, sequence_id, seq, cell_id)) %>%
             rename(sc_duplicate_group=group_idx)
     }
-    
 
     list(
         dups=dups,
-        groups=groups_table,
-        cell=cell,
+        fields=groups_table,
+        cell_id=cell_id,
         seq=seq,
         sequence_id=sequence_id
     )
-    
+
 }
 
-#' removeSingleCellDuplicates(db, "sample_id")
+# TODO: test
+# TODO: return
+#' removeSingleCellDuplicates
+#' 
+#' \code{removeSingleCellDuplicates} removes cells sharing the same identifier and sequence between groups.
+#' 
+#' @param    db          data.frame with AIRR-format style columns.
+#' @param    fields      Columns in \code{db}, in addition to \code{sample_id},
+#'                       that should be used to group sequences to be 
+#'                       analyzed independently.
+#' @param    cell_id  column in \code{db} containing cell identifiers
+#' @param    seq      column in \code{db} containing sequences to be compared
+#' @param    sequence_id column in \code{db} containing sequence identifiers
 #' @export
-removeSingleCellDuplicates <- function(db, groups, 
-                                       cell = "cell_id", 
+removeSingleCellDuplicates <- function(db, fields,
+                                       cell_id = "cell_id",
                                        seq="sequence_alignment",
                                        sequence_id="sequence_id") {
-    dups <- findSingleCellDuplicates(db, groups, cell, seq, sequence_id)[['dups']] %>%
+    dups <- findSingleCellDuplicates(db, fields, cell_id, seq, sequence_id)[['dups']] %>%
         filter(sc_duplicate)
     num_dups <- nrow(dups)
     if (num_dups>0) {
         message(num_dups, " sequences removed.")
-        db[db[[sequence_id]] %in% dups[[sequence_id]] == F,]    
+        db[db[[sequence_id]] %in% dups[[sequence_id]] == F,]
     } else {
         db
     }
 }
 
+# TODO: document, return
+# TODO: test
 #' dups <- findSingleCellDuplicates(db, groups="sample_id")
 #' counts <- singleCellSharingCounts(dups)
 #' @export
@@ -288,35 +407,86 @@ singleCellSharingCounts <- function(dups) {
         message("No duplicated cells found.")
         return(data.frame())
     }
-    groups_table <- dups[['groups']]
+    groups_table <- dups[['fields']]
     groups <- setdiff(colnames(groups_table) , c("group_idx", "group_name"))
-    cell <- dups[['cell']]
+    cell <- dups[['cell_id']]
     
-    # Find grup size. Duplicated cell ids in the same group 
+    .getSmallerSize <- function(x, y, groups_sizes=groups_sizes_c) {
+        sizes <- groups_sizes[c(x,y)]
+        min(sizes, na.rm = T)
+    }
+    
+    .rename <- function(gidxs) {
+        name_map <- groups_table[['group_name']]
+        names(name_map) <- groups_table[['group_idx']]
+        name_map[gidxs]
+    }
+        
+    # Find groups size. Duplicated cell ids in the same group 
     # will be counted once
     groups_sizes <- dups[['dups']] %>%
         select(!!!rlang::syms(c("sc_duplicate_group", cell))) %>%
         distinct() %>%
         group_by(sc_duplicate_group) %>%
-        summarize(group_size=n()) %>%
+        summarize(group_size=n()) %>% # group size is the number of unique cell ids
         ungroup()
     
-    .getSmallerSize <- function(x, y) {
-        sizes <- groups_sizes %>%
-            filter(sc_duplicate_group %in% c(x,y)) %>%
-            pull(group_size)
-        min(sizes, na.rm = T)
-    }
-    
-    counts <- dups[['dups']] %>%
-        group_by(sc_duplicate_group) %>%
-        summarize(across(starts_with("gidx_"), sum, na.rm=T)) %>%
-        ungroup() %>%
-        pivot_longer(-sc_duplicate_group, values_to="overlap_count") %>%
-        rowwise() %>%
-        mutate(overlap_denominator=.getSmallerSize(sc_duplicate_group, name)) %>%
-        mutate(overlap_percent=100*overlap_count/overlap_denominator)
+    groups_sizes_c <- groups_sizes[['group_size']]
+    names(groups_sizes_c) <- groups_sizes[['sc_duplicate_group']]
 
+    # test <- data.frame(
+    #  sample_id=c("s1", "s1", "s1","s2","s2", "s3"),
+    #  cell_id  =c("c1","c1", "c2","c1","c3", "c3"),
+    #  sequence_alignment = c("A", "T", "A", "A","A","T"),
+    # sequence_id=c("seq1","seq2","seq3","seq4", "seq5", "seq6")
+    # )
+    # test_dups <- findSingleCellDuplicates(test, fields="sample_id",
+    #                                      cell_id = "cell_id",
+    #                                      seq="sequence_alignment",
+    #                                      sequence_id="sequence_id")
+    .is_sc_duplicate <- function(v){
+        as.numeric(sum(v, na.rm=T)>0)
+    }
+    cell <- dups[['cell_id']]
+    sequence_id <- dups[['sequence_id']]
+    seq <- dups[['seq']]
+    counts <- dups[['dups']] %>%
+        select(-!!rlang::sym(sequence_id), -!!rlang::sym(seq)) %>% # This is to count
+        group_by(sc_duplicate_group, !!rlang::sym(cell)) %>%      # cells and not sequences
+        summarize(across(starts_with("gidx_"), .is_sc_duplicate)) %>%
+        ungroup() %>%
+        select(-!!rlang::sym(cell)) %>%
+        group_by(sc_duplicate_group) %>%
+        summarize(across(starts_with("gidx_"), sum)) %>%
+        pivot_longer(-sc_duplicate_group, values_to="overlap_count")
+    
+    ## Add missing combinations, for a nice heatmap
+    counts <- expand.grid(groups_table[['group_idx']], groups_table[['group_idx']]) %>%
+        rename(sc_duplicate_group=Var1,
+               name=Var2) %>%
+        left_join(counts) %>%
+        mutate(overlap_count=ifelse(is.na(overlap_count), 0, overlap_count))
+    
+    ## Add self overlap, the diagonal
+    counts <- counts %>%
+        filter( sc_duplicate_group != name ) %>%
+        bind_rows(
+            groups_sizes %>%
+                mutate(name = sc_duplicate_group) %>%
+                rename(overlap_count=group_size)
+        )
+    
+    counts <- counts %>%
+        rowwise() %>%
+        mutate(
+            overlap_denominator=.getSmallerSize(sc_duplicate_group, name)
+        ) %>%
+        mutate(
+            overlap_percent=100*overlap_count/overlap_denominator,
+            name=.rename(name),
+            sc_duplicate_group = .rename(sc_duplicate_group)) %>%
+        arrange(sc_duplicate_group, name)
+    
     counts
 }
 
@@ -324,15 +494,21 @@ singleCellSharingCounts <- function(dups) {
 #' counts <- singleCellSharingCounts(dups)
 #' plotOverlapSingleCell(counts)
 #' @export
-plotOverlapSingleCell <- function(dup_count, value=c("overlap_count", "overlap_percent")) {
-    value <- match.arg(value)
+plotOverlapSingleCell <- function(dup_count) {
     if (nrow(dup_count)<1) {
         message("No duplicates found.")
         return(data.frame())
     }
     ggplot(dup_count, 
            aes(sc_duplicate_group, name, group=name)) +
-        geom_tile(aes(fill = !!rlang::sym(value)))  
+        geom_tile(aes(fill = overlap_percent)) +
+        theme(axis.text.x = element_text(angle = 90)) +
+        labs(x="",y="") +
+        # annotate("segment", x = 0.5, xend = length(groups_table[['group_idx']])+0.5, 
+        #          y = 0.5, yend = length(groups_table[['group_idx']])+0.5, colour = "white") +
+        geom_text(data=dup_count %>% filter(sc_duplicate_group == name),
+                  aes(label = overlap_count), 
+                  angle = 0, color="white", vjust=0.5, hjust=0.5, na.rm = TRUE, size=3)
 }
 
 ##---------------------- TMP -------------------------- ##

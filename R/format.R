@@ -45,6 +45,9 @@ immcantation = function(...) {
         keep.null = T) 
     }
     
+    ## TODO: code folding
+    ## https://github.com/rstudio/bookdown/issues?q=folding+is%3Aissue+is%3Aopen+
+    ## https://stackoverflow.com/questions/45360998/code-folding-in-bookdown
     # call the base html_document function
     b <- bookdown::gitbook(
                       toc_depth= immcantation_config[['config']][['toc']][['depth']],
