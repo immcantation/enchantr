@@ -16,8 +16,13 @@ find_threshold_project <- function(path,...) {
 } 
 
 
+# TODO: document, return
+# TODO: example
+# TODO: test
+#' @seealso  See also \link{shazam::findThreshold}. 
 #' @export
-findThresholdDb <- function(db, distanceColumn="dist_nearest", crossDistanceColumn="cross_dist_nearest",
+findThresholdDb <- function(db, distanceColumn="dist_nearest", 
+                            crossDistanceColumn="cross_dist_nearest",
                             method=c("gmm", "dens"), 
                             model=c("gamma-gamma"),
                             edge = 0.9, subsample=NULL, nproc=1, fields=NULL ) {
@@ -35,10 +40,11 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest", crossDistanceColu
     check <- alakazam:::checkColumns(db, columns)
     if (check != TRUE) { stop(check) }    
     
-    if (!crossDistanceColumn %in% colnames(db)) {
-        stop("The column ",crossDistanceColumn," does not exist in `db`")
-    } 
-    
+    if (!is.null(crossDistanceColumn)) {
+        if (!crossDistanceColumn %in% colnames(db)) {
+            stop("The column ",crossDistanceColumn," does not exist in `db`")
+        } 
+    }
     # Convert the db (data.frame) to a data.table & set keys
     # This is an efficient way to get the groups of V J L, instead of doing dplyr
     dt <- data.table(db)
@@ -89,6 +95,7 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest", crossDistanceColu
                                        method=method, 
                                        model=model,
                                        edge=edge, subsample=subsample)
+        
             # threshold_vector <- sapply(slotNames(threshold), function(this_slot) {
             #     slot(threshold, this_slot)
             # })
@@ -98,15 +105,18 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest", crossDistanceColu
             # } else {
             #     threshold_vector
             # }
-            p <- plotGmmThreshold(threshold, silent=TRUE)
+            p <- NULL
+            if (!is.null(threshold)) {
+                p <- plotGmmThreshold(threshold, silent=TRUE)
+            }
         } else {
-            threshold <- NA
+            threshold <- NULL
             p <- NULL
         }
         list("fields"=unique(db_group[,fields]),
              "GmmThreshold"=unclass(threshold),
              "plot"=p
-                 )
+        )
         
     } 
     

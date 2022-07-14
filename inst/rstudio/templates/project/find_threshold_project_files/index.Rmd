@@ -61,7 +61,7 @@ params:
       input: checkbox
       value: FALSE
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -128,7 +128,7 @@ db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
 
 # Distance to nearest
 
-```{r distToNearest_bulk}
+```{r distToNearest_bulk, eval=any(db[[params$singlecell]] == F)}
 if (any(db[[params$singlecell]] == F)) {
     warning("Using ",sum(is_heavy), " heavy chain sequences.")
     db <- distToNearest(db[is_heavy,] , 
@@ -138,7 +138,7 @@ if (any(db[[params$singlecell]] == F)) {
                                model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
                                nproc=params$nproc)
     
-    db <- distToNearest(db, 
+    db <- distToNearest(db[is_heavy,], 
                                fields=NULL,
                                cross=params$cloneby,
                                sequenceColumn="junction", 
@@ -149,9 +149,11 @@ if (any(db[[params$singlecell]] == F)) {
 } 
 ```
 
-```{r distToNearest_single}
+```{r distToNearest_single, eval=all(db[[params$singlecell]] == T)}
 if (all(db[[params$singlecell]] == T)) {
-    db <- distToNearest(db , 
+    # Create unique sequence_id
+    db[['cell_id']] <- paste0(db[['sample_id']],db[['cell_id']])
+    db <- distToNearest(db[is_heavy,] , 
                           fields=params$cloneby,
                           sequenceColumn="junction", 
                           vCallColumn="v_call", jCallColumn="j_call",
@@ -163,21 +165,38 @@ if (all(db[[params$singlecell]] == T)) {
 } 
 ```
 
+# Visualize distToNearest
+
+```{r}
+ggplot(db, aes(dist_nearest, fill=sample_id)) + 
+    geom_histogram(binwidth = 0.01) + 
+    facet_wrap( ~sample_id, scales = "free_y", ncol=3) +
+    expand_limits(x = 0) %>%
+    geom_vline(xintercept = 0.2, color="grey30", linetype="dotted")
+```
 
 # Find threshold
 
 
 ```{r, eval=all(is.na(db[['dist_nearest']]))}
+# This chunk runs when all dist_nearest values are NA
 threshold <- NA
 threshold_summary <- data.frame(mean_threshold = NA)
 ```
 
 ```{r threshold, eval=!all(is.na(db[['dist_nearest']]))}
-threshold <- findThresholdDb(db, distanceColumn="dist_nearest", crossDistanceColumn="cross_dist_nearest",
+cross_dist_nearest <- NULL
+if ("cross_dist_nearest" %in% colnames(db)) {
+    cross_dist_nearest <- "cross_dist_nearest"
+}
+threshold <- findThresholdDb(db, 
+                            distanceColumn="dist_nearest", 
+                            crossDistanceColumn=cross_dist_nearest,
                             method="gmm", 
                             model="gamma-gamma",
                             edge = 0.9, subsample=NULL, 
-                            nproc=params$nproc, fields=params$cloneby)
+                            nproc=params$nproc, 
+                            fields=params$cloneby)
 
 threshold_summary <- gmmSummary(threshold) %>%
     mutate(mean_threshold=mean(threshold, na.rm=TRUE))
