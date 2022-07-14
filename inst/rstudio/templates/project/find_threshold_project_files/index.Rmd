@@ -87,11 +87,12 @@ file.copy(params$logo,
 
 # Input parameters
 
+
 ```{r input-parameters}
-params
 if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
 }
+printParams(params)
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
@@ -156,7 +157,7 @@ if (all(db[[params$singlecell]] == T)) {
                           vCallColumn="v_call", jCallColumn="j_call",
                           model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
                           nproc=params$nproc,
-                          cellIdColumn = params$singlecell,
+                          cellIdColumn = "cell_id",
                           locusColumn = "locus",
                           onlyHeavy = TRUE)
 } 

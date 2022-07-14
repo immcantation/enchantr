@@ -210,13 +210,16 @@ if (sum(dups[['dups']][['sc_duplicate']])>0) {
 
 ## overlap matrix
 
-```{r p-overlap-matrix, eval=TRUE,  fig.cap=p_overlap_matrix$enchantr$html_caption}
+```{r overlap-summary, eval=TRUE}
 
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
+overlap_summary <- dup_count %>%
+        filter(overlap_percent > 0 ) %>%
+        filter(sc_duplicate_group != name)
 eetable(
-    dup_count,
+    overlap_summary,
     caption=paste0("Summay of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
 )   %>% formatStyle(
     'overlap_percent',
@@ -225,7 +228,9 @@ eetable(
                                     round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
                                         {paste0("rgb(255,", ., ",", ., ")")})
 )
+```
 
+```{r p-overlap-matrix, eval=TRUE,  fig.cap=p_overlap_matrix$enchantr$html_caption}
 # plot duplicated cells
 p_overlap_matrix <- plotOverlapSingleCell(dup_count)
 p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir, knitr::opts_current$get('label'))
