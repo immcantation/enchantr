@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "tabs.txt"
+      value: "input.txt"
    outname:
       label: "`outname`"
       input: text
