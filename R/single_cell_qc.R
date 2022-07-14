@@ -367,8 +367,7 @@ findSingleCellDuplicates <- function(db, fields,
 
 }
 
-# TODO: test
-# TODO: return
+# TODO: example
 #' removeSingleCellDuplicates
 #' 
 #' \code{removeSingleCellDuplicates} removes cells sharing the same identifier and sequence between groups.
@@ -380,20 +379,57 @@ findSingleCellDuplicates <- function(db, fields,
 #' @param    cell_id  column in \code{db} containing cell identifiers
 #' @param    seq      column in \code{db} containing sequences to be compared
 #' @param    sequence_id column in \code{db} containing sequence identifiers
+#' @param    mode     Use \code{sequences} to remove duplicated sequences and 
+#'                    \code{cells} to remove cells with duplicated sequences.
+#' @return   A data.frame: a modified \code{db} without the duplicated sequences or cells.
 #' @export
 removeSingleCellDuplicates <- function(db, fields,
                                        cell_id = "cell_id",
                                        seq="sequence_alignment",
-                                       sequence_id="sequence_id") {
-    dups <- findSingleCellDuplicates(db, fields, cell_id, seq, sequence_id)[['dups']] %>%
-        filter(sc_duplicate)
-    num_dups <- nrow(dups)
-    if (num_dups>0) {
-        message(num_dups, " sequences removed.")
-        db[db[[sequence_id]] %in% dups[[sequence_id]] == F,]
-    } else {
-        db
+                                       sequence_id="sequence_id", 
+                                       mode=c("sequences", "cells" )) {
+    
+    mode <- match.arg(mode)
+    
+    # Check that sequence_id are unique, because I will use this id
+    # later to remove the duplicated sequences
+    if (any(duplicated(db[[sequence_id]]))) {
+        message("Duplicated `sequence_id` found. Expecting unique sequence identifiers. Using `row_id` internally.")
+        db[["row_id"]] <- stri_join("row",1:nrow(db))
+        sequence_id <- "row_id"
     }
+    
+    dups <- findSingleCellDuplicates(db, fields, cell_id, seq, sequence_id)
+    num_dups <- sum(dups[['dups']][['sc_duplicate']])
+
+    if (num_dups>0) {
+        if (mode == "sequences") {
+            message(num_dups, " sequences removed.")
+            dups_true <- dups[['dups']] %>% filter(sc_duplicate == T)
+            db <- db %>% anti_join(dups_true[,sequence_id,drop=F])
+        } else {
+            .is_sc_duplicate <- function(v){
+                as.numeric(sum(v, na.rm=T)>0)
+            }
+            # find cells
+            dup_cells <- dups[['dups']] %>%
+                select(-!!rlang::sym(sequence_id), -!!rlang::sym(seq)) %>% # This is to count
+                group_by(!!!rlang::syms(c(cell_id,fields))) %>%      # cells and not sequences
+                summarize(across(starts_with("gidx_"), .is_sc_duplicate)) %>%
+                ungroup() %>%
+                mutate(num_samples = rowSums(select(., starts_with("gidx_")))) %>%
+                filter(num_samples>0)
+            message(nrow(dup_cells), " cells removed.")
+            db <- db %>% anti_join(dup_cells[,c(fields, cell_id)])
+        }
+    } else {
+        message("0 sequences/cells removed.")
+    }
+    
+    if ("row_id" %in% colnames(db)) {
+        db <- db %>% select(-row_id)
+    }
+    db
 }
 
 # TODO: document, return
@@ -490,6 +526,9 @@ singleCellSharingCounts <- function(dups) {
     counts
 }
 
+# TODO: add caption
+# TODO: document
+# TODO: example
 #' dups <- findSingleCellDuplicates(db, groups="sample_id")
 #' counts <- singleCellSharingCounts(dups)
 #' plotOverlapSingleCell(counts)
