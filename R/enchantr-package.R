@@ -7,6 +7,7 @@
 
 #' @import      alakazam
 #' @importFrom  foreach foreach %dopar% registerDoSEQ
+#' @importFrom  doParallel  registerDoParallel
 #' @import      dplyr
 #' @import      data.table
 #' @import      DT

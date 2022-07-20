@@ -25,7 +25,9 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest",
                             crossDistanceColumn="cross_dist_nearest",
                             method=c("gmm", "dens"), 
                             model=c("gamma-gamma"),
-                            edge = 0.9, subsample=NULL, nproc=1, fields=NULL ) {
+                            edge = 0.9, subsample=NULL, 
+                            cutoff = "user", spc = 0.995,
+                            nproc=1, fields=NULL ) {
     # Hack for visibility of data.table and foreach index variables
     idx <- yidx <- .I <- NULL
     
@@ -75,7 +77,8 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest",
                                  "groups", 
                                  "distanceColumn", "crossDistanceColumn",
                                  "findThreshold",
-                                 "method", "edge", "subsample")
+                                 "method", "edge", "subsample", "cutoff", "spc",
+                                 "plotGmmThreshold")
         parallel::clusterExport(cluster, export_functions, envir=environment())
     } 
     
@@ -94,6 +97,7 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest",
             threshold <- findThreshold(db_group[[distanceColumn]], cross=cross_distances,
                                        method=method, 
                                        model=model,
+                                       cutoff = cutoff, spc = spc,
                                        edge=edge, subsample=subsample)
         
             # threshold_vector <- sapply(slotNames(threshold), function(this_slot) {

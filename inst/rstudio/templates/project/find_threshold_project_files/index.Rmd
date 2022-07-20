@@ -117,7 +117,11 @@ db <- bind_rows(lapply(db_files, function(x) {
 
 input_size <- nrow(db)
 is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
-    
+bulk_heavy <- is_heavy & !db[[params$singlecell]]
+sc_heavy <- is_heavy & db[[params$singlecell]]
+buld_dtn <- data.frame()
+sc_dtn <- data.frame()
+
 # Fix possible presence of bulk and single cell data
 na_single <- is.na(db[[params$singlecell]])
 if (length(na_single)>0) {
@@ -128,17 +132,22 @@ db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
 
 # Distance to nearest
 
-```{r distToNearest_bulk, eval=any(db[[params$singlecell]] == F)}
-if (any(db[[params$singlecell]] == F)) {
-    warning("Using ",sum(is_heavy), " heavy chain sequences.")
-    db <- distToNearest(db[is_heavy,] , 
+```{r sum_heavy_0, eval=sum(is_heavy)==0, echo=sum(is_heavy)==0, results='asis'}
+cat("0 heavy chain sequences present. `distToNearest` requires heavy chain data. Setting `dist_neartest` to 'NA'")
+db$dist_nearest <- NA
+```
+
+```{r distToNearest_bulk, eval=(any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) }
+if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
+    message("Using ",sum(bulk_heavy), " bulk heavy chain sequences.")
+    bulk_dtn <- distToNearest(db[bulk_heavy,] , 
                                fields=params$cloneby,
                                sequenceColumn="junction", 
                                vCallColumn="v_call", jCallColumn="j_call",
                                model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
                                nproc=params$nproc)
     
-    db <- distToNearest(db[is_heavy,], 
+    bulk_dtn <- distToNearest(bulk_dtn, 
                                fields=NULL,
                                cross=params$cloneby,
                                sequenceColumn="junction", 
@@ -149,11 +158,12 @@ if (any(db[[params$singlecell]] == F)) {
 } 
 ```
 
-```{r distToNearest_single, eval=all(db[[params$singlecell]] == T)}
-if (all(db[[params$singlecell]] == T)) {
+```{r distToNearest_single, eval=(any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) }
+if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
+    message("Using ",sum(sc_heavy), " sc heavy chain sequences.")
     # Create unique sequence_id
     db[['cell_id']] <- paste0(db[['sample_id']],db[['cell_id']])
-    db <- distToNearest(db[is_heavy,] , 
+    sc_dtn <- distToNearest(db[sc_heavy,] , 
                           fields=params$cloneby,
                           sequenceColumn="junction", 
                           vCallColumn="v_call", jCallColumn="j_call",
@@ -162,17 +172,38 @@ if (all(db[[params$singlecell]] == T)) {
                           cellIdColumn = "cell_id",
                           locusColumn = "locus",
                           onlyHeavy = TRUE)
+    sc_dtn <- distToNearest(sc_dtn, 
+                          cross=params$cloneby,
+                          sequenceColumn="junction", 
+                          vCallColumn="v_call", jCallColumn="j_call",
+                          model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
+                          nproc=params$nproc,
+                          cellIdColumn = "cell_id",
+                          locusColumn = "locus",
+                          onlyHeavy = TRUE)    
 } 
 ```
 
 # Visualize distToNearest
 
 ```{r}
-ggplot(db, aes(dist_nearest, fill=sample_id)) + 
-    geom_histogram(binwidth = 0.01) + 
-    facet_wrap( ~sample_id, scales = "free_y", ncol=3) +
-    expand_limits(x = 0) %>%
+wrap_fx <- as.formula(paste0(params$singlecell,"~sample_id"))
+db <- bind_rows(bulk_dtn,sc_dtn)
+p <- ggplot(db) + 
+    geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01)
+
+if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
+    p <- p + 
+        geom_histogram(
+            aes(x=cross_dist_nearest, y=-(..count..), fill=sample_id), 
+            binwidth=0.01, position="identity")
+}
+
+p <- p +
+    facet_wrap(wrap_fx, scales = "fixed", ncol=3, labeller = "label_both") +
+    expand_limits(x = 0, y =0) %>%
     geom_vline(xintercept = 0.2, color="grey30", linetype="dotted")
+p
 ```
 
 # Find threshold
@@ -193,8 +224,9 @@ threshold <- findThresholdDb(db,
                             distanceColumn="dist_nearest", 
                             crossDistanceColumn=cross_dist_nearest,
                             method="gmm", 
-                            model="gamma-gamma",
+                            model="gamma-norm",
                             edge = 0.9, subsample=NULL, 
+                            cutoff = "user", spc = 0.995,
                             nproc=params$nproc, 
                             fields=params$cloneby)
 
@@ -246,5 +278,3 @@ cat(paste0("\nFAIL> ",input_size-nrow(db)), file=log_fn, append=T)
 
 ```{r, child=c('versions.Rmd')}
 ```
-
-
