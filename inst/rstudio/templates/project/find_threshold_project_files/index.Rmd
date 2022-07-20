@@ -119,7 +119,7 @@ input_size <- nrow(db)
 is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
 bulk_heavy <- is_heavy & !db[[params$singlecell]]
 sc_heavy <- is_heavy & db[[params$singlecell]]
-buld_dtn <- data.frame()
+bulk_dtn <- data.frame()
 sc_dtn <- data.frame()
 
 # Fix possible presence of bulk and single cell data
@@ -184,10 +184,10 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 } 
 ```
 
-# Visualize distToNearest
+## Visualize distToNearest
 
-```{r}
-wrap_fx <- as.formula(paste0(params$singlecell,"~sample_id"))
+```{r, fig.width=3*min(3,nrow(unique(db[,c("sample_id", params$singlecell)]))/3), fig.height=0.7*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))}
+wrap_formula <- as.formula(paste0(params$singlecell,"~sample_id"))
 db <- bind_rows(bulk_dtn,sc_dtn)
 p <- ggplot(db) + 
     geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01)
@@ -196,11 +196,12 @@ if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
     p <- p + 
         geom_histogram(
             aes(x=cross_dist_nearest, y=-(..count..), fill=sample_id), 
-            binwidth=0.01, position="identity")
+            binwidth=0.01, position="identity") +
+            scale_y_continuous(labels = abs)
 }
 
 p <- p +
-    facet_wrap(wrap_fx, scales = "fixed", ncol=3, labeller = "label_both") +
+    facet_wrap(wrap_formula, scales = "free_y", ncol=3, labeller = "label_both") +
     expand_limits(x = 0, y =0) %>%
     geom_vline(xintercept = 0.2, color="grey30", linetype="dotted")
 p
@@ -232,11 +233,22 @@ threshold <- findThresholdDb(db,
 
 threshold_summary <- gmmSummary(threshold) %>%
     mutate(mean_threshold=mean(threshold, na.rm=TRUE))
-eetable(threshold_summary, "Summary of threshold values.")
+mean_threshold <- round(threshold_summary$mean_threshold[1],2)
+eetable(threshold_summary, 
+        paste0("Summary of threshold values. Mean threshold is: ", mean_threshold))  %>%
+        DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
+                    digits=3)
 ```
 
-```{r, eval=!all(is.na(db[['dist_nearest']]))}
-lapply(threshold, '[[', 'plot')
+```{r, eval=!all(is.na(db[['dist_nearest']])), results='asis'}
+invisible(lapply(threshold, function(thr) {
+   this_thr <- NA
+   if (!is.null(attributes(thr$GmmThreshold))) {
+      this_thr <- round(attributes(thr$GmmThreshold)$threshold,2)
+   }
+   cat ("\n\n## ",paste(c(thr[['fields']], ": ", this_thr),collapse=" "),"\n\n")
+   print(thr[['plot']])
+}))
 ```
 
 # Save

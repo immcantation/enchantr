@@ -94,7 +94,8 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest",
             } else {
                 cross_distances <- NULL
             }
-            threshold <- findThreshold(db_group[[distanceColumn]], cross=cross_distances,
+            threshold <- findThreshold(db_group[[distanceColumn]], 
+                                       cross=cross_distances,
                                        method=method, 
                                        model=model,
                                        cutoff = cutoff, spc = spc,
@@ -111,7 +112,7 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest",
             # }
             p <- NULL
             if (!is.null(threshold)) {
-                p <- plotGmmThreshold(threshold, silent=TRUE)
+                p <- plotGmmThreshold(threshold, cross=cross_distances, silent=TRUE)
             }
         } else {
             threshold <- NULL
