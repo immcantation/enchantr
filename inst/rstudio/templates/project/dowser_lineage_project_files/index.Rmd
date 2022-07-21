@@ -122,21 +122,14 @@ if (sum(h)>0) {
         stop("multiple heavy chain locus found.")
     } 
     
-    minseq_pass <- db %>%
-        group_by(clone_id) %>%
-        mutate(clone_size=n()) %>%
-        mutate(minseq_pass=clone_size>=params$minseq) %>%
-        pull(minseq_pass)
-    if (sum(minseq_pass) == 0 ) {
-        warning("No clones with at least ",params$minseq, " (`minseq`) sequences")
-    } else {
-        clones <- formatClones(db,
-                               traits = intersect(c("c_call"),colnames(db)),
-                               # num_fields=intersect(c("duplicate_count", "consensus_count"),colnames(db)), ## TODO: check not all NA
-                               chain="H",
-                               locus='locus',
-                               heavy=heavy[[1]],
-                               minseq=params$minseq, nproc=params$nproc) 
+    clones <- formatClones(db,
+                           traits = intersect(c("c_call"),colnames(db)),
+                           # num_fields=intersect(c("duplicate_count", "consensus_count"),colnames(db)), ## TODO: check not all NA
+                           chain="H",
+                           locus='locus',
+                           heavy=heavy[[1]],
+                           minseq=params$minseq, nproc=params$nproc) 
+    if (nrow(clones)>0) {
         trees <- getTrees(clones, build="igphyml", nproc=params$nproc)
         plots <- plotTrees(trees, tips="c_call", tipsize=2)
         for (i in 1:length(plots)) {
@@ -144,7 +137,10 @@ if (sum(h)>0) {
             print(plots[[i]])
             cat("\n\n")
         }
+    } else {
+        cat("All clones have less than minseq = ",params$minseq," sequences.")
     }
+    
 }
 ```
 
