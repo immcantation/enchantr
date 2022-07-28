@@ -122,13 +122,16 @@ if (sum(h)>0) {
         stop("multiple heavy chain locus found.")
     } 
     
-    clones <- formatClones(db,
-                           traits = intersect(c("c_call"),colnames(db)),
-                           # num_fields=intersect(c("duplicate_count", "consensus_count"),colnames(db)), ## TODO: check not all NA
-                           chain="H",
-                           locus='locus',
-                           heavy=heavy[[1]],
-                           minseq=params$minseq, nproc=params$nproc) 
+    clones <- data.frame()
+    try (
+        clones <- formatClones(db,
+                               traits = intersect(c("c_call"),colnames(db)),
+                               # num_fields=intersect(c("duplicate_count", "consensus_count"),colnames(db)), ## TODO: check not all NA
+                               chain="H",
+                               locus='locus',
+                               heavy=heavy[[1]],
+                               minseq=params$minseq, nproc=params$nproc) 
+    )
     if (nrow(clones)>0) {
         trees <- getTrees(clones, build="igphyml", nproc=params$nproc)
         plots <- plotTrees(trees, tips="c_call", tipsize=2)

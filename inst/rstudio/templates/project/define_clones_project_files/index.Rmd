@@ -152,7 +152,7 @@ if (sum(heavy_chains)>0) {
             }
         }
         db <- hierarchicalClones(db, 
-                                 params$threshold, 
+                                 threshold=params$threshold, 
                                  method=params$method,
                                  linkage=params$linkage, 
                                  normalize="len",
@@ -162,7 +162,7 @@ if (sum(heavy_chains)>0) {
                                  fields=params$cloneby,
                                  cell_id=cell_id, 
                                  locus="locus", 
-                                 only_heavy=TRUE, 
+                                 only_heavy=FALSE, 
                                  split_light=TRUE,
                                  first=FALSE, 
                                  cdr3=FALSE, mod3=FALSE, 
@@ -173,8 +173,8 @@ if (sum(heavy_chains)>0) {
         stop("Unsuported model requested. Supported models: hierarchical")
     }
 } else {
-    warning("No heavy chain sequences found. Assign each sequence a clone_id.")
-    db$clone_id <- as.character(1:nrow(db))
+    warning("No heavy chain sequences found.")
+    db$clone_id <- NA
 }
 ```
 
