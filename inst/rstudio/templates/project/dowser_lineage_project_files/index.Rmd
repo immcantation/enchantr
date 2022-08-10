@@ -133,7 +133,10 @@ if (sum(h)>0) {
                                minseq=params$minseq, nproc=params$nproc) 
     )
     if (nrow(clones)>0) {
-        trees <- getTrees(clones, build="igphyml", nproc=params$nproc)
+        trees <- getTrees(clones, 
+                          build=params$build, 
+                          exec=params$build,
+                          nproc=params$nproc)
         plots <- plotTrees(trees, tips="c_call", tipsize=2)
         for (i in 1:length(plots)) {
             cat(paste0("## Tree ",i,"\n\n"))
