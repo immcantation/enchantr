@@ -88,6 +88,7 @@ editor_options:
   chunk_output_type: console
 ---
 
+
 ```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       echo=params$echo,cache=params$cache,
@@ -114,10 +115,10 @@ file.copy(params$logo,
 # Input parameters
 
 ```{r input-parameters}
-params
 if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
 }
+printParams(params)
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
@@ -125,7 +126,6 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 
 ```{r}
-
 # Read repertoire
 db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
     # Check input file
@@ -140,7 +140,9 @@ input_size <- nrow(db)
 # Define Clones
 
 ```{r}
-heavy_chains <- sum(grepl("[hHBbDc]", db[['locus']])) #IGH, TRB, TRD
+heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
+```
+```{r}
 if (sum(heavy_chains)>0) {
     if (params$model == "hierarchical") {
         if (all(db[[ params$singlecell ]] == T )) {
@@ -152,7 +154,7 @@ if (sum(heavy_chains)>0) {
             }
         }
         db <- hierarchicalClones(db, 
-                                 threshold=params$threshold, 
+                                 params$threshold, 
                                  method=params$method,
                                  linkage=params$linkage, 
                                  normalize="len",
@@ -162,7 +164,7 @@ if (sum(heavy_chains)>0) {
                                  fields=params$cloneby,
                                  cell_id=cell_id, 
                                  locus="locus", 
-                                 only_heavy=FALSE, 
+                                 only_heavy=TRUE, 
                                  split_light=TRUE,
                                  first=FALSE, 
                                  cdr3=FALSE, mod3=FALSE, 
@@ -173,8 +175,8 @@ if (sum(heavy_chains)>0) {
         stop("Unsuported model requested. Supported models: hierarchical")
     }
 } else {
-    warning("No heavy chain sequences found.")
-    db$clone_id <- NA
+    warning("No heavy chain sequences found. Assign each sequence a clone_id.")
+    db$clone_id <- as.character(1:nrow(db))
 }
 ```
 
@@ -224,6 +226,92 @@ db <- bind_rows(lapply(split(db,db[['species']]),
     arrange(tmp_nrow) %>%
     select(-tmp_nrow) 
 ```
+
+# Tissues per clone
+
+```{r}
+db %>%
+    group_by(clone_id) %>%
+    summarize(num_tissues=length(unique(tissue))) %>%
+    filter(num_tissues>1)
+```
+
+
+# Clone size
+
+Most real datasets, will have most clones of size 1 (one sequence).
+
+```{r clone-size, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
+clone_sizes <- countClones(db[grepl("[hHBbDc]", db[['locus']]),], groups = "sample_id")
+
+ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
+    geom_bar() + theme_bw() +
+    facet_wrap(~sample_id, scales = "free_y", ncol=3) +
+    xlab("Clone size (Sequences per clone)")
+```
+
+## Clone size > 1
+
+```{r clone-size-atleast2, fig.width=8}
+ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
+    geom_bar() + theme_bw() +
+    facet_wrap(~sample_id, scales = "free_y", ncol=3) +
+    xlab("Clone size (Sequences per clone)")
+```
+
+
+# Clonal abundance
+
+Clonal abundance is the size of each clone (as a fraction of the entire repertoire). `estimateAbundance` estimates the clonal abundance distribution along with 
+confidence intervals on these clone sizes using bootstrapping. The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
+
+```{r abundancebysample}
+# calculate the rank-abundance curve
+a <- estimateAbundance(db, group = "sample_id", min_n = 15) # Default min_n=30
+p <- plotAbundanceCurve(a, annotate="depth", silent = T) + 
+           facet_wrap(~sample_id)
+p
+```
+
+# Diversity
+
+The clonal abundance distribution can be characterized using diversity statistics. Diversity scores (D) are calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
+
+The function alphaDiversity resamples the sequences and calculates diversity scores (D) over a interval of diversity orders (q). The diversity (D) is shown on the y-axis and the x-axis is the parameter q. - q = 0 corresponds to Species Richness - q = 1 corresponds to Shannon Entropy - q = 2 corresponds to Simpson Index
+
+Inspection of this figure is useful to determine whether any difference in diversity between two repertoires depends on the statistic used or if it is a universal property. 
+
+```{r diversity}
+# generate the Hill diversity curve
+d <- alphaDiversity(db, group = "sample_id")
+p <- plotDiversityCurve(d, silent = T)
+p + geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
+    geom_text(data = data.frame(q = c(0,1,2), y = round(max(p$data$d_upper)/2),
+              label = c("Richness", "Shannon", "Simpson")),
+              aes(x = q, y = y,label = label), size = 3, angle = 90, vjust = -0.4, inherit.aes  =  F, color = "grey50") +
+    facet_wrap(~sample_id)
+
+```
+
+# `junction` and `clone_id` overlap
+
+```{r overlap}
+overlap <- grimoire::plotDbOverlap(db, 
+                                   group="sample_id", 
+                                   features=c("clone_id","junction"), 
+                                   heatmap_colors=c("white","orange", "grey80"), 
+                                   print_zero=FALSE, long_x_angle=90,
+                                   title=NULL,xlab=NULL, ylab=NULL,
+                                   plot_order=c("tissue","sample_id"), 
+                                   silent=T, similarity=c("min","jaccard"),
+                                   na.rm=FALSE, exact=c(TRUE, FALSE), 
+                                   geom_text_size=3)
+```
+
+```{r overlapplot, fig.width=8, fig.width=0.7*length(unique(db[['sample_id']])), fig.height=0.7*length(unique(db[['sample_id']]))}
+overlap$p
+```
+
 
 # Save
 
