@@ -20,6 +20,10 @@ params:
        label: "`build`"
        input: text
        value: "igphyml"
+   exec:
+       label: "`exec`"
+       input: text
+       value: "/usr/local/share/igphyml/src/igphyml"
    minseq:
        label: "`minseq`"
        input: numeric
@@ -31,7 +35,7 @@ params:
    nproc:
       label: "`nproc`"
       input: numeric
-      value: 1      
+      value: 1
    log:
       label: "`log`"
       input: text
@@ -135,7 +139,7 @@ if (sum(h)>0) {
     if (nrow(clones)>0) {
         trees <- getTrees(clones, 
                           build=params$build, 
-                          exec=params$build,
+                          exec=params$exec,
                           nproc=params$nproc)
         plots <- plotTrees(trees, tips="c_call", tipsize=2)
         for (i in 1:length(plots)) {
