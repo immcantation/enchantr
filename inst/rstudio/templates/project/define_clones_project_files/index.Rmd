@@ -296,16 +296,16 @@ p + geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
 # `junction` and `clone_id` overlap
 
 ```{r overlap}
-overlap <- grimoire::plotDbOverlap(db, 
-                                   group="sample_id", 
-                                   features=c("clone_id","junction"), 
-                                   heatmap_colors=c("white","orange", "grey80"), 
-                                   print_zero=FALSE, long_x_angle=90,
-                                   title=NULL,xlab=NULL, ylab=NULL,
-                                   plot_order=c("tissue","sample_id"), 
-                                   silent=T, similarity=c("min","jaccard"),
-                                   na.rm=FALSE, exact=c(TRUE, FALSE), 
-                                   geom_text_size=3)
+overlap <- plotDbOverlap(db, 
+                         group="sample_id", 
+                         features=c("clone_id","junction"), 
+                         heatmap_colors=c("white","orange", "grey80"), 
+                         print_zero=FALSE, long_x_angle=90,
+                         title=NULL,xlab=NULL, ylab=NULL,
+                         plot_order=c("tissue","sample_id"), 
+                         silent=T, similarity=c("min","jaccard"),
+                         na.rm=FALSE, exact=c(TRUE, FALSE), 
+                         geom_text_size=3)
 ```
 
 ```{r overlapplot, fig.width=8, fig.width=0.7*length(unique(db[['sample_id']])), fig.height=0.7*length(unique(db[['sample_id']]))}
