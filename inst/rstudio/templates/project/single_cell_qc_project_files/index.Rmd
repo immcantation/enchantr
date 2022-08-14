@@ -175,67 +175,79 @@ can indicate contamination.
 
 ## stacked bar
 
-```{r p_sc_duplicates, fig.cap=p_sc_duplicates$enchantr$html_caption}
+```{r p_sc_duplicates, fig.cap=caption}
 dups <- findSingleCellDuplicates(db, fields="sample_id", 
                                  cell_id="cell_id", 
                                  seq="sequence_alignment")
+caption <- NULL
+if (nrow(dups[['dups']]) > 0 ) {
+   dups_summary <- dups[['dups']] %>%
+      group_by(sample_id) %>%
+      summarize(duplicates=sum(sc_duplicate, na.rm = TRUE),
+                not_duplicates=sum(!sc_duplicate, na.rm = TRUE)) %>%
+      rowwise() %>%
+      mutate(duplication_percent = 100*duplicates/sum(duplicates+not_duplicates))
 
-dups_summary <- dups[['dups']] %>%
-    group_by(sample_id) %>%
-    summarize(duplicates=sum(sc_duplicate),
-              not_duplicates=sum(!sc_duplicate)) %>%
-    rowwise() %>%
-    mutate(duplication_percent = 100*duplicates/sum(duplicates+not_duplicates))
 
-eetable(dups_summary %>% mutate(duplication_percent=round(duplication_percent, 2)),
-    caption=paste0("Summay of duplicated sequences: sequences that have the same cell_id and sequence across samples.")
-)  %>% formatStyle(
-        'duplication_percent',
-        target = 'cell',
-        backgroundColor = styleInterval(0:100, 
-                                    round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
-                                    {paste0("rgb(255,", ., ",", ., ")")})
-    )
-
-if (sum(dups[['dups']][['sc_duplicate']])>0) {
-    p_sc_duplicates <- ggplot(dups[['dups']], aes(x=sample_id, fill=sc_duplicate)) +
-        geom_bar() + coord_flip() +
-        labs(title = "Number of sequences that share\ncell_id and sequence with other samples.",
-        subtitle = "",
-        caption = "")
-    p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir, knitr::opts_current$get('label'))
-    p_sc_duplicates
+   eetable(dups_summary %>% mutate(duplication_percent=round(duplication_percent, 2)),
+       caption=paste0("Summay of duplicated sequences: sequences that have the same cell_id and sequence across samples.")
+   )  %>% formatStyle(
+           'duplication_percent',
+           target = 'cell',
+           backgroundColor = styleInterval(0:100, 
+                                       round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
+                                       {paste0("rgb(255,", ., ",", ., ")")})
+       )
+   
+   if (sum(dups[['dups']][['sc_duplicate']])>0) {
+       p_sc_duplicates <- ggplot(dups[['dups']], aes(x=sample_id, fill=sc_duplicate)) +
+           geom_bar() + coord_flip() +
+           labs(title = "Number of sequences that share\ncell_id and sequence with other samples.",
+           subtitle = "",
+           caption = "")
+       caption <- p_sc_duplicates$enchantr$html_caption
+       p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir, knitr::opts_current$get('label'))
+       p_sc_duplicates
+   }
 }
 ```
 
 ## overlap matrix
+
 
 ```{r overlap-summary, eval=TRUE}
 
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
-overlap_summary <- dup_count %>%
-        filter(overlap_percent > 0 ) %>%
-        filter(sc_duplicate_group != name)
-eetable(
-    overlap_summary,
-    caption=paste0("Summay of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
-)   %>% formatStyle(
-    'overlap_percent',
-    target = 'cell',
-    backgroundColor = styleInterval(0:100, 
-                                    round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
-                                        {paste0("rgb(255,", ., ",", ., ")")})
-)
+if (nrow(dup_count) > 0) {
+   overlap_summary <- dup_count %>%
+      filter(overlap_percent > 0 ) %>%
+      filter(sc_duplicate_group != name)
+   eetable(
+      overlap_summary,
+      caption=paste0("Summay of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
+   )   %>% formatStyle(
+      'overlap_percent',
+      target = 'cell',
+      backgroundColor = styleInterval(0:100, 
+                                      round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
+                                         {paste0("rgb(255,", ., ",", ., ")")})
+   )
+}
 ```
 
-```{r p-overlap-matrix, eval=TRUE,  fig.cap=p_overlap_matrix$enchantr$html_caption}
+```{r p-overlap-matrix, eval=TRUE,  fig.cap=caption}
 # plot duplicated cells
-p_overlap_matrix <- plotOverlapSingleCell(dup_count)
-p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir, knitr::opts_current$get('label'))
-p_overlap_matrix
+caption <- NULL
+if (nrow(dup_count) > 0) {
+   p_overlap_matrix <- plotOverlapSingleCell(dup_count)
+   p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir, knitr::opts_current$get('label'))
+   caption <- p_overlap_matrix$enchantr$html_caption
+   p_overlap_matrix
+}
 ```
+
 
 # Remove duplicate sequences
 

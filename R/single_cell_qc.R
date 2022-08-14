@@ -334,7 +334,7 @@ findSingleCellDuplicates <- function(db, fields,
     # default to not duplicated
     db[['sc_duplicate']] <- F
     duplicated_seq_id <- c()
-    dups <- data.frame()
+    dups <- data.frame(matrix(ncol=length(fields),nrow=0, dimnames=list(NULL, fields)))
 
     if (nrow(db_shared) > 0 ) {
         db_shared <- db_shared %>%
