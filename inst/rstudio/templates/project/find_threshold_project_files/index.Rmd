@@ -193,11 +193,17 @@ p <- ggplot(db) +
     geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01)
 
 if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
+   
+   if (any(!is.na(db[['cross_dist_nearest']]))) {
     p <- p + 
         geom_histogram(
             aes(x=cross_dist_nearest, y=-(..count..), fill=sample_id), 
             binwidth=0.01, position="identity") +
-            scale_y_continuous(labels = abs)
+            scale_y_continuous(labels = abs)      
+   } else {
+      warning("All `cross_dist_nearest` values are NA.")
+   }
+
 }
 
 p <- p +
@@ -219,7 +225,11 @@ threshold_summary <- data.frame(mean_threshold = NA)
 ```{r threshold, eval=!all(is.na(db[['dist_nearest']]))}
 cross_dist_nearest <- NULL
 if ("cross_dist_nearest" %in% colnames(db)) {
-    cross_dist_nearest <- "cross_dist_nearest"
+    if (any(!is.na(db[['cross_dist_nearest']]))) {
+       cross_dist_nearest <- "cross_dist_nearest"
+    } else {
+       warning("All `cross_dist_nearest` values are NA.")
+    }
 }
 threshold <- findThresholdDb(db, 
                             distanceColumn="dist_nearest", 
