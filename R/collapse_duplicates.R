@@ -20,7 +20,9 @@ collapse_duplicates_project <- function(path,...) {
 findDuplicates <- function (db, groups="sample_id",
                             id = "sequence_id", 
                             seq = "sequence_alignment", 
-                            text_fields = NULL, num_fields = c("conscount", "dupcount"), seq_fields = NULL,
+                            text_fields = NULL, 
+                            num_fields = c("conscount", "dupcount"), 
+                            seq_fields = NULL,
                             add_count = TRUE,
                             ignore = c("N", "-", ".", "?"), sep=",",
                             dry = F, verbose = F,
@@ -30,7 +32,7 @@ findDuplicates <- function (db, groups="sample_id",
                  "v_call", "d_call", "j_call", "junction_length", "c_call", "productive")
     columns <- columns[!is.null(columns)]
     check <- alakazam:::checkColumns(db, columns)
-    if (check != TRUE) { stop(check) }
+    if (!check %in% c(TRUE,"The column c_call contains no data")) { stop(check) }
     
     db[['row_idx']] <- 1:nrow(db)
     
