@@ -114,6 +114,11 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
     db$GROUPS <- db %>%
         dplyr::group_by_(.dots=group) %>% group_indices()
     
+        if (length(unique(db[['GROUPS']])) == 1) {
+            warning("One group only. Can't look for overlaps.")
+            return(NULL)
+        }
+
     group_dots <- c("GROUPS",group)
     
     group_tables <- lapply(features, function(feature) {

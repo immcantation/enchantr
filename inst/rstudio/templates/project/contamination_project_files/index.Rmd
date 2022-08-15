@@ -107,9 +107,9 @@ db <- bind_rows(lapply(db_files, read_rearrangement))
 ```{r overlapSeqInHeavy}
 db_ovl <- plotDbOverlap(db %>% dplyr::filter(locus %in% c("IGH", "igh")),
                         group = c("sample_id"), 
-                        features="sequence_alignment",  
+                        features=c("sequence_alignment","sequence_alignment"),  
                         plot_order=c("sample_id"), 
-                        exact=FALSE, similarity = "min", 
+                        exact=c(FALSE,FALSE), similarity = c("min", "jaccard"), 
                         title="auto", silent=T)
 db_ovl
 ```
