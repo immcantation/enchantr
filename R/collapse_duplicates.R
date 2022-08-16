@@ -28,11 +28,17 @@ findDuplicates <- function (db, groups="sample_id",
                             dry = F, verbose = F,
                             nproc=1) {
     
+    c_call <- NULL
+    if ("c_call" %in% colnames(db)) { 
+        if (any(!is.na(db[['c_call']]))) {
+            c_call <- "c_call"   
+        }
+    }
     columns <- c(groups, id, seq, text_fields, num_fields, seq_fields, 
-                 "v_call", "d_call", "j_call", "junction_length", "c_call", "productive")
+                 "v_call", "d_call", "j_call", "junction_length", c_call, "productive")
     columns <- columns[!is.null(columns)]
     check <- alakazam:::checkColumns(db, columns)
-    if (!check %in% c(TRUE,"The column c_call contains no data")) { stop(check) }
+    if (!check == TRUE ) { stop(check) }
     
     db[['row_idx']] <- 1:nrow(db)
     
@@ -40,7 +46,7 @@ findDuplicates <- function (db, groups="sample_id",
         mutate(v_gene=getGene(v_call),
                d_gene=getGene(d_call),
                j_gene=getGene(j_call)) %>%
-        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", "junction_length", "productive"))) %>%
+        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, "junction_length", "productive"))) %>%
         group_indices()
     
     
