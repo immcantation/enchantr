@@ -124,7 +124,6 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 # Read repertoires
 
-
 ```{r}
 # Read repertoire
 db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
@@ -137,7 +136,20 @@ db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
 input_size <- nrow(db)
 ```
 
-# Define Clones
+Number of sequences loaded: `r input_size`.
+
+```{r}
+input_summary <- db %>%
+   group_by(!!!rlang::syms(c("sample_id",params$cloneby)), locus) %>%
+   summarize(n=n(), .groups="drop") %>%
+       pivot_wider(names_from=locus, values_from=n)
+
+eetable(input_summary,
+    caption=paste0("Input data.")
+) 
+```
+
+# Clonal assignment
 
 ```{r}
 heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
