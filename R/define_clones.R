@@ -323,7 +323,7 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
     # the diagnoal values are not used for coloring
     diag(overlap_perc_matrix) = NA
     diag(overlap_note_matrix) = NA
-    
+
     # organize the data into ggplot format
     melt_overlap_perc <- reshape2::melt(overlap_perc_matrix, 
                                         list("Var1","Var2"), value.name="value")
@@ -396,7 +396,11 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
         theme(plot.title = element_text(lineheight=.8, face="bold"))
     if (!silent) print(p)
     invisible(list("p"=p,
-                   "perc"=melt_overlap_perc,
-                   "note"=melt_overlap_note)
+                   "perc"=melt_overlap_perc %>%
+                       rename(!!rlang::sym(xlab) := Var1,
+                              !!rlang::sym(ylab) := Var2),
+                   "note"=melt_overlap_note %>%
+                       rename(!!rlang::sym(xlab) := Var1,
+                              !!rlang::sym(ylab) := Var2))
     )
 }
