@@ -79,13 +79,16 @@ suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("tidyr"))
 
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
           recursive = T, overwrite=T)
 ```
 
-# Input parameters
+# Input 
+
+## Parameters
 
 
 ```{r input-parameters}
@@ -96,8 +99,7 @@ printParams(params)
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-# Read repertoires
-
+## Input repertoires
 
 ```{r}
 # Read repertoires
@@ -130,7 +132,29 @@ if (length(na_single)>0) {
 db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
 ```
 
+Number of sequences loaded: `r input_size`.
+
+```{r}
+input_summary <- db %>%
+   group_by(!!!rlang::syms(c("sample_id",params$cloneby)), locus) %>%
+   summarize(n=n(), .groups="drop") %>%
+       pivot_wider(names_from=locus, values_from=n)
+
+eetable(input_summary,
+    caption=paste0("Input data.")
+) 
+```
+
 # Distance to nearest
+
+
+Clonal relationships can be inferred from sequencing data. Hierarchical clustering is a widely used method for identify clonally related sequences. This method requires a measure of distance between pairs of sequences and a choice of linkage to define the distance between groups of sequences. Since the result will be a tree, a threshold to cut the hierarchy into discrete clonal groups is also needed.
+
+`shazam` provides methods to calculate the distance between sequences and find an appropriate distance threshold for each dataset (`distToNearest` and `findThreshold`). The threshold can be determined by analyzing the distance to the nearest distribution. This is the set of distances between each sequence and its closest non-identical neighbour.
+
+`distToNearest` first splits sequences into groups that share the same V and J gene assignments and that have the same junction (or equivalently CDR3) length. This is based on the assumption that members of a clone will share all of these properties. `distToNearest` performs this grouping step, then counts the number of mismatches in the junction region between all pairs of sequences in each group and returns the smallest non-zero value for each sequence. At the end of this step, a new column (`dist_nearest`) which contains the distances to the closest non-identical sequence in each group will be added to db.
+
+Typically, the distance-to-nearest distribution for a repertoire is bimodal. The first mode (on the left) represents sequences that have at least one clonal relative in the dataset, while the second mode (on the right) is representative of the sequences that do not have any clonal relatives in the data (sometimes called "singletons"). A reasonable threshold will separate these two modes of the distribution. In this case, it is easy to manually determine a threshold as a value intermediate between the two modes. However, `findThreshold` can be used to automatically find the threshold.
 
 ```{r sum_heavy_0, eval=sum(is_heavy)==0, echo=sum(is_heavy)==0, results='asis'}
 cat("0 heavy chain sequences present. `distToNearest` requires heavy chain data. Setting `dist_neartest` to 'NA'")
@@ -184,7 +208,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 } 
 ```
 
-## Visualize distToNearest
+## `distToNearest` plot
 
 ```{r, fig.width=3*min(3,nrow(unique(db[,c("sample_id", params$singlecell)]))/3), fig.height=0.7*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))}
 wrap_formula <- as.formula(paste0(params$singlecell,"~sample_id"))
@@ -213,8 +237,12 @@ p <- p +
 p
 ```
 
-# Find threshold
+## Find threshold
 
+`findThreshold` uses the distribution of distances calculated in the previous step to determine an appropriate threshold for the dataset. 
+
+
+### Theshold(s) summary table
 
 ```{r, eval=all(is.na(db[['dist_nearest']]))}
 # This chunk runs when all dist_nearest values are NA
@@ -256,7 +284,7 @@ invisible(lapply(threshold, function(thr) {
    if (!is.null(attributes(thr$GmmThreshold))) {
       this_thr <- round(attributes(thr$GmmThreshold)$threshold,2)
    }
-   cat ("\n\n## ",paste(c(thr[['fields']], ": ", this_thr),collapse=" "),"\n\n")
+   cat ("\n\n### ",paste(c(thr[['fields']], ": ", this_thr),collapse=" "),"\n\n")
    print(thr[['plot']])
 }))
 ```
