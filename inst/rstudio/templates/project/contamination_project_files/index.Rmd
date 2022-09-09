@@ -105,11 +105,12 @@ db <- bind_rows(lapply(db_files, read_rearrangement))
 # Identify possible contaminants
 
 ```{r overlapSeqInHeavy}
-db_ovl <- plotDbOverlap(db %>% dplyr::filter(locus %in% c("IGH", "igh")),
+db_ovl <- plotDbOverlap(db %>% 
+                           dplyr::filter(locus %in% c("IGH", "igh", "TRB", "trb", "TRD", "trd")),
                         group = c("sample_id"), 
-                        features=c("sequence_alignment","sequence_alignment"),  
+                        features=c("sequence_alignment", "junction"),  
                         plot_order=c("sample_id"), 
-                        exact=c(FALSE,FALSE), similarity = c("min", "jaccard"), 
+                        exact=c(FALSE, FALSE), similarity = c("min","min"), 
                         title="auto", silent=T)
 db_ovl
 ```
