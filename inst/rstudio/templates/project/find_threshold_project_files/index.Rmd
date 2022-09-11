@@ -119,17 +119,20 @@ db <- bind_rows(lapply(db_files, function(x) {
 
 input_size <- nrow(db)
 is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
+
+na_single <- is.na(db[[params$singlecell]])
+if (sum(na_single)>0) {
+    warning(sum(na_single), " sequences are missing single cell information. Using single_cell=F")
+    db[[params$singlecell]][na_single] <- FALSE
+}
+db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
+
 bulk_heavy <- is_heavy & !db[[params$singlecell]]
 sc_heavy <- is_heavy & db[[params$singlecell]]
 bulk_dtn <- data.frame()
 sc_dtn <- data.frame()
 
-# Fix possible presence of bulk and single cell data
-na_single <- is.na(db[[params$singlecell]])
-if (length(na_single)>0) {
-    db[[params$singlecell]][na_single] <- FALSE
-}
-db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
+
 ```
 
 Number of sequences loaded: `r input_size`.
