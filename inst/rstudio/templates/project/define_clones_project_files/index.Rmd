@@ -98,14 +98,15 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
 
 # Libraries
-suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("DT"))
 suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("scoper"))
 suppressPackageStartupMessages(library("dowser"))
+suppressPackageStartupMessages(library("enchantr"))
 
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
@@ -202,44 +203,39 @@ db[['tmp_nrow']] <- 1:nrow(db)
 db <- bind_rows(lapply(split(db,db[['species']]),
                  function(db_sp) { 
                      species <- db_sp[['species']][1]
-                     references <- readIMGT(file.path(params[['imgt_db']], species, "vdj"))
-                     bind_rows(lapply(split(db_sp, db_sp[['locus']]), 
-                                            function(db_locus) {
-                                                locus <- db_locus[['locus']][1]
-                                                db_locus <- createGermlines(
-                                                    db_locus,
-                                                    references,
-                                                    organism = species,
-                                                    locus = locus,
-                                                    nproc = params$nproc,
-                                                    seq = "sequence_alignment",
-                                                    v_call = "v_call",
-                                                    d_call = "d_call",
-                                                    j_call = "j_call",
-                                                    amino_acid = FALSE,
-                                                    id = "sequence_id",
-                                                    clone = "clone_id",
-                                                    v_germ_start = "v_germline_start",
-                                                    v_germ_end = "v_germline_end",
-                                                    v_germ_length = "v_germline_length",
-                                                    d_germ_start = "d_germline_start",
-                                                    d_germ_end = "d_germline_end",
-                                                    d_germ_length = "d_germline_length",
-                                                    j_germ_start = "j_germline_start",
-                                                    j_germ_end = "j_germline_end",
-                                                    j_germ_length = "j_germline_length",
-                                                    np1_length = "np1_length",
-                                                    np2_length = "np2_length",
-                                                    na.rm = TRUE,
-                                                    fields = params$cloneby,
-                                                )
-                                            }))
+                     references <- dowser::readIMGT(file.path(params[['imgt_db']], species, "vdj"))
+                     dowser::createGermlines(
+                         db_sp,
+                         references,
+                         locus = "locus",
+                         nproc = params$nproc,
+                         seq = "sequence_alignment",
+                         v_call = "v_call",
+                         d_call = "d_call",
+                         j_call = "j_call",
+                         amino_acid = FALSE,
+                         id = "sequence_id",
+                         clone = "clone_id",
+                         v_germ_start = "v_germline_start",
+                         v_germ_end = "v_germline_end",
+                         v_germ_length = "v_germline_length",
+                         d_germ_start = "d_germline_start",
+                         d_germ_end = "d_germline_end",
+                         d_germ_length = "d_germline_length",
+                         j_germ_start = "j_germline_start",
+                         j_germ_end = "j_germline_end",
+                         j_germ_length = "j_germline_length",
+                         np1_length = "np1_length",
+                         np2_length = "np2_length",
+                         na.rm = TRUE,
+                         fields = params$cloneby,
+                     )
                  })) %>%
     arrange(tmp_nrow) %>%
     select(-tmp_nrow) 
 ```
 
-# Tissues per clone
+# Clones spanning multiple tissues
 
 ```{r}
 db %>%
@@ -262,7 +258,7 @@ ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
     xlab("Clone size (Sequences per clone)")
 ```
 
-## Clone size > 1
+## Subset to clone size > 1
 
 ```{r clone-size-atleast2, fig.width=8}
 ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
@@ -274,8 +270,10 @@ ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fi
 
 # Clonal abundance
 
-Clonal abundance is the size of each clone (as a fraction of the entire repertoire). `estimateAbundance` estimates the clonal abundance distribution along with 
-confidence intervals on these clone sizes using bootstrapping. The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
+To compare samples, considering clone size as the number of sequences with the same
+clone id is not the best option. Clonal abundance is the size of each clone 
+(as a fraction of the entire repertoire). `estimateAbundance` estimates the clonal
+abundance distribution along with confidence intervals on these clone sizes using bootstrapping. The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
 
 ```{r abundancebysample}
 # calculate the rank-abundance curve
