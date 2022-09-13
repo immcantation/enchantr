@@ -188,8 +188,8 @@ if (sum(heavy_chains)>0) {
         stop("Unsuported model requested. Supported models: hierarchical")
     }
 } else {
-    warning("No heavy chain sequences found. Assign each sequence a clone_id.")
-    db$clone_id <- as.character(1:nrow(db))
+    warning("No heavy chain sequences found.")
+    db$clone_id <- NA
 }
 ```
 
