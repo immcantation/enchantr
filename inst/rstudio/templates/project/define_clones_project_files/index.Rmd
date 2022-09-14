@@ -113,6 +113,7 @@ file.copy(params$logo,
           recursive = T, overwrite=T)
 ```
 
+
 # Input parameters
 
 ```{r input-parameters}
@@ -120,7 +121,7 @@ if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
 }
 printParams(params)
-save(params, file=file.path(params$outdir,"params.RData"))
+# save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
 # Read repertoires
@@ -139,23 +140,59 @@ input_size <- nrow(db)
 
 Number of sequences loaded: `r input_size`.
 
-```{r}
-input_summary <- db %>%
+## Sequences per locus
+
+```{r inputlocussumary}
+input_locus_summary <- db %>%
    group_by(!!!rlang::syms(c("sample_id",params$cloneby)), locus) %>%
    summarize(n=n(), .groups="drop") %>%
-       pivot_wider(names_from=locus, values_from=n)
+   pivot_wider(names_from=locus, values_from=n) %>%
+   rowwise() %>%
+   mutate(Total = sum(!!!rlang::syms(unique(db[['locus']]))))
 
-eetable(input_summary,
-    caption=paste0("Input data.")
+total <- data.frame(list("sample_id"="Total", 
+                    t(input_locus_summary %>%
+   select(!!!rlang::syms(c(unique(db[['locus']]), "Total"))) %>%
+   colSums(na.rm = T))))
+
+input_locus_summary <- bind_rows(input_locus_summary, total)
+
+eetable(input_locus_summary,
+    caption=paste0("Input data. Number of sequences in each ", 
+                   paste("sample", params$cloneby, sep=", "),
+                   " and locus."
+      )
+) 
+```
+
+```{r eval="c_call" %in% colnames(db), results='asis'}
+cat("## Sequences per c_call\n")
+```
+
+```{r input-ccall-sumary, eval="c_call" %in% colnames(db)}
+input_c_call_summary <- db %>%
+   group_by(!!!rlang::syms(c("sample_id",params$cloneby)), c_call) %>%
+   summarize(n=n(), .groups="drop") %>%
+       pivot_wider(names_from=c_call, values_from=n)
+
+eetable(input_c_call_summary,
+    caption=paste0("Input data. Number of sequences in each ", 
+                   paste("sample", params$cloneby, sep=", "),
+                   " and c_call"
+      )
 ) 
 ```
 
 # Clonal assignment
 
+Clonal assignment performed with `scoper::hierarchicalClones`, version `r v <- packageVersion("scoper"); v`.
+To know more details about the method, visit the documentation website [https://scoper.readthedocs.io/en/](https://scoper.readthedocs.io/en/`r v`/topics/hierarchicalClones/)
+
 ```{r}
 heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
 ```
-```{r}
+
+```{r, warning=TRUE}
 if (sum(heavy_chains)>0) {
     if (params$model == "hierarchical") {
         if (all(db[[ params$singlecell ]] == T )) {
@@ -188,17 +225,42 @@ if (sum(heavy_chains)>0) {
         stop("Unsuported model requested. Supported models: hierarchical")
     }
 } else {
-    warning("No heavy chain sequences found.")
-    db$clone_id <- NA
+    warning("No heavy chain sequences found. Assign each sequence a clone_id.")
+    db$clone_id <- as.character(1:nrow(db))
 }
 ```
 
-# Create germlines
+## Create germlines
+
+```{r}
+dowser_v <- packageVersion("dowser")
+```
+
+
+Identification of the V(D)J germline sequences from which each of the observed 
+sequences is derived is performed with `dowser::createGermlines`, version `r dowser_v`.
+These reconstructed germlines will be used in downstream analysis to infer somatic 
+mutations and reconstruct lineages. 
+
+`dowser::createGermlines` takes the alignment information 
+in the rearrangement file as well as the reference database used by the 
+alignment software and generates a germline sequence for each individual observed sequence.
+Because clonal relations have already been inferred, the function assigns the 
+same germline to all sequences belonging to the same clone. 
+
+Two types of germlines
+are created, `germline_alignment` and `germline_alignment_d_mask`. The last one
+has the D region masked, meaning that all nucleotides in the N/P and D-segments
+are replaced with N's. This is often done because the germline base calls from 
+this region are unreliable for B cell receptor alignments.
+
+Documentation for `dowser::createGermlines` is available here: [https://dowser.readthedocs.io/en/latest/topics/createGermlines](https://dowser.readthedocs.io/en/latest/topics/createGermlines/).
 
 ```{r}
 if ( length(unique(db[['species']])) > 1 ) {
     message("Message: multiple species found.")
 } 
+pre_germ_size <- nrow(db)
 db[['tmp_nrow']] <- 1:nrow(db)
 db <- bind_rows(lapply(split(db,db[['species']]),
                  function(db_sp) { 
@@ -235,19 +297,107 @@ db <- bind_rows(lapply(split(db,db[['species']]),
     select(-tmp_nrow) 
 ```
 
-# Clones spanning multiple tissues
+`r nrow(db)` sequences passed the germline reconstruction step
+and `r pre_germ_size - nrow(db)` failed.
+
+# Summary of clonal assignment
+
+## Number of clones (incl. singletons)
 
 ```{r}
-db %>%
-    group_by(clone_id) %>%
+num_clones_table <- db %>%
+   group_by(sample_id) %>%
+   mutate(sample_size=n()) %>%
+   select(!!!rlang::syms(c("sample_id","sample_size", "clone_id", params$cloneby))) %>%
+   group_by(!!!rlang::syms(c("sample_id","sample_size", params$cloneby, "clone_id"))) %>%
+   summarize(clone_size=n()) %>%
+   group_by(sample_id) %>%
+   mutate(
+      number_of_clones=length(unique(clone_id)),
+   ) %>%
+   group_by(!!!rlang::syms(c("sample_id","sample_size", params$cloneby, "number_of_clones"))) %>%
+   summarize(
+      min_clone_size=round(min(clone_size),3),
+      mean_clone_size=round(mean(clone_size),3),
+      median_clone_size=round(median(clone_size),3),
+      max_clone_size=round(max(clone_size),3)
+   )
+
+eetable(num_clones_table,
+    caption="Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
+) 
+```
+
+## Number of clones (without singletons)
+
+```{r}
+num_clones_table_nosingle <- db %>%
+   group_by(sample_id) %>%
+   mutate(sample_size=n()) %>%
+   select(!!!rlang::syms(c("sample_id","sample_size", "clone_id", params$cloneby))) %>%
+   group_by(!!!rlang::syms(c("sample_id","sample_size", params$cloneby, "clone_id"))) %>%
+   summarize(clone_size=n()) %>%
+   filter(clone_size>1) %>%
+   group_by(sample_id) %>%
+   mutate(
+      number_of_clones=length(unique(clone_id)),
+   ) %>%
+   group_by(!!!rlang::syms(c("sample_id","sample_size", params$cloneby, "number_of_clones"))) %>%
+   summarize(
+      min_clone_size=round(min(clone_size),3),
+      mean_clone_size=round(mean(clone_size),3),
+      median_clone_size=round(median(clone_size),3),
+      max_clone_size=round(max(clone_size),3)
+   )
+
+eetable(num_clones_table_nosingle,
+    caption="Summary of the number of clones of size > 1, and their clone sizes, per sample."
+) 
+```
+
+## Clones spanning multiple tissues
+
+```{r}
+multi_tissue <- db %>%
+    group_by(!!!rlang::syms(c(params$cloneby, "clone_id"))) %>%
     summarize(num_tissues=length(unique(tissue))) %>%
     filter(num_tissues>1)
+
+multi_tissue <- multi_tissue %>%
+   left_join(db, by=c("clone_id", params$cloneby)) %>%
+   select(!!!rlang::syms(c("clone_id", "tissue", "sample_id", params$clone_by, "sequence_id"))) %>%
+   group_by(!!!rlang::syms(c("clone_id", "tissue", "sample_id", params$clone_by))) %>%
+   summarize(size=n())
+
+eetable(multi_tissue,
+    caption="Summary of clones spanning more than one tissue."
+) 
+```
+
+## Clones by tissue
+
+```{r}
+any_tissues <- db %>%
+   select(!!!rlang::syms(c("sample_id", "clone_id", "tissue", params$cloneby))) %>%
+   group_by(!!!rlang::syms(c("sample_id", "tissue",params$cloneby, "clone_id"))) %>%
+   summarize(clone_size=n(),.groups="drop") %>%
+   group_by(!!!rlang::syms(c("clone_id", "clone_size", params$cloneby))) %>%
+   summarize(num_tissues=length(unique(tissue)),
+             tissues=paste(sort(unique(tissue)),collapse=" & "), .groups="drop") %>%
+   filter(clone_size>1 | num_tissues > 1) %>%
+   group_by(!!!rlang::syms(c("tissues", params$cloneby))) %>%
+   summarize(num_clones=length(unique(clone_id)))
+    
+eetable(any_tissues,
+    caption=paste0("Summary of clones by ", paste(params$cloneby, collapse = ", "), " and tissues. Subsetting to clones of size > 1 in a sample or spanning multiple tissues (can have one sequence in each tissue)")
+) 
 ```
 
 
 # Clone size
 
-Most real datasets, will have most clones of size 1 (one sequence).
+Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure
+to compare clone size between samples. See [Clonal abundance](#clonal_abundance)
 
 ```{r clone-size, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 clone_sizes <- countClones(db[grepl("[hHBbDc]", db[['locus']]),], groups = "sample_id")
@@ -255,7 +405,7 @@ clone_sizes <- countClones(db[grepl("[hHBbDc]", db[['locus']]),], groups = "samp
 ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_bw() +
     facet_wrap(~sample_id, scales = "free_y", ncol=3) +
-    xlab("Clone size (Sequences per clone)")
+    xlab("Clone size (Number of sequences per clone)")
 ```
 
 ## Subset to clone size > 1
@@ -268,10 +418,9 @@ ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fi
 ```
 
 
-# Clonal abundance
+# Clonal abundance {#clonal_abundance}
 
-To compare samples, considering clone size as the number of sequences with the same
-clone id is not the best option. Clonal abundance is the size of each clone 
+Clonal abundance is the size of each clone 
 (as a fraction of the entire repertoire). `estimateAbundance` estimates the clonal
 abundance distribution along with confidence intervals on these clone sizes using bootstrapping. The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
 
@@ -393,5 +542,3 @@ cat(paste0("\nFAIL> ",input_size-sum(output_sizes)), file=log_fn, append=T)
 
 ```{r, child=c('versions.Rmd')}
 ```
-
-
