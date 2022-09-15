@@ -102,7 +102,8 @@ plotDbOverlap <- function(db, group="sample",
                           na.rm=FALSE, identity=c("exact", "ambiguous", "ham_nt", "ham_aa"), 
                           threshold=0, geom_text_size=3 ){
     
-    valid_similarities <- eval(formals(plotDbOverlap)$similarity)
+    valid_similarities <- match.arg(similarity, several.ok = TRUE)
+    identity <- match.arg(identity, several.ok = TRUE)
     
     if (!is.data.frame(db)) { stop('Must submit a data frame') }
     
@@ -306,11 +307,12 @@ plotDbOverlap <- function(db, group="sample",
                         sequence_ii <- as.vector(unlist(feature_ii[seq_ii]))
                         sequence_jj <- as.vector(unlist(feature_jj[seq_jj]))
                         if (length(sequence_ii) > 0 & length(sequence_jj) > 0) {
-                            max_len <- min(nchar(sequence_ii),nchar(sequence_jj))
-                            this_dist <- seqDist(substring(sequence_ii, 1,max_len), 
-                                                 substring(sequence_jj, 1,max_len), dist_mat = distMatrix)
-                            d_mat[seq_ii,seq_jj] <<- this_dist <= threshold
+                            if (nchar(sequence_ii) == nchar(sequence_jj)) {
+                                this_dist <- alakazam::seqDist(sequence_ii, sequence_jj, dist_mat = distMatrix)
+                                d_mat[seq_ii,seq_jj] <<- this_dist <= threshold
+                            }
                         }
+                        
                     })
                 })
                 
