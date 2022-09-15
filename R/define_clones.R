@@ -58,10 +58,15 @@ define_clones_project <- function(path,...) {
 #'                        \code{similarity=c("memory")}
 #' @param na.rm           logical. If TRUE, NA values will be removed and not 
 #'                        considered      
-#' @param exact           Logical vector of the same length as \code{features}.
-#'                        For each \code{features}, compare the exact value of 
-#'                        the features (TRUE) or allow ambiguous characters 
-#'                        (FALSE) using the function \code{seqEqual}. See \code{details}.
+#' @param identity        Vector of the same length as \code{features} spcifying 
+#'                        how to establish identity. For each \code{features}, 
+#'                        compare the exact value of the features (\code{identity='exact'}),
+#'                        allow ambiguous characters in DNA sequences (\code{identity='ambiguous'}) 
+#'                        using the function \code{seqEqual}, or use hamming distance and
+#'                        a threshold (\code{identity='ham'}). See \code{details}.
+#'                        
+#' @param threshold       Identity threshold to be used when \code{identity='ham'}. 
+#' @param geom_text_size  Plot text size               
 #' @return A list with the plot object and a data.frame with the values.
 #' 
 #' @details 
@@ -88,19 +93,21 @@ define_clones_project <- function(path,...) {
 #' }
 #' 
 #' @export
-plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_alignment"), 
+plotDbOverlap <- function(db, group="sample", 
+                          features=c("clone_id","sequence_alignment"), 
                           heatmap_colors=c("white","orange", "grey80"), 
                           print_zero=FALSE, long_x_angle=90,
                           title=NULL,xlab=NULL, ylab=NULL,
                           plot_order=NULL, silent=F, similarity=c("min", "jaccard"),
-                          na.rm=FALSE, exact=c(TRUE, FALSE), geom_text_size=3 ){
+                          na.rm=FALSE, identity=c("exact", "ambiguous", "ham_nt", "ham_aa"), 
+                          threshold=0, geom_text_size=3 ){
     
     valid_similarities <- eval(formals(plotDbOverlap)$similarity)
     
     if (!is.data.frame(db)) { stop('Must submit a data frame') }
     
     if (!length(features) %in% c(1,2)) { stop('`features` must be of length 1 or 2')}
-    if (length(exact) != length(features)) { stop('`exact` must be of the same length a `features`')}
+    if (length(identity) != length(features)) { stop('`identity` must be of the same length a `features`')}
     if (length(similarity) != length(features)) { stop('`similarity` must be of the same length a `features`')}
     if (length(heatmap_colors)<3) { stop('`heatmap_colors` must be of length 3')}
     
@@ -211,11 +218,11 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
             if (ii >= jj) {
                 ## upper diagonal
                 feature <- features[1]
-                exact_mode <- exact[1]
+                exact_mode <- identity[1]
                 similarity_method <- similarity[1]
             } else {
                 feature <- features[length(features)]
-                exact_mode <- exact[length(exact)]
+                exact_mode <- identity[length(identity)]
                 similarity_method <- similarity[length(similarity)]
             }
             
@@ -233,7 +240,7 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
                 }
             }         
             
-            # find the clones in groups i and j
+            # find the sequences in groups i and j
             feature_ii = unique(db[[feature]][db[["GROUPS"]] == group_id_i])
             if (na.rm) {
                 feature_ii <- na.omit(feature_ii)
@@ -247,9 +254,9 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
             total_jj_feature = length(feature_jj)
             
             # find the number of features shared between groups i and j
-            if (exact_mode) {
+            if (exact_mode == 'exact') {
                 num_shared_features <- length(intersect(feature_ii, feature_jj))
-            } else {
+            } else if (exact_mode == 'ambiguous') {
                 # exact==FALSE
                 d_mat <- matrix(FALSE, nrow=total_ii_feature, ncol=total_jj_feature)
                 sapply(1:total_ii_feature, function(seq_ii) {
@@ -286,7 +293,56 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
                         feature_jj <- feature_jj[colSums(d_mat)==0]
                     }
                 }
-            } # end exact==FALSE
+            } else if (exact_mode %in% c('ham_nt','ham_aa')) {
+                # Hamming and threshold
+                d_mat <- matrix(FALSE, nrow=total_ii_feature, ncol=total_jj_feature)
+                if (exact_mode == 'ham_nt') {
+                    distMatrix <- getDNAMatrix()
+                } else {
+                    distMatrix <- getAAMatrix()
+                }
+                sapply(1:total_ii_feature, function(seq_ii) {
+                    sapply(1:total_jj_feature, function(seq_jj) {
+                        sequence_ii <- as.vector(unlist(feature_ii[seq_ii]))
+                        sequence_jj <- as.vector(unlist(feature_jj[seq_jj]))
+                        if (length(sequence_ii) > 0 & length(sequence_jj) > 0) {
+                            max_len <- min(nchar(sequence_ii),nchar(sequence_jj))
+                            this_dist <- seqDist(substring(sequence_ii, 1,max_len), 
+                                                 substring(sequence_jj, 1,max_len), dist_mat = distMatrix)
+                            d_mat[seq_ii,seq_jj] <<- this_dist <= threshold
+                        }
+                    })
+                })
+                
+                if (similarity_method == "min") {
+                    ii_num_shared_features <- sum(rowSums(d_mat)>0)
+                    jj_num_shared_features <- sum(colSums(d_mat)>0)
+                    
+                    # Return number of shared features from the smaller set
+                    # if ties, 
+                    # return min
+                    if (total_ii_feature < total_jj_feature) {
+                        num_shared_features <- ii_num_shared_features
+                    } else if (total_ii_feature > total_jj_feature) {
+                        num_shared_features <- jj_num_shared_features
+                    } else {
+                        num_shared_features <- min(ii_num_shared_features, jj_num_shared_features)
+                    }
+                    
+                } else {
+                    num_shared_features <- sum(colSums(d_mat)>0, rowSums(d_mat)>0)
+                    if (any(rowSums(d_mat)==0)) {
+                        feature_ii <- feature_ii[rowSums(d_mat)==0]
+                    }
+                    if (any(colSums(d_mat)==0)) {
+                        feature_jj <- feature_jj[colSums(d_mat)==0]
+                    }
+                }
+                
+            } else {
+                stop("Unknown `identity`")
+            }
+            # end exact==FALSE
             
             # Get %, different denominators for min, jaccard and user defined
             if (similarity_method == "min") {
@@ -387,7 +443,7 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
                                    features[i],": ",
                                    paste0("similarity=", similarity[i]),
                                    ", ",
-                                   paste0("exact=", exact[i])
+                                   paste0("exact=", identity[i])
                 )
                 title <- paste(title, new_line, sep="")
             }
