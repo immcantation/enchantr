@@ -141,6 +141,19 @@ heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
 
 Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r heavy_chains`.
 
+```{r inputsamplesumary}
+input_samples_summary <- db %>%
+   group_by(sample_id, subject_id, tissue) %>%
+   summarize(size = n()) %>%
+   arrange(subject_id)
+
+eetable(input_samples_summary,
+    caption=paste0("Input samples."
+      )
+) 
+```
+
+
 ## Sequences per locus
 
 ```{r inputlocussumary}
@@ -334,12 +347,12 @@ db <- db %>%
 num_clones_table <- db %>%
    filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
    group_by(sample_id) %>%
-   mutate(sample_size=n()) %>%
+   mutate(sequences=n()) %>%
    group_by(sample_id) %>%
    mutate(
       number_of_clones=length(unique(clone_id)),
    ) %>%
-   group_by(!!!rlang::syms(c("sample_id","sample_size", params$cloneby, "number_of_clones"))) %>%
+   group_by(!!!rlang::syms(c("sample_id","sequences", params$cloneby, "number_of_clones"))) %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
@@ -355,18 +368,14 @@ num_clones_table_nosingle <- db %>%
    filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
    filter(clone_size_count>1) %>%
    group_by(sample_id) %>%
-   mutate(sample_size=n()) %>%
+   mutate(sequences=n()) %>%
    group_by(sample_id) %>%
    mutate(
       number_of_clones=length(unique(clone_id)),
    ) %>%
-   group_by(!!!rlang::syms(c("sample_id","sample_size", params$cloneby, "number_of_clones"))) %>%
+   group_by(!!!rlang::syms(c("sample_id","sequences", params$cloneby, "number_of_clones"))) %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
-
-eetable(num_clones_table,
-    caption="Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
-) 
 
 eetable(num_clones_table_nosingle,
     caption="Summary of the number of clones of size > 1, and their clone sizes, per sample."
@@ -388,7 +397,7 @@ any_tissues <- db %>%
    summarize(num_clones=length(unique(clone_id)))
     
 eetable(any_tissues,
-    caption=paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " and tissues. Subsetting to clones of size > 1 in the cloning group (not the sample).")
+    caption=paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " . Subsetting to clones of size > 1 in the cloning group (not the sample).")
 ) 
 ```
 
@@ -473,8 +482,7 @@ p + geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
 
 ## Same sequence
 
-Identity of the `junction` and `junction_aa` sequence overlap between `sample_id`
-is done using `alakazam::seqEqual`, which allows for ambiguities. 
+Identity of the `junction` and `junction_aa` sequence overlap between `sample_id`.
 
 ```{r overlap}
 overlap <- plotDbOverlap(db %>% filter(grepl("[hHBbDc]", locus)), 
@@ -485,7 +493,9 @@ overlap <- plotDbOverlap(db %>% filter(grepl("[hHBbDc]", locus)),
                          title=NULL,xlab=NULL, ylab=NULL,
                          plot_order=c("tissue","sample_id"), 
                          silent=T, similarity=c("jaccard","jaccard"),
-                         na.rm=FALSE, exact=c(FALSE, FALSE), 
+                         na.rm=FALSE, 
+                         identity=c('ham_aa', 'ambiguous'), 
+                         threshold=0,
                          geom_text_size=3)
 ```
 
@@ -493,8 +503,26 @@ overlap <- plotDbOverlap(db %>% filter(grepl("[hHBbDc]", locus)),
 overlap$p
 ```
 
-## TODO: use a threshold
+## Threshold (`r round(params$threshold,3)`)
 
+```{r overlapthr}
+overlap_thr <- plotDbOverlap(db %>% filter(grepl("[hHBbDc]", locus)), 
+                         group="sample_id", 
+                         features=c("junction_aa","junction"), 
+                         heatmap_colors=c("white","orange", "grey80"), 
+                         print_zero=FALSE, long_x_angle=90,
+                         title=NULL,xlab=NULL, ylab=NULL,
+                         plot_order=c("tissue","sample_id"), 
+                         silent=T, similarity=c("jaccard","jaccard"),
+                         na.rm=FALSE, 
+                         identity=c('ham_aa', 'ambiguous'), 
+                         threshold=round(params$threshold,3),
+                         geom_text_size=3)
+```
+
+```{r overlapthrplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
+overlap_thr$p
+```
 # Save
 
 ```{r dbpass}
