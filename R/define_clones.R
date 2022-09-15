@@ -82,8 +82,8 @@ define_clones_project <- function(path,...) {
 #' db <- ExampleDb
 #' 
 #' ## Plot the number of sequences that overlap across samples
-#' overlap <- plotDbOverlap(db, group="sample", features="clone_id", exact=T, similarity="jaccard")
-#' overlap <- plotDbOverlap(db, group="sample", features=c("clone_id","junction"))
+#' overlap <- plotDbOverlap(db, group="sample_id", features="clone_id", identity="exact", similarity="jaccard")
+#' overlap <- plotDbOverlap(db, group="sample_id", features=c("clone_id","junction"))
 #' 
 #' ## The returned plot can be modified
 #' ## To edit the axis labels. the title and change the color scale and change
@@ -122,20 +122,20 @@ plotDbOverlap <- function(db, group="sample",
     if (check != TRUE) { stop(check) }
     
     db$GROUPS <- db %>%
-        dplyr::group_by_(.dots=group) %>% group_indices()
+        dplyr::group_by(!!!rlang::syms(group)) %>% group_indices()
     
-        if (length(unique(db[['GROUPS']])) == 1) {
-            warning("One group only. Can't look for overlaps.")
-            return(NULL)
-        }
+    if (length(unique(db[['GROUPS']])) == 1) {
+        warning("One group only. Can't look for overlaps.")
+        return(NULL)
+    }
 
     group_dots <- c("GROUPS",group)
     
     group_tables <- lapply(features, function(feature) {
         
         group_table <- db %>%
-            dplyr::group_by_(.dots=group_dots) %>%
-            dplyr::distinct_(.dots=feature)
+            dplyr::group_by(!!!rlang::syms(group_dots)) %>%
+            dplyr::distinct(!!rlang::sym(feature))
         
         if (na.rm) {
             group_table$NA_RM_COUNT <- as.numeric(!is.na(group_table[[feature]]))
@@ -269,7 +269,7 @@ plotDbOverlap <- function(db, group="sample",
                         }
                     })
                 })
-                
+
                 if (similarity_method == "min") {
                     ii_num_shared_features <- sum(rowSums(d_mat)>0)
                     jj_num_shared_features <- sum(colSums(d_mat)>0)
@@ -309,7 +309,7 @@ plotDbOverlap <- function(db, group="sample",
                         if (length(sequence_ii) > 0 & length(sequence_jj) > 0) {
                             if (nchar(sequence_ii) == nchar(sequence_jj)) {
                                 this_dist <- alakazam::seqDist(sequence_ii, sequence_jj, dist_mat = distMatrix)
-                                d_mat[seq_ii,seq_jj] <<- this_dist <= threshold
+                                d_mat[seq_ii,seq_jj] <<- this_dist/nchar(sequence_ii) <= threshold
                             }
                         }
                         
@@ -344,21 +344,21 @@ plotDbOverlap <- function(db, group="sample",
             } else {
                 stop("Unknown `identity`")
             }
-            # end exact==FALSE
+            # end find the number of features shared between groups i and j
             
             # Get %, different denominators for min, jaccard and user defined
             if (similarity_method == "min") {
                 total_feature = min(total_ii_feature, total_jj_feature)
                 # find the percentage of feature shared relative to the total number of feature
-                perc_shared_feature = round ( num_shared_features / total_feature * 100 , 1)
+                perc_shared_feature <- round ( num_shared_features / total_feature * 100 , 1)
             } else if (similarity_method=="jaccard" ) {
                 ## Intersection over union
                 perc_shared_feature <- round(num_shared_features/length(unique(union(feature_ii, feature_jj))) * 100, 1)
             } else { # user defined
                 if ( group_desc_i[[last_group]] == similarity_method ) {
-                    perc_shared_feature = round ( num_shared_features / total_ii_feature * 100 , 1)
+                    perc_shared_feature <- round ( num_shared_features / total_ii_feature * 100 , 1)
                 } else {
-                    perc_shared_feature = round ( num_shared_features / total_jj_feature * 100 , 1)
+                    perc_shared_feature <- round ( num_shared_features / total_jj_feature * 100 , 1)
                 }
             }
             overlap_perc_matrix[ii, jj] <- perc_shared_feature
