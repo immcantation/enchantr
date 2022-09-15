@@ -108,6 +108,8 @@ plotDbOverlap <- function(db, group="sample", features=c("clone_id","sequence_al
     columns <- c(group,features, plot_order)
     columns <- columns[!is.null(columns)]
     
+    db <- db %>% ungroup()
+    
     check <- alakazam:::checkColumns(db, columns)
     if (check != TRUE) { stop(check) }
     
