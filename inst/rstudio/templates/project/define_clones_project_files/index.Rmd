@@ -143,7 +143,7 @@ input_size <- nrow(db)
 heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
 ```
 
-Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r heavy_chains`.
+Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r sum(heavy_chains)`.
 
 ```{r inputsamplesumary}
 input_samples_summary <- db %>%
