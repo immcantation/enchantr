@@ -110,7 +110,8 @@ db_ovl <- plotDbOverlap(db %>%
                         group = c("sample_id"), 
                         features=c("sequence_alignment", "junction"),  
                         plot_order=c("sample_id"), 
-                        exact=c(FALSE, FALSE), similarity = c("min","min"), 
+                        identity=c("ambiguous", "ambiguous"), 
+                        similarity = c("min","min"), 
                         title="auto", silent=T)
 db_ovl
 ```
