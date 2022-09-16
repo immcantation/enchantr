@@ -121,7 +121,7 @@ if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
 }
 printParams(params)
-# save(params, file=file.path(params$outdir,"params.RData"))
+save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
 # Read repertoires
@@ -485,44 +485,49 @@ p + geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
 Identity of the `junction` and `junction_aa` sequence overlap between `sample_id`.
 
 ```{r overlap}
-overlap <- plotDbOverlap(db %>% filter(grepl("[hHBbDc]", locus)), 
+overlap <- plotDbOverlap(db %>% 
+                            filter(grepl("[hHBbDc]", locus)), 
                          group="sample_id", 
                          features=c("junction_aa","junction"), 
                          heatmap_colors=c("white","orange", "grey80"), 
                          print_zero=FALSE, long_x_angle=90,
                          title=NULL,xlab=NULL, ylab=NULL,
                          plot_order=c("tissue","sample_id"), 
-                         silent=T, similarity=c("jaccard","jaccard"),
+                         silent=T, similarity=c("min","min"),
                          na.rm=FALSE, 
                          identity=c('ham_aa', 'ambiguous'), 
                          threshold=0,
-                         geom_text_size=3)
+                         geom_text_size=3) 
 ```
 
 ```{r overlapplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
+
 overlap$p
 ```
 
 ## Threshold (`r round(params$threshold,3)`)
 
 ```{r overlapthr}
-overlap_thr <- plotDbOverlap(db %>% filter(grepl("[hHBbDc]", locus)), 
+overlap_thr <- plotDbOverlap(db %>% 
+                                filter(grepl("[hHBbDc]", locus)), 
                          group="sample_id", 
                          features=c("junction_aa","junction"), 
                          heatmap_colors=c("white","orange", "grey80"), 
                          print_zero=FALSE, long_x_angle=90,
                          title=NULL,xlab=NULL, ylab=NULL,
                          plot_order=c("tissue","sample_id"), 
-                         silent=T, similarity=c("jaccard","jaccard"),
+                         silent=T, similarity=c("min","min"),
                          na.rm=FALSE, 
-                         identity=c('ham_aa', 'ambiguous'), 
+                         identity=c('ham_aa', 'ham_nt'), 
                          threshold=round(params$threshold,3),
-                         geom_text_size=3)
+                         geom_text_size=3) 
 ```
 
 ```{r overlapthrplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
+
 overlap_thr$p
 ```
+
 # Save
 
 ```{r dbpass}
