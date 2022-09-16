@@ -48,6 +48,10 @@ params:
        label: "`linkage`"
        input: text
        value: "single"
+   nboot:
+       label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
+       input: numeric
+       value: 200               
    outname:
       label: "`outname`"
       input: text
@@ -446,36 +450,118 @@ ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fi
 
 # Clonal abundance {#clonal_abundance}
 
-Clonal abundance is the size of each clone 
-(as a fraction of the entire repertoire). `estimateAbundance` estimates the clonal
-abundance distribution along with confidence intervals on these clone sizes using bootstrapping. The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
+Clonal abundance is the size of each clone (as a fraction of the entire repertoire). To correct for the different number of sequences in each of the samples, `estimateAbundance` estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping. `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less sequences (N). The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
 
 ```{r abundancebysample}
 # calculate the rank-abundance curve
 a <- estimateAbundance(db %>% filter(grepl("[hHBbDc]", locus)),
                        group = "sample_id", min_n = 15) # Default min_n=30
-p <- plotAbundanceCurve(a, annotate="depth", silent = T) + 
-           facet_wrap(~sample_id)
-p
+# annotate
+a@abundance <- a@abundance %>%
+   left_join( db %>% 
+                 select(!!!rlang::syms(unique(c("sample_id", 
+                                                "subject_id", 
+                                                "tissue", 
+                                                params$cloneby))
+                                       )
+                  ) %>%
+                 distinct(),
+              
+              )
+p <- plotAbundanceCurve(a, annotate="depth", silent = T) 
+write.table(a@abundance, 
+            file = file.path(params$outdir, "clonal_abundance.tsv"), 
+            sep="\t", quote = F, row.names = F)
 ```
+
+## Abundance plot by sample
+
+```{r abundanceSample, eval=TRUE,  fig.cap=caption, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
+# plot duplicated cells
+caption <- "Clonal abundance plot."
+abundanceSample <- p + facet_wrap(~ subject_id + sample_id)
+abundanceSample <- eeplot(abundanceSample, 
+                     params$outdir, 
+                     knitr::opts_current$get('label'))
+abundanceSample
+
+```
+
+## Abundance plot by tissue
+
+```{r abundanceTissue, eval=TRUE, fig.width=6, fig.height=3, fig.cap=caption}
+# plot duplicated cells
+caption <- "Clonal abundance plot visualized by tissue."
+abundanceTissue <- p + facet_wrap(~ tissue)
+abundanceTissue <- eeplot(abundanceTissue, 
+                     params$outdir, 
+                     knitr::opts_current$get('label'))
+abundanceTissue
+```
+
 
 # Diversity
 
 The clonal abundance distribution can be characterized using diversity statistics. Diversity scores (D) are calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
 
-The function alphaDiversity resamples the sequences and calculates diversity scores (D) over a interval of diversity orders (q). The diversity (D) is shown on the y-axis and the x-axis is the parameter q. - q = 0 corresponds to Species Richness - q = 1 corresponds to Shannon Entropy - q = 2 corresponds to Simpson Index
+The function alphaDiversity resamples the sequences (`r params$nboot` random bootstrapping events, with the number of sequences in the sample with less sequences (N)) and calculates diversity scores (D) over a interval of diversity orders (q). The diversity (D) is shown on the y-axis and the x-axis is the parameter q. - q = 0 corresponds to Species Richness - q = 1 corresponds to Shannon Entropy - q = 2 corresponds to Simpson Index
 
 Inspection of this figure is useful to determine whether any difference in diversity between two repertoires depends on the statistic used or if it is a universal property. 
+
+
+The clonal diversity $D$ of the repertoire was calculated according to the general formula of Hill Diversity
+numbers:
+
+$$
+\begin{aligned}
+    ^{q}D = \left( \sum_{i=1}^Rp_i^q \right)^{1/(1-q)}
+\end{aligned}
+$$
+
+where:
+
+* $p_i$ is the proportion of unique sequences belonging to clone $i$.
+* $q$ are the values of the different diversity numbers.
+* $R$ is the Richness, the number of different clones in the sample.
+
+At $q=1$ the function is undefined and the limit to zero equals the exponential of the Shannon Entropy:
+
+$$
+\begin{aligned}
+    ^{1}D = exp \left(  \sum_{i=1}^Rp_i ln(p_i)  \right)
+\end{aligned}
+$$
+
+The intuition about the different Hill Diversity values is the following:
+
+* At $q=0$ the diversity index equals the number of clones in the sample.
+* At $q=1$ the diversity index is the geometric mean of the clones in the sample,
+weighted by their proportion in the sample.
+* At $q>1$ more weight is given to the clones with higher proportions in the sample.
+
 
 ```{r diversity}
 # generate the Hill diversity curve
 d <- alphaDiversity(db %>% filter(grepl("[hHBbDc]", locus)), group = "sample_id")
-p <- plotDiversityCurve(d, silent = T)
-p + geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
+diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
+write.table(d@diversity, 
+            file = file.path(params$outdir, "clonal_diversity.tsv"),
+            sep="\t", quote = F, row.names = F)
+```
+
+```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.3*length(unique(db[['sample_id']]))}
+# plot duplicated cells
+caption <- "Clonal diversity per `sample_id`."
+diversitySample <- diversitySample + 
+    geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
     geom_text(data = data.frame(q = c(0,1,2), y = round(max(p$data$d_upper)/2),
               label = c("Richness", "Shannon", "Simpson")),
               aes(x = q, y = y,label = label), size = 3, angle = 90, vjust = -0.4, inherit.aes  =  F, color = "grey50") +
     facet_wrap(~sample_id)
+diversitySample <- eeplot(diversitySample, 
+                     params$outdir, 
+                     knitr::opts_current$get('label'))
+diversitySample
 ```
 
 # `junction` and `junction_aa` overlap
@@ -524,7 +610,6 @@ overlap_thr <- plotDbOverlap(db %>%
 ```
 
 ```{r overlapthrplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
-
 overlap_thr$p
 ```
 
