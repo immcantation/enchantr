@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
-Version: 0.0.1
-Date: 2022-10-05
+Version: 0.0.1.999
+Date: 2022-10-11
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
             person("Steven", "Kleinstein", role=c("aut", "cph"),
@@ -16,12 +16,12 @@ Encoding: UTF-8
 Depends:
     R (>= 3.5.0),
 Imports:
-    airr,
+    airr (>= 1.4.1),
     alakazam,
     bookdown,
     data.table,
     doParallel,
-    dowser (>= 1.0.1),
+    dowser (>= 1.1.0),
     dplyr,
     DT,
     ggraph,

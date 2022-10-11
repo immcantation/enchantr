@@ -63,7 +63,6 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
 library(enchantr)
-library(DT)
 file.copy(params$logo, 
           file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
           recursive = T, overwrite=T)
