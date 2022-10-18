@@ -154,12 +154,12 @@ swt <- slideWindowTune(
 
 ## Slide Window Tune Plot
 
-### `plotFiltered=NULL`
+### `plotFiltered='per_mutation'`
 
 ```{r swtplotNull}
-slideWindowTunePlot(
+plotSlideWindowTune(
   swt,
-  plotFiltered = NULL,
+  plotFiltered = 'per_mutation',
   percentage = FALSE,
   jitter.x = FALSE,
   jitter.x.amt = 0.1,
@@ -176,12 +176,12 @@ slideWindowTunePlot(
 )
 ```
 
-### `plotFiltered=TRUE`
+### `plotFiltered='filtered'`
 
 ```{r swtplotTrue}
-slideWindowTunePlot(
+plotSlideWindowTune(
    swt,
-   plotFiltered = TRUE,
+   plotFiltered ="filtered" ,
    percentage = FALSE,
    jitter.x = FALSE,
    jitter.x.amt = 0.1,
