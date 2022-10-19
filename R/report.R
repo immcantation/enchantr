@@ -39,6 +39,12 @@ enchantr_report <- function(name=c("validate_input",
             "dowser_lineage" = invisible(dowser_lineage_project(outdir))
     )
     
+    if (!is.null(report_params[['logo']])) {
+        file.copy(report_params[['logo']],
+                  file.path(params[['outdir']],"assets", "logo.png"),
+                  recursive = T, overwrite=T)
+    }
+    
     # render
     xfun::in_dir(
         outdir,
