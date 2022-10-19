@@ -214,7 +214,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r dtnplot, fig.width=7, fig.height=2*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/3}
+```{r dtnplot, fig.width=9, fig.height=2*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/3}
 wrap_formula <- as.formula(paste0(params$singlecell,"~sample_id"))
 db <- bind_rows(bulk_dtn,sc_dtn)
 p <- ggplot(db) + 
