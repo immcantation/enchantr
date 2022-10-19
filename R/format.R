@@ -6,18 +6,20 @@
 
 #' @importFrom rmarkdown output_format knitr_options pandoc_options
 #' @export
-immcantation = function(...) {
+immcantation <- function(...) {
     
+    user_args <- list(...)
+    
+    # copy css, don't overwrite user provided logo.png
     file.copy(
         system.file("assets", package = "enchantr"),
         getwd(),
-        recursive = T)
-    # TODO: there must be a better way to do this
+        recursive = T, overwrite = F)
     file.copy(
-        system.file("assets", package = "enchantr"),
+        "assets",
         file.path(getwd(), "enchantr"),
-        recursive = T)
-    user_args <- list(...)
+        recursive = T, overwrite = F)
+
     immcantation_config <- list(
         "config" = list (
           "fig_caption" = T,
@@ -45,9 +47,6 @@ immcantation = function(...) {
         keep.null = T) 
     }
     
-    ## TODO: code folding
-    ## https://github.com/rstudio/bookdown/issues?q=folding+is%3Aissue+is%3Aopen+
-    ## https://stackoverflow.com/questions/45360998/code-folding-in-bookdown
     # call the base html_document function
     b <- bookdown::gitbook(
                       toc_depth= immcantation_config[['config']][['toc']][['depth']],
@@ -55,7 +54,8 @@ immcantation = function(...) {
                       fig_caption=immcantation_config[['config']][['fig_caption']],
                       highlight = immcantation_config[['highlight']],
                       keep_md = immcantation_config[['config']][['keep_md']],
-                      config=c(immcantation_config[['config']],immcantation_config['fontsettings'])
+                      config=c(immcantation_config[['config']],immcantation_config['fontsettings']),
+                      code_folding="show"
                       )
     invisible(b)
 }

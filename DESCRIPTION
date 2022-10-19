@@ -18,7 +18,7 @@ Depends:
 Imports:
     airr (>= 1.4.1),
     alakazam,
-    bookdown,
+    bookdown (>= 0.29),
     data.table,
     doParallel,
     dowser (>= 1.1.0),
