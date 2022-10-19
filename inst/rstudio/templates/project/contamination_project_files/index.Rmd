@@ -82,8 +82,9 @@ file.copy(params$logo,
 
 # Input parameters
 
-```{r input-parameters}
+```{r input-parameters, results='asis'}
 printParams(params)
+print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
