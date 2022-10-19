@@ -41,7 +41,7 @@ enchantr_report <- function(name=c("validate_input",
     
     if (!is.null(report_params[['logo']])) {
         file.copy(report_params[['logo']],
-                  file.path(params[['outdir']],"assets", "logo.png"),
+                  file.path(report_params[['outdir']],"assets", "logo.png"),
                   recursive = T, overwrite=T)
     }
     
