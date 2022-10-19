@@ -146,22 +146,20 @@ heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
 
 Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r sum(heavy_chains, na.rm=T)`.
 
-```{r inputsamplesumary}
+```{r inputsamplesumary, results='asis'}
 input_samples_summary <- db %>%
    group_by(sample_id, subject_id, tissue) %>%
    summarize(size = n()) %>%
    arrange(subject_id)
 
-eetable(input_samples_summary,
-    caption=paste0("Input samples."
-      )
-) 
+eetable(input_samples_summary)
+print_table_caption(tag="input_samples_summary", text="Input samples summary.")
 ```
 
 
 ## Sequences per locus
 
-```{r inputlocussumary}
+```{r inputlocussumary, results='asis'}
 input_locus_summary <- db %>%
    group_by(!!!rlang::syms(c("sample_id",params$cloneby)), locus) %>%
    summarize(n=n(), .groups="drop") %>%
@@ -176,30 +174,30 @@ total <- data.frame(list("sample_id"="Total",
 
 input_locus_summary <- bind_rows(input_locus_summary, total)
 
-eetable(input_locus_summary,
-    caption=paste0("Input data. Number of sequences in each ", 
+tab_caption <- paste0("Input data. Number of sequences in each ", 
                    paste("sample", params$cloneby, sep=", "),
                    " and locus."
       )
-) 
+eetable(input_locus_summary) 
+print_table_caption(tag="input_locus_summary", text=tab_caption)
 ```
 
 ```{r eval="c_call" %in% colnames(db), results='asis'}
 cat("## Sequences per c_call\n")
 ```
 
-```{r input-ccall-sumary, eval="c_call" %in% colnames(db)}
+```{r input-ccall-sumary, eval="c_call" %in% colnames(db), results='asis'}
 input_c_call_summary <- db %>%
    group_by(!!!rlang::syms(c("sample_id",params$cloneby)), c_call) %>%
    summarize(n=n(), .groups="drop") %>%
        pivot_wider(names_from=c_call, values_from=n)
 
-eetable(input_c_call_summary,
-    caption=paste0("Input data. Number of sequences in each ", 
+tab_caption <- paste0("Input data. Number of sequences in each ", 
                    paste("sample", params$cloneby, sep=", "),
                    " and c_call"
       )
-) 
+eetable(input_c_call_summary) 
+print_table_caption(tag="input_c_call_summary", text=tab_caption)
 ```
 
 # Clonal assignment
@@ -348,7 +346,7 @@ db <- db %>%
    mutate_at(vars(starts_with("clone_size")), round,2)
 ```
 
-```{r}
+```{r, results='asis'}
 num_clones_table <- db %>%
    filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
    group_by(sample_id) %>%
@@ -361,14 +359,14 @@ num_clones_table <- db %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
-eetable(num_clones_table,
-    caption="Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
-) 
+tab_caption <- "Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
+eetable(num_clones_table) 
+print_table_caption(tag="num_clones_table", text=tab_caption)
 ```
 
 ## Expanded clones within `sample_id` (heavy chain, without singletons)
 
-```{r}
+```{r, results='asis'}
 num_clones_table_nosingle <- db %>%
    filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
    filter(clone_size_count>1) %>%
@@ -382,14 +380,14 @@ num_clones_table_nosingle <- db %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
-eetable(num_clones_table_nosingle,
-    caption="Summary of the number of clones of size > 1, and their clone sizes, per sample."
-) 
+tab_caption <- "Summary of the number of clones of size > 1, and their clone sizes, per sample."
+eetable(num_clones_table_nosingle)
+print_table_caption(tag="num_clones_table_nosingle", text=tab_caption)
 ```
 
 ## Expanded clones within `r paste(params$cloneby,collapse=", ")`
 
-```{r}
+```{r, results='asis'}
 any_tissues <- db %>%
    filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
    group_by(!!!rlang::syms(c("clone_id", params$cloneby))) %>%
@@ -401,14 +399,14 @@ any_tissues <- db %>%
    group_by(!!!rlang::syms(c("tissues", params$cloneby))) %>%
    summarize(num_clones=length(unique(clone_id)))
     
-eetable(any_tissues,
-    caption=paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " . Subsetting to clones of size > 1 in the cloning group (not the sample).")
-) 
+tab_caption <- paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " . Subsetting to clones of size > 1 in the cloning group (not the sample).")
+eetable(any_tissues) 
+print_table_caption(tag="any_tissues", text=tab_caption)
 ```
 
 ## Clones spanning multiple tissues
 
-```{r}
+```{r, results='asis'}
 multi_tissue <- db %>%
     filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
     group_by(!!!rlang::syms(c(params$cloneby, "clone_id"))) %>%
@@ -422,9 +420,9 @@ multi_tissue <- multi_tissue %>%
    group_by(!!!rlang::syms(c("clone_id", "clone_size_count", "clone_size_freq","tissue", "sample_id", params$clone_by))) %>%
    summarize(seq_count=n())
 
-eetable(multi_tissue,
-    caption="Summary of clones spanning more than one tissue."
-) 
+tab_caption <- "Summary of clones spanning more than one tissue."
+eetable(multi_tissue) 
+print_table_caption(tag="multi_tissue", text=tab_caption)
 ```
 
 # Clone size distribution
