@@ -15,9 +15,15 @@ immcantation <- function(...) {
         system.file("assets", package = "enchantr"),
         getwd(),
         recursive = T, overwrite = F)
+    
+    enchantr_dir <- file.path(getwd(), "enchantr")
+    if (!dir.exists(enchantr_dir)) {
+        dir.create(enchantr_dir, recursive = T)
+    }
+    
     file.copy(
         "assets",
-        file.path(getwd(), "enchantr"),
+        enchantr_dir,
         recursive = T, overwrite = F)
 
     immcantation_config <- list(

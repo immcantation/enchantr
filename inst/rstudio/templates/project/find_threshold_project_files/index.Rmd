@@ -85,7 +85,7 @@ if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
 }
 
-file.copy(params$logo, 
+file.copy(params$logo,
           file.path(params$outdir,"assets", "logo.png"),
           recursive = T, overwrite=T)
 ```
