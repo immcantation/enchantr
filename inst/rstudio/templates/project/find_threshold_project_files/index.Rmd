@@ -95,8 +95,9 @@ file.copy(params$logo,
 ## Parameters
 
 
-```{r input-parameters}
+```{r input-parameters, results='asis'}
 printParams(params)
+print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
@@ -138,15 +139,14 @@ sc_dtn <- data.frame()
 
 Number of sequences loaded: `r input_size`.
 
-```{r}
+```{r, results='asis'}
 input_summary <- db %>%
    group_by(!!!rlang::syms(c("sample_id",params$cloneby)), locus) %>%
    summarize(n=n(), .groups="drop") %>%
        pivot_wider(names_from=locus, values_from=n)
 
-eetable(input_summary,
-    caption=paste0("Input data.")
-) 
+eetable(input_summary) 
+print_table_caption(tag="input_summary", text="Input data summary.")
 ```
 
 # Distance to nearest
@@ -254,7 +254,7 @@ threshold <- NA
 threshold_summary <- data.frame(mean_threshold = NA)
 ```
 
-```{r threshold, eval=!all(is.na(db[['dist_nearest']]))}
+```{r threshold, eval=!all(is.na(db[['dist_nearest']])), results='asis'}
 cross_dist_nearest <- NULL
 if ("cross_dist_nearest" %in% colnames(db)) {
     if (any(!is.na(db[['cross_dist_nearest']]))) {
@@ -276,10 +276,13 @@ threshold <- findThresholdDb(db,
 threshold_summary <- gmmSummary(threshold) %>%
     mutate(mean_threshold=mean(threshold, na.rm=TRUE))
 mean_threshold <- round(threshold_summary$mean_threshold[1],2)
-eetable(threshold_summary, 
-        paste0("Summary of threshold values. Mean threshold is: ", mean_threshold))  %>%
+
+tab_caption <- paste0("Summary of threshold values. Mean threshold is: ", mean_threshold)
+
+eetable(threshold_summary)  %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
                     digits=3)
+print_table_caption(tag="threshold_summary",text=tab_caption)
 ```
 
 ```{r, eval=!all(is.na(db[['dist_nearest']])), results='asis'}

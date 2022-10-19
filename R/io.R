@@ -37,22 +37,37 @@ eeplot <- function(p, outdir=NULL, file=NULL) {
 
 
 #' @export
-eetable <- function(df, caption) {
+eetable <- function(df, caption=NULL) {
     element_id <- deparse1(substitute(df))
-    caption <- paste0(paste0("(\\#tab:",element_id,"-table)")," ",caption)
-    DT::datatable(df,
-                  filter="top", elementId = element_id, 
-                  rownames = FALSE, fillContainer = F, 
-                  options = list(scrollX = TRUE),
-                  caption = htmltools::tags$caption(
-                      style = 'caption-side: top; text-align: left;',
-                      caption
-                  )                  
-                 
-    )
-    
+    tag <- gsub("_","-",paste0("(\\#tab:",element_id,"-table)"))
+    if (!is.null(caption)) {
+        caption <- paste0(tag," ",caption)   
+    }
+    dt <- DT::datatable(df,
+                        filter="top", elementId = element_id, 
+                        rownames = FALSE, fillContainer = F, 
+                        options = list(scrollX = TRUE),
+                        caption = htmltools::tags$caption(
+                            style = 'caption-side: top; text-align: left;',
+                            caption
+                        ))   
+    # TODO: fix caption and numbering https://stackoverflow.com/questions/49819892/cross-referencing-dtdatatable-in-bookdown
+    dt
 }
 
+# In results='asis' chunk
+# https://github.com/rstudio/bookdown/issues/313
+# Tab. \@ref(tab:threshold-summary-table)
+#' @export
+print_table_caption <- function(tag, text) {
+    tag <- gsub("_","-",tag)
+    cat("<table>", paste0("<caption>",
+                          "(#tab:",tag,"-table)",
+                          " ",
+                          text,
+                          "</caption>"),
+        "</table>", sep ="\n")
+}
 
 # db <- data.frame(
 #     'id'=c(1,2),
@@ -73,8 +88,5 @@ printParams <- function(p) {
         select(ind, values) %>%
         rename( parameter = ind,
                 value = values)
-    eetable(input,
-        caption='Table: Input parameters.'
-        
-    )
+    eetable(input)
 }
