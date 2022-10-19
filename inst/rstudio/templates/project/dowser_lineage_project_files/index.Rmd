@@ -86,18 +86,19 @@ suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("scoper"))
 suppressPackageStartupMessages(library("dowser"))
 
+if (!dir.exists(params[['outdir']])) {
+    dir.create(params[['outdir']], recursive = T)
+}
+
 file.copy(params$logo, 
-          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          file.path(params$outdir,"assets", "logo.png"),
           recursive = T, overwrite=T)
 ```
 
 # Input parameters
 
 ```{r input-parameters}
-params
-if (!dir.exists(params[['outdir']])) {
-   dir.create(params[['outdir']], recursive = T)
-}
+printParams(params)
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 

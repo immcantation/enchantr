@@ -69,16 +69,12 @@ makeLabel <- function(db, fields='id'){
 
 #' @export
 printParams <- function(p) {
-    DT::datatable(
-        stack(p) %>%
-            select(ind, values) %>%
-            rename( parameter = ind,
-                    value = values),
-        filter = "top",
-        options = list(scrollX = TRUE),
-        caption = htmltools::tags$caption(
-            style = 'caption-side: top; text-align: left;',
-            'Table: Input parameters.'
-        )
+    input <- stack(p) %>%
+        select(ind, values) %>%
+        rename( parameter = ind,
+                value = values)
+    eetable(input,
+        caption='Table: Input parameters.'
+        
     )
 }

@@ -81,8 +81,12 @@ suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("tidyr"))
 
+if (!dir.exists(params[['outdir']])) {
+    dir.create(params[['outdir']], recursive = T)
+}
+
 file.copy(params$logo, 
-          file.path(params$outdir,"assets", paste0("logo", gsub(".+(\\..+$)","\\1",params$logo))),
+          file.path(params$outdir,"assets", "logo.png"),
           recursive = T, overwrite=T)
 ```
 
@@ -92,9 +96,6 @@ file.copy(params$logo,
 
 
 ```{r input-parameters}
-if (!dir.exists(params[['outdir']])) {
-   dir.create(params[['outdir']], recursive = T)
-}
 printParams(params)
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
@@ -213,7 +214,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r, fig.width=3*min(3,nrow(unique(db[,c("sample_id", params$singlecell)]))/3), fig.height=0.7*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))}
+```{r dtnplot, fig.width=7, fig.height=2*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/3}
 wrap_formula <- as.formula(paste0(params$singlecell,"~sample_id"))
 db <- bind_rows(bulk_dtn,sc_dtn)
 p <- ggplot(db) + 
