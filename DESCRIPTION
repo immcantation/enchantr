@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.0.1.999
-Date: 2022-10-19
+Date: 2022-10-20
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
             person("Steven", "Kleinstein", role=c("aut", "cph"),
@@ -31,7 +31,7 @@ Imports:
     knitr,
     optparse,
     RColorBrewer,
-    reshape,
+    reshape2,
     rmarkdown,
     scales,
     scoper,
