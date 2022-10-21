@@ -285,7 +285,8 @@ db[['tmp_nrow']] <- 1:nrow(db)
 db <- bind_rows(lapply(split(db,db[['species']]),
                  function(db_sp) { 
                      species <- db_sp[['species']][1]
-                     references <- dowser::readIMGT(file.path(params[['imgt_db']], species, "vdj"))
+                     references <- dowser::readIMGT(file.path(params[['imgt_db']], species, "vdj"),
+                                                    quiet=TRUE)
                      dowser::createGermlines(
                          db_sp,
                          references,
@@ -440,7 +441,7 @@ ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
 
 ## Subset to clone size > 1
 
-```{r clone-size-atleast2, fig.width=8}
+```{r clone-size-atleast2, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_bw() +
     facet_wrap(~sample_id, scales = "free_y", ncol=3) +
@@ -476,10 +477,10 @@ write.table(a@abundance,
 
 ## Abundance plot by sample
 
-```{r abundanceSample, eval=TRUE,  fig.cap=caption, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
+```{r abundanceSample, eval=TRUE,  fig.cap=caption, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 # plot duplicated cells
 caption <- "Clonal abundance plot."
-abundanceSample <- p + facet_wrap(~ subject_id + sample_id)
+abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
 abundanceSample <- eeplot(abundanceSample, 
                      params$outdir, 
                      knitr::opts_current$get('label'))
@@ -489,7 +490,7 @@ abundanceSample
 
 ## Abundance plot by tissue
 
-```{r abundanceTissue, eval=TRUE, fig.width=6, fig.height=3, fig.cap=caption}
+```{r abundanceTissue, eval=TRUE, fig.width=6, fig.height=2*length(unique(db[['tissue']])), fig.cap=caption}
 # plot duplicated cells
 caption <- "Clonal abundance plot visualized by tissue."
 abundanceTissue <- p + facet_wrap(~ tissue)
@@ -566,9 +567,11 @@ diversitySample
 
 # `junction` and `junction_aa` overlap
 
+Similarity of the junction sequence is sometimes used as a proxy of antibody convergence.
+
 ## Same sequence
 
-Identity of the `junction` and `junction_aa` sequence overlap between `sample_id`.
+Identity of the `junction` and `junction_aa` heavy chain sequences between `sample_id`.
 
 ```{r overlap}
 overlap <- plotDbOverlap(db %>% 
@@ -586,12 +589,17 @@ overlap <- plotDbOverlap(db %>%
                          geom_text_size=3) 
 ```
 
-```{r overlapplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
-
-overlap$p
+```{r overlapplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']])),fig.cap=caption}
+caption <- "Number of shared nt and aa heavy chain junction unique sequences. The percent represents the number of shared sequences over the number of sequences in the smaller set."
+overlapplot <- overlap$p
+eeplot(overlapplot, 
+       params$outdir, 
+       knitr::opts_current$get('label'))
 ```
 
 ## Threshold (`r round(params$threshold,3)`)
+
+Similarity of the `junction` and `junction_aa` heavy chain sequences between `sample_id`.
 
 ```{r overlapthr}
 overlap_thr <- plotDbOverlap(db %>% 
@@ -609,8 +617,12 @@ overlap_thr <- plotDbOverlap(db %>%
                          geom_text_size=3) 
 ```
 
-```{r overlapthrplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']]))}
-overlap_thr$p
+```{r overlapthrplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']])), fig.cap=caption}
+caption <- paste0("Number of similar nt and aa heavy chain junction unique sequences. Two sequences are similar if their hamming distance is <=",round(params$threshold,3), ". The percent represents the number of similar sequences over the number of sequences in the smaller set.")
+overlapthrplot <- overlap_thr$p
+eeplot(overlapthrplot, 
+       params$outdir, 
+       knitr::opts_current$get('label'))
 ```
 
 # Save

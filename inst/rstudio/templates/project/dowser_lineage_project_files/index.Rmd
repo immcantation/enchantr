@@ -129,6 +129,8 @@ if (sum(h)>0) {
     } 
     
     clones <- data.frame()
+    c_call <- "c_call"
+    if (!"c_call" %in% colnames(db)) {c_call <- NULL}
     try (
         clones <- formatClones(db,
                                traits = intersect(c("c_call"),colnames(db)),
@@ -143,7 +145,7 @@ if (sum(h)>0) {
                           build=params$build, 
                           exec=params$exec,
                           nproc=params$nproc)
-        plots <- plotTrees(trees, tips="c_call", tipsize=2)
+        plots <- plotTrees(trees, tips=c_call, tipsize=2)
         for (i in 1:length(plots)) {
             cat(paste0("## Tree ",i,"\n\n"))
             print(plots[[i]])
