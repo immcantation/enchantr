@@ -287,6 +287,22 @@ db <- bind_rows(lapply(split(db,db[['species']]),
                      species <- db_sp[['species']][1]
                      references <- dowser::readIMGT(file.path(params[['imgt_db']], species, "vdj"),
                                                     quiet=TRUE)
+                     
+
+                     # tmp fix (add unique sequence id ) for
+                     # Error in dowser::createGermlines(db_sp, references, locus = "locus",  :
+                     #   Sequence IDs are not unique!
+                     dup_ids <- db %>%
+                         ungroup() %>%
+                         group_by(!!!rlang::syms(c(params$cloneby))) %>%
+                         mutate(dup=duplicated(sequence_id)) %>%
+                         pull(dup) %>% any()
+                     
+                     if (dup_ids) {
+                        db <- db %>%
+                         mutate(sequence_id = paste(sample_id, sequence_id, sep = '_'))
+                     }
+
                      dowser::createGermlines(
                          db_sp,
                          references,
@@ -315,7 +331,7 @@ db <- bind_rows(lapply(split(db,db[['species']]),
                      )
                  })) %>%
     arrange(tmp_nrow) %>%
-    select(-tmp_nrow) 
+    select(-tmp_nrow)
 ```
 
 `r nrow(db)` sequences passed the germline reconstruction step
