@@ -273,10 +273,12 @@ if (!is.null(params$log)) {
     log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-# Make cell_id unique and rm duplicates
+# Make cell_id and sequence id unique and rm duplicates
 sample_ids <- unique(db[["sample_id"]])
 write_rearrangement(db[pass,] %>%
-                        mutate(cell_id = paste(cell_id,match(sample_id,sample_ids),sep="-")), file=output_fn)
+                        mutate(cell_id = paste(cell_id,match(sample_id,sample_ids),sep="-"),
+                               sequence_id = paste(sequence_id,match(sample_id,sample_ids),sep="-")), 
+                    file=output_fn)
 ```
 
 ```{r log}
