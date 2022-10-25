@@ -141,6 +141,7 @@ db<- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
     }
     read_rearrangement(x)}
 ))
+db[[ params$singlecell ]] <- as.logical(db[[ params$singlecell ]] )
 input_size <- nrow(db)
 heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
 ```
