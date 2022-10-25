@@ -46,6 +46,7 @@ enchantr_report <- function(name=c("validate_input",
                   recursive = T, overwrite=T)
     }
     
+    report_params[['outdir']] <- file.path(outdir,"enchantr")
     # render
     xfun::in_dir(
         outdir,
