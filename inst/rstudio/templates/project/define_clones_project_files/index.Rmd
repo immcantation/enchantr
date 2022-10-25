@@ -382,7 +382,7 @@ num_clones_table <- db %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
 tab_caption <- "Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
-eetable(num_clones_table) 
+tab_caption <- eetable(num_clones_table, caption=tab_caption, outdir=params$outdir, file="num_clones_table") 
 print_table_caption(tag="num_clones_table", text=tab_caption)
 ```
 
