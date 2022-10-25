@@ -292,14 +292,14 @@ db <- bind_rows(lapply(split(db,db[['species']]),
                      # tmp fix (add unique sequence id ) for
                      # Error in dowser::createGermlines(db_sp, references, locus = "locus",  :
                      #   Sequence IDs are not unique!
-                     dup_ids <- db %>%
+                     dup_ids <- db_sp %>%
                          ungroup() %>%
                          group_by(!!!rlang::syms(c(params$cloneby))) %>%
                          mutate(dup=duplicated(sequence_id)) %>%
                          pull(dup) %>% any()
                      
                      if (dup_ids) {
-                        db <- db %>%
+                        db_sp <- db_sp %>%
                          mutate(sequence_id = paste(sample_id, sequence_id, sep = '_'))
                      }
 
