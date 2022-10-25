@@ -37,12 +37,22 @@ eeplot <- function(p, outdir=NULL, file=NULL) {
 
 
 #' @export
-eetable <- function(df, caption=NULL) {
+eetable <- function(df, caption=NULL, outdir=NULL, file=NULL) {
     element_id <- deparse1(substitute(df))
     tag <- gsub("_","-",paste0("(\\#tab:",element_id,"-table)"))
     if (!is.null(caption)) {
         caption <- paste0(tag," ",caption)   
     }
+    if (!is.null(outdir)) {
+        if (is.null(file)) {
+            file <- element_id
+        }
+        tab_path <- file.path(outdir, paste0(file,".tsv"))
+        caption <- paste0(caption, " File can be found here: <a href='",tab_path,"'> ",basename(tab_path),"</a>")
+        write.table(df, 
+                    file = tab_path, 
+                    sep="\t", quote = F, row.names = F)
+    } 
     dt <- DT::datatable(df,
                         filter="top", elementId = element_id, 
                         rownames = FALSE, fillContainer = F, 
@@ -51,8 +61,10 @@ eetable <- function(df, caption=NULL) {
                             style = 'caption-side: top; text-align: left;',
                             caption
                         ))   
+    
     # TODO: fix caption and numbering https://stackoverflow.com/questions/49819892/cross-referencing-dtdatatable-in-bookdown
-    dt
+    print(dt)
+    invisible(caption)
 }
 
 # In results='asis' chunk

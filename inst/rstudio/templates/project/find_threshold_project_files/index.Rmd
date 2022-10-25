@@ -141,7 +141,7 @@ Number of sequences loaded: `r input_size`.
 
 ```{r, results='asis'}
 input_summary <- db %>%
-   group_by(!!!rlang::syms(c("sample_id",params$cloneby)), locus) %>%
+   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "locus")))) %>%
    summarize(n=n(), .groups="drop") %>%
        pivot_wider(names_from=locus, values_from=n)
 

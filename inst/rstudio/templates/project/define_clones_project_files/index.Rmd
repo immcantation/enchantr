@@ -143,6 +143,9 @@ db<- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
 ))
 db[[ params$singlecell ]] <- as.logical(db[[ params$singlecell ]] )
 input_size <- nrow(db)
+if (!"locus" %in% colnames(db)) {
+    db[['locus']] <- getLocus(db[['v_call']])
+}
 heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
 ```
 
@@ -163,7 +166,7 @@ print_table_caption(tag="input_samples_summary", text="Input samples summary.")
 
 ```{r inputlocussumary, results='asis'}
 input_locus_summary <- db %>%
-   group_by(!!!rlang::syms(c("sample_id",params$cloneby)), locus) %>%
+   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "locus")))) %>%
    summarize(n=n(), .groups="drop") %>%
    pivot_wider(names_from=locus, values_from=n) %>%
    rowwise() %>%
@@ -190,7 +193,7 @@ cat("## Sequences per c_call\n")
 
 ```{r input-ccall-sumary, eval="c_call" %in% colnames(db), results='asis'}
 input_c_call_summary <- db %>%
-   group_by(!!!rlang::syms(c("sample_id",params$cloneby)), c_call) %>%
+   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "c_call")))) %>%
    summarize(n=n(), .groups="drop") %>%
        pivot_wider(names_from=c_call, values_from=n)
 
@@ -374,7 +377,7 @@ num_clones_table <- db %>%
    mutate(
       number_of_clones=length(unique(clone_id)),
    ) %>%
-   group_by(!!!rlang::syms(c("sample_id","sequences", params$cloneby, "number_of_clones"))) %>%
+   group_by(!!!rlang::syms(unique(c("sample_id","sequences", params$cloneby, "number_of_clones")))) %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
@@ -395,7 +398,7 @@ num_clones_table_nosingle <- db %>%
    mutate(
       number_of_clones=length(unique(clone_id)),
    ) %>%
-   group_by(!!!rlang::syms(c("sample_id","sequences", params$cloneby, "number_of_clones"))) %>%
+   group_by(!!!rlang::syms(unique(c("sample_id","sequences", params$cloneby, "number_of_clones")))) %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
