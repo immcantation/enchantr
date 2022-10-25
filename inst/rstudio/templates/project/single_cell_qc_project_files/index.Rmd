@@ -172,7 +172,7 @@ db_no_doublets_size <- nrow(db)
 
 # cell_id + sequence_alignment overlap
 
-Sequences in different samples that share the same cell_id and nucleotide sequence 
+Sequences in different samples that share the same cell_id and nucleotide sequence
 can indicate contamination.
 
 ## stacked bar
@@ -273,7 +273,10 @@ if (!is.null(params$log)) {
     log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-write_rearrangement(db[pass,], file=output_fn)
+# Make cell_id unique and rm duplicates
+sample_ids <- unique(db[["sample_id"]])
+write_rearrangement(db[pass,] %>%
+                        mutate(cell_id = paste(cell_id,match(sample_id,sample_ids),sep="-")), file=output_fn)
 ```
 
 ```{r log}
