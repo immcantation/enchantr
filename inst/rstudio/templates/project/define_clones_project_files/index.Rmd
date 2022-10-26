@@ -574,9 +574,13 @@ weighted by their proportion in the sample.
 # generate the Hill diversity curve
 d <- alphaDiversity(db %>% filter(grepl("[hHBbDc]", locus)), group = "sample_id")
 diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
-write.table(d@diversity, 
-            file = file.path(params$outdir, "clonal_diversity.tsv"),
-            sep="\t", quote = F, row.names = F)
+
+tab <- eetable(d@diversity, file = "clonal_diversity", 
+               outdir=params$outdir, show_max=10,
+               caption="Example 10 lines of the clonal diversity file.")
+tab$table %>%
+        DT::formatRound(columns=c("q","d","d_sd","d_lower", "d_upper", "e", "e_lower", "e_upper"),digits=3)
+print_table_caption("clonal_diversity", tab$caption)
 ```
 
 ```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.3*length(unique(db[['sample_id']]))}
@@ -662,7 +666,9 @@ overlapthrplot
 caption <- overlapthrplot$enchantr$html_caption
 ```
 
-# Save
+# Final repertoires
+
+Find your final repertoires here:
 
 ```{r dbpass}
 # pass <- db[['collapse_pass']]
@@ -704,10 +710,10 @@ if (sum(heavy_chains)>0 & nrow(db)>0) {
             group_fn <- paste0(group_db_label,"_",output_fn)
             output_files <- c(output_files, group_fn)
             output_sizes <- c(output_sizes, nrow(group_db))
-            write_rearrangement(group_db, file=group_fn)
+            write_rearrangement(group_db, file=file.path(params$outdir,group_fn))
         }
     } else {
-        write_rearrangement(db, file=output_fn)
+        write_rearrangement(db, file=file.path(params$outdir,output_fn))
     }
 }
 ```
