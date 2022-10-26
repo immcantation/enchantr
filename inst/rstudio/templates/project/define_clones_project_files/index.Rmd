@@ -623,7 +623,7 @@ overlap <- plotDbOverlap(db %>%
                          geom_text_size=3) 
 ```
 
-```{r overlapplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']])),fig.cap=caption}
+```{r overlapplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))),fig.cap=caption}
 caption <- "Number of shared nt and aa heavy chain junction unique sequences. The percent represents the number of shared sequences over the number of sequences in the smaller set."
 overlapplot <- overlap$p
 overlapplot <- eeplot(overlapplot, 
@@ -655,7 +655,7 @@ overlap_thr <- plotDbOverlap(db %>%
                          geom_text_size=3) 
 ```
 
-```{r overlapthrplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']])), fig.cap=caption}
+```{r overlapthrplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
 caption <- paste0("Number of similar nt and aa heavy chain junction unique sequences. Two sequences are similar if their hamming distance is <=",round(params$threshold,3), ". The percent represents the number of similar sequences over the number of sequences in the smaller set.")
 overlapthrplot <- overlap_thr$p
 overlapthrplot <- eeplot(overlapthrplot, 
