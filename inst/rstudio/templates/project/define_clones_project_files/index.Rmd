@@ -583,7 +583,7 @@ tab$table %>%
 print_table_caption("clonal_diversity", tab$caption)
 ```
 
-```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.3*length(unique(db[['sample_id']]))}
+```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=6, fig.height=2*length(unique(db[['sample_id']]))}
 # plot duplicated cells
 diversitySample <- diversitySample + 
     geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
