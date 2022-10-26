@@ -133,7 +133,9 @@ makeLabel <- function(db, fields='id'){
     labels <- apply(db_fields, 2, function(label_data) {
      paste(unique(label_data),collapse="-")
     })
-    paste(names(labels), labels, sep="_", collapse="_")
+    # too long
+    #paste(names(labels), labels, sep="_", collapse="_")
+    paste(labels, collapse="_")
 }
 
 #' @export
