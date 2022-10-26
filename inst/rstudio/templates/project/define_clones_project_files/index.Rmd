@@ -674,9 +674,9 @@ Find your final repertoires here:
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- file.path(params$outdir,paste0(params$outname,"_clone-pass.tsv"))
+    output_fn <- paste0(params$outname,"_clone-pass.tsv")
 } else {
-    output_fn <- file.path(params$outdir,sub(".tsv$", "_clone-pass.tsv", basename(params$input)))
+    output_fn <- sub(".tsv$", "_clone-pass.tsv", basename(params$input))
 }
 
 if (!is.null(params$log)) {
