@@ -492,9 +492,15 @@ a@abundance <- a@abundance %>%
               
               )
 p <- plotAbundanceCurve(a, annotate="depth", silent = T) 
-write.table(a@abundance, 
-            file = file.path(params$outdir, "clonal_abundance.tsv"), 
-            sep="\t", quote = F, row.names = F)
+```
+
+```{r clonalAbundanceTable, results='asis'}
+tab <- eetable(a@abundance, file = "clonal_abundance", 
+               outdir=params$outdir, show_max=10,
+               caption="Example 10 lines of the clonal abundance file.")
+tab$table %>%
+        DT::formatRound(columns=c("p","p_sd","lower","upper"),digits=3)
+print_table_caption("clonal_abundance", tab$caption)
 ```
 
 ## Abundance plot by sample
@@ -502,12 +508,13 @@ write.table(a@abundance,
 ```{r abundanceSample, eval=TRUE,  fig.cap=caption, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 # plot duplicated cells
 caption <- "Clonal abundance plot."
-abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
+abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3) +
+    labs(caption = caption )
 abundanceSample <- eeplot(abundanceSample, 
                      params$outdir, 
                      knitr::opts_current$get('label'))
 abundanceSample
-
+caption <- abundanceSample$enchantr$html_caption  
 ```
 
 ## Abundance plot by tissue
@@ -515,11 +522,13 @@ abundanceSample
 ```{r abundanceTissue, eval=TRUE, fig.width=6, fig.height=2*length(unique(db[['tissue']])), fig.cap=caption}
 # plot duplicated cells
 caption <- "Clonal abundance plot visualized by tissue."
-abundanceTissue <- p + facet_wrap(~ tissue)
+abundanceTissue <- p + facet_wrap(~ tissue) +
+    labs(caption = caption)
 abundanceTissue <- eeplot(abundanceTissue, 
                      params$outdir, 
                      knitr::opts_current$get('label'))
 abundanceTissue
+caption <- abundanceTissue$enchantr$html_caption  
 ```
 
 

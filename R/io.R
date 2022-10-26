@@ -28,8 +28,9 @@ eeplot <- function(p, outdir=NULL, file=NULL) {
         if (is.null(file)) {
             file <- plot_name
         }
-        p_path <- file.path(outdir, paste0(file,".RData"))
+        p_path <- paste0(file,".RData")
         p_list[[plot_name]][['enchantr']][['html_caption']] <- paste0(p$labels$caption," <a href='",p_path,"'>ggplot file: ",basename(p_path),"</a>")
+        p_path <- file.path(outdir, paste0(file,".RData"))
         save(list=names(p_list), file=p_path)
     } 
     p_list[[plot_name]]
@@ -47,13 +48,14 @@ eeplot <- function(p, outdir=NULL, file=NULL) {
 #' @param file   file name (without extension). If null, will use the name of the
 #'               input data.frame.
 #' @param file   filename. If null, \code{p} will be used.
+#' @param show_max Number of lines to show. All data will be saved in the .tsv file.
 #'
 #' @return It returns a list with a \code{DT::datatable} and the caption, 
 #'         updated with additional text with a link to the destination file.
 #' @seealso  See \link{print_table_caption}, the use of which is required for
 #'           correct placement of the caption.
 #' @export
-eetable <- function(df, caption=NULL, outdir=NULL, file=NULL) {
+eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
     element_id <- deparse1(substitute(df))
     
     # caption and numbering https://stackoverflow.com/questions/49819892/cross-referencing-dtdatatable-in-bookdown
@@ -66,12 +68,16 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL) {
         if (is.null(file)) {
             file <- element_id
         }
-        tab_path <- file.path(outdir, paste0(file,".tsv"))
+        #tab_path <- file.path(outdir, paste0(file,".tsv"))
+        tab_path <- paste0(file,".tsv")
         caption <- paste0(caption, " File can be found here: <a href='",tab_path,"'> ",basename(tab_path),"</a>")
         write.table(df, 
                     file = tab_path, 
                     sep="\t", quote = F, row.names = F)
     } 
+    if (!is.null(show_max)) {
+        df <- df[1:min(show_max,nrow(df)),]
+    }
     dt <- DT::datatable(df,
                         filter="top", elementId = element_id, 
                         rownames = FALSE, fillContainer = F, 
