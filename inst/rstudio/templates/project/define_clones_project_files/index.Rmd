@@ -711,7 +711,7 @@ if (sum(heavy_chains)>0 & nrow(db)>0) {
             output_files <- c(output_files, group_fn)
             output_sizes <- c(output_sizes, nrow(group_db))
             write_rearrangement(group_db, file=group_fn)
-            cat("- [",group_db_label,"](",basename(group_fn),")", sep="")
+            cat("- [",group_db_label,"](",basename(group_fn),")\n", sep="")
         }
     } else {
         write_rearrangement(db, file=output_fn)
