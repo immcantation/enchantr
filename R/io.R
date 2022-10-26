@@ -16,11 +16,12 @@
 #'          caption = "This is the caption")
 #' eeplot(diamonds_plot, outdir=tempdir(), file="diamonds-plot")
 #' @export
-eeplot <- function(p, outdir=NULL, file=NULL) {
+eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL) {
     # This hack is for the plot to maintain the original name in the file,
     # and load it with the same name, not 'p'.
     plot_name <- deparse1(substitute(p))
-    p[['enchantr']][['html_caption']] <- p$labels$caption
+    # p[['enchantr']][['html_caption']] <- p$labels$caption
+    p[['enchantr']][['html_caption']] <- caption
     p_list <- list("p"=p)
     names(p_list) <- plot_name
     assign(plot_name, p)

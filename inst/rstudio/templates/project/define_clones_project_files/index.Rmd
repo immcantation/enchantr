@@ -507,12 +507,11 @@ print_table_caption("clonal_abundance", tab$caption)
 
 ```{r abundanceSample, eval=TRUE,  fig.cap=caption, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 # plot duplicated cells
-caption <- "Clonal abundance plot."
-abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3) +
-    labs(caption = caption )
+abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
 abundanceSample <- eeplot(abundanceSample, 
-                     params$outdir, 
-                     knitr::opts_current$get('label'))
+                     outdir=params$outdir, 
+                     file=knitr::opts_current$get('label'),
+                     caption="Clonal abundance plot.")
 abundanceSample
 caption <- abundanceSample$enchantr$html_caption  
 ```
@@ -521,12 +520,11 @@ caption <- abundanceSample$enchantr$html_caption
 
 ```{r abundanceTissue, eval=TRUE, fig.width=6, fig.height=2*length(unique(db[['tissue']])), fig.cap=caption}
 # plot duplicated cells
-caption <- "Clonal abundance plot visualized by tissue."
-abundanceTissue <- p + facet_wrap(~ tissue) +
-    labs(caption = caption)
+abundanceTissue <- p + facet_wrap(~ tissue)
 abundanceTissue <- eeplot(abundanceTissue, 
-                     params$outdir, 
-                     knitr::opts_current$get('label'))
+                     outdir=params$outdir, 
+                     file=knitr::opts_current$get('label'),
+                     caption="Clonal abundance plot visualized by tissue.")
 abundanceTissue
 caption <- abundanceTissue$enchantr$html_caption  
 ```
@@ -583,7 +581,6 @@ write.table(d@diversity,
 
 ```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.3*length(unique(db[['sample_id']]))}
 # plot duplicated cells
-caption <- "Clonal diversity per `sample_id`."
 diversitySample <- diversitySample + 
     geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
     geom_text(data = data.frame(q = c(0,1,2), y = round(max(p$data$d_upper)/2),
@@ -591,9 +588,11 @@ diversitySample <- diversitySample +
               aes(x = q, y = y,label = label), size = 3, angle = 90, vjust = -0.4, inherit.aes  =  F, color = "grey50") +
     facet_wrap(~sample_id)
 diversitySample <- eeplot(diversitySample, 
-                     params$outdir, 
-                     knitr::opts_current$get('label'))
+                     outdir=params$outdir, 
+                     file=knitr::opts_current$get('label'),
+                     caption="Clonal diversity per `sample_id`.")
 diversitySample
+caption <- diversitySample$enchantr$html_caption 
 ```
 
 # `junction` and `junction_aa` overlap
@@ -623,9 +622,13 @@ overlap <- plotDbOverlap(db %>%
 ```{r overlapplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']])),fig.cap=caption}
 caption <- "Number of shared nt and aa heavy chain junction unique sequences. The percent represents the number of shared sequences over the number of sequences in the smaller set."
 overlapplot <- overlap$p
-eeplot(overlapplot, 
-       params$outdir, 
-       knitr::opts_current$get('label'))
+overlapplot <- eeplot(overlapplot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('label'),
+       caption=caption
+       )
+overlapplot
+caption <- overlapplot$enchantr$html_caption
 ```
 
 ## Threshold (`r round(params$threshold,3)`)
@@ -651,9 +654,12 @@ overlap_thr <- plotDbOverlap(db %>%
 ```{r overlapthrplot, fig.width=6, fig.width=0.4*length(unique(db[['sample_id']])), fig.height=0.4*length(unique(db[['sample_id']])), fig.cap=caption}
 caption <- paste0("Number of similar nt and aa heavy chain junction unique sequences. Two sequences are similar if their hamming distance is <=",round(params$threshold,3), ". The percent represents the number of similar sequences over the number of sequences in the smaller set.")
 overlapthrplot <- overlap_thr$p
-eeplot(overlapthrplot, 
-       params$outdir, 
-       knitr::opts_current$get('label'))
+overlapthrplot <- eeplot(overlapthrplot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('label'),
+       caption=caption)
+overlapthrplot
+caption <- overlapthrplot$enchantr$html_caption
 ```
 
 # Save
