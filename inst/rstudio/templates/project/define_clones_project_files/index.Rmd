@@ -570,7 +570,7 @@ weighted by their proportion in the sample.
 * At $q>1$ more weight is given to the clones with higher proportions in the sample.
 
 
-```{r diversity}
+```{r diversity, results='asis'}
 # generate the Hill diversity curve
 d <- alphaDiversity(db %>% filter(grepl("[hHBbDc]", locus)), group = "sample_id")
 diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
@@ -674,15 +674,15 @@ Find your final repertoires here:
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_clone-pass.tsv")
+    output_fn <- file.path(params$outdir,paste0(params$outname,"_clone-pass.tsv"))
 } else {
-    output_fn <- sub(".tsv$", "_clone-pass.tsv", basename(params$input))
+    output_fn <- file.path(params$outdir,sub(".tsv$", "_clone-pass.tsv", basename(params$input)))
 }
 
 if (!is.null(params$log)) {
-    log_fn <- paste0(params$log,".txt")
+    log_fn <- file.path(params$outdir,paste0(params$log,".txt"))
 } else {
-    log_fn <- sub("_clone-pass.tsv$", "_command_log.txt", basename(output_fn))
+    log_fn <- file.path(params$outdir,sub("_clone-pass.tsv$", "_command_log.txt", basename(output_fn)))
 }
 
 
@@ -707,13 +707,14 @@ if (sum(heavy_chains)>0 & nrow(db)>0) {
                                    by=params$outputby)
             
             group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
-            group_fn <- paste0(group_db_label,"_",output_fn)
+            group_fn <- file.path(params$outdir,paste0(group_db_label,"_",output_fn))
             output_files <- c(output_files, group_fn)
             output_sizes <- c(output_sizes, nrow(group_db))
-            write_rearrangement(group_db, file=file.path(params$outdir,group_fn))
+            write_rearrangement(group_db, file=group_fn)
+            cat("- [",group_db_label,"](",params$outdir,")", sep="")
         }
     } else {
-        write_rearrangement(db, file=file.path(params$outdir,output_fn))
+        write_rearrangement(db, file=output_fn)
     }
 }
 ```

@@ -23,7 +23,7 @@ enchantr_report <- function(name=c("validate_input",
         dir.create(report_params[['outdir']], recursive = T)
     }
     
-    outdir <- normalizePath(report_params[['outdir']])
+    # outdir <- normalizePath(report_params[['outdir']])
     outdir <- report_params[['outdir']]
     ##report_params[['outdir']] <- outdir
     

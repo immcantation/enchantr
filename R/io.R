@@ -73,7 +73,7 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
         tab_path <- paste0(file,".tsv")
         caption <- paste0(caption, " File can be found here: <a href='",tab_path,"'> ",basename(tab_path),"</a>")
         write.table(df, 
-                    file = tab_path, 
+                    file = file.path(outdir,tab_path), 
                     sep="\t", quote = F, row.names = F)
     } 
     if (!is.null(show_max)) {
