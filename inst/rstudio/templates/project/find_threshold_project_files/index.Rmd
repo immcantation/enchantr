@@ -278,11 +278,11 @@ threshold_summary <- gmmSummary(threshold) %>%
 mean_threshold <- round(threshold_summary$mean_threshold[1],2)
 
 tab_caption <- paste0("Summary of threshold values. Mean threshold is: ", mean_threshold)
-
-eetable(threshold_summary)  %>%
+tab <- eetable(threshold_summary, outdir=params$outdir, caption=tab_caption)  
+tab$table %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
                     digits=3)
-print_table_caption(tag="threshold_summary",text=tab_caption)
+print_table_caption(tag="threshold_summary",text=tab$caption)
 ```
 
 ```{r, eval=!all(is.na(db[['dist_nearest']])), results='asis'}

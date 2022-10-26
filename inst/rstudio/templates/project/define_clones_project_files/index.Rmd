@@ -157,7 +157,7 @@ input_samples_summary <- db %>%
    summarize(size = n()) %>%
    arrange(subject_id)
 
-eetable(input_samples_summary)
+eetable(input_samples_summary)$table
 print_table_caption(tag="input_samples_summary", text="Input samples summary.")
 ```
 
@@ -183,7 +183,7 @@ tab_caption <- paste0("Input data. Number of sequences in each ",
                    paste("sample", params$cloneby, sep=", "),
                    " and locus."
       )
-eetable(input_locus_summary) 
+eetable(input_locus_summary)$table
 print_table_caption(tag="input_locus_summary", text=tab_caption)
 ```
 
@@ -201,7 +201,7 @@ tab_caption <- paste0("Input data. Number of sequences in each ",
                    paste("sample", params$cloneby, sep=", "),
                    " and c_call"
       )
-eetable(input_c_call_summary) 
+eetable(input_c_call_summary)$table
 print_table_caption(tag="input_c_call_summary", text=tab_caption)
 ```
 
@@ -382,8 +382,9 @@ num_clones_table <- db %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
 tab_caption <- "Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
-tab_caption <- eetable(num_clones_table, caption=tab_caption, outdir=params$outdir, file="num_clones_table") 
-print_table_caption(tag="num_clones_table", text=tab_caption)
+tab <- eetable(num_clones_table, caption=tab_caption, outdir=params$outdir, file="num_clones_table")
+tab$table
+print_table_caption(tag="num_clones_table", text=tab$caption)
 ```
 
 ## Expanded clones within `sample_id` (heavy chain, without singletons)
@@ -403,7 +404,8 @@ num_clones_table_nosingle <- db %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
 tab_caption <- "Summary of the number of clones of size > 1, and their clone sizes, per sample."
-eetable(num_clones_table_nosingle)
+tab <- eetable(num_clones_table_nosingle, caption = tab_caption, outdir=params$outdir)
+tab$table
 print_table_caption(tag="num_clones_table_nosingle", text=tab_caption)
 ```
 
@@ -422,7 +424,7 @@ any_tissues <- db %>%
    summarize(num_clones=length(unique(clone_id)))
     
 tab_caption <- paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " . Subsetting to clones of size > 1 in the cloning group (not the sample).")
-eetable(any_tissues) 
+eetable(any_tissues, caption=tab_caption)$table
 print_table_caption(tag="any_tissues", text=tab_caption)
 ```
 
@@ -443,7 +445,7 @@ multi_tissue <- multi_tissue %>%
    summarize(seq_count=n())
 
 tab_caption <- "Summary of clones spanning more than one tissue."
-eetable(multi_tissue) 
+eetable(multi_tissue, caption=tab_caption)$table
 print_table_caption(tag="multi_tissue", text=tab_caption)
 ```
 

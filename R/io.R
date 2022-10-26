@@ -1,7 +1,7 @@
 #' eeplot: a convenience function to save ggplot figures
 #' 
 #' This function takes a \code{ggplot}, and saves it in an .RData file in
-#' the \cod{outdir} directory. It returns the same input \code{p} with an 
+#' the \code{outdir} directory. It returns the same input \code{p} with an 
 #' additional field,\code{enchantr}, with an \code{html_caption}
 #' that can be used in html reports, to provide a download link to the figure file.
 #' 
@@ -36,10 +36,29 @@ eeplot <- function(p, outdir=NULL, file=NULL) {
 }
 
 
+#' eeplot: a convenience function to save tables
+#' 
+#' This function takes a \code{data.frame}, and saves it as a .tsv file in
+#' the \code{outdir} directory. 
+#' 
+#' @param df data.frame
+#' @param caption caption for the table
+#' @param outdir directory where the output table be saved.
+#' @param file   file name (without extension). If null, will use the name of the
+#'               input data.frame.
+#' @param file   filename. If null, \code{p} will be used.
+#'
+#' @return It returns a list with a \code{DT::datatable} and the caption, 
+#'         updated with additional text with a link to the destination file.
+#' @seealso  See \link{print_table_caption}, the use of which is required for
+#'           correct placement of the caption.
 #' @export
 eetable <- function(df, caption=NULL, outdir=NULL, file=NULL) {
     element_id <- deparse1(substitute(df))
-    tag <- gsub("_","-",paste0("(\\#tab:",element_id,"-table)"))
+    
+    # caption and numbering https://stackoverflow.com/questions/49819892/cross-referencing-dtdatatable-in-bookdown
+    # tag <- gsub("_","-",paste0("(\\#tab:",element_id,")"))
+    tag <- ""
     if (!is.null(caption)) {
         caption <- paste0(tag," ",caption)   
     }
@@ -56,25 +75,41 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL) {
     dt <- DT::datatable(df,
                         filter="top", elementId = element_id, 
                         rownames = FALSE, fillContainer = F, 
-                        options = list(scrollX = TRUE),
-                        caption = htmltools::tags$caption(
-                            style = 'caption-side: top; text-align: left;',
-                            caption
-                        ))   
-    
-    # TODO: fix caption and numbering https://stackoverflow.com/questions/49819892/cross-referencing-dtdatatable-in-bookdown
-    print(dt)
-    invisible(caption)
+                        options = list(
+                            scrollX = TRUE)#,
+                        # caption = htmltools::tags$caption(
+                        #     style = 'caption-side: top; text-align: left;',
+                        #     caption
+                        # )
+    )   
+    # https://stackoverflow.com/questions/70868546/r-markdown-printing-datatable-from-inside-the-function
+    # https://stackoverflow.com/questions/30509866/for-loop-over-dygraph-does-not-work-in-r
+    # doesn't work, prints whit space
+    # print(htmltools::tagList(list(dt)))
+    list(
+        "table"=dt,
+        "caption"=caption
+    )
 }
 
-# In results='asis' chunk
+# Hack to print table captions correctly
+# Must be used right after eetable, in a results='asis' chunk
 # https://github.com/rstudio/bookdown/issues/313
-# Tab. \@ref(tab:threshold-summary-table)
+# Tab. \@ref(tab:threshold-summary)
+# No _! _ converted to -
+# tag  the name of the data.frame
+# text the caption
 #' @export
 print_table_caption <- function(tag, text) {
+    # rm latex tax if present
+    if (!is.null(text)) {
+        if  (grepl("^\\(", text)) {
+            text <- sub(".*\\)\\s+","", text)
+        }   
+    }
     tag <- gsub("_","-",tag)
     cat("<table>", paste0("<caption>",
-                          "(#tab:",tag,"-table)",
+                          "(#tab:",tag,")",
                           " ",
                           text,
                           "</caption>"),
@@ -100,5 +135,5 @@ printParams <- function(p) {
         select(ind, values) %>%
         rename( parameter = ind,
                 value = values)
-    eetable(input)
+    eetable(input)$table
 }

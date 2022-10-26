@@ -251,7 +251,17 @@ if (nrow(dup_count) > 0) {
 ```
 
 
-# Remove duplicate sequences
+# Make cell_id and sequence_id unique
+
+There could still exist duplicated `cell_id` or `sequence_id`,
+that are not doublets or suspected contaminants, between samples. This
+could cause issues downstream. For example, when finding clones by subject, if
+different samples of the same subject happen to share `cell_id`, 
+`scoper::hierarchicalClones` would stop with an error.
+
+To avoid this, we add a numeric suffix (`-1`, `-2`,... up to the number of 
+samples) to `sequence_id` and `cell_id`.
+
 
 ```{r dbpass}
 #pass <- qc_results$log$scqc_pass
@@ -273,7 +283,7 @@ if (!is.null(params$log)) {
     log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-# Make cell_id and sequence id unique and rm duplicates
+# Save data, sequences that pass, while making cell_id and sequence id unique
 sample_ids <- unique(db[["sample_id"]])
 write_rearrangement(db[pass,] %>%
                         mutate(cell_id = paste(cell_id,match(sample_id,sample_ids),sep="-"),

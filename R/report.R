@@ -24,7 +24,8 @@ enchantr_report <- function(name=c("validate_input",
     }
     
     outdir <- normalizePath(report_params[['outdir']])
-    report_params[['outdir']] <- outdir
+    outdir <- report_params[['outdir']]
+    ##report_params[['outdir']] <- outdir
     
     # Create project in outdir
     switch (name,
@@ -46,7 +47,7 @@ enchantr_report <- function(name=c("validate_input",
                   recursive = T, overwrite=T)
     }
     
-    report_params[['outdir']] <- file.path(outdir,"enchantr")
+    report_params[['outdir']] <- file.path(report_params[['outdir']],"enchantr")
     # render
     xfun::in_dir(
         outdir,
