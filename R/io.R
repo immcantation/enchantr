@@ -8,7 +8,9 @@
 #' @param p ggplot figure
 #' @param outdir directory where the output file will be saved.
 #' @param file   filename. If null, \code{p} will be used.
-#'
+#' @param caption catption for the image. Will be updated to add the path to
+#'                the output file.
+#' @param ...   Additional objects to be save in the same output file               
 #' @examples 
 #' diamonds_plot <- ggplot(ggplot2::diamonds, aes(carat)) + geom_histogram() +
 #'     labs(title = "Title of the plot",
@@ -16,7 +18,7 @@
 #'          caption = "This is the caption")
 #' eeplot(diamonds_plot, outdir=tempdir(), file="diamonds-plot")
 #' @export
-eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL) {
+eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
     # This hack is for the plot to maintain the original name in the file,
     # and load it with the same name, not 'p'.
     plot_name <- deparse1(substitute(p))
@@ -32,7 +34,9 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL) {
         p_path <- paste0(file,".RData")
         p_list[[plot_name]][['enchantr']][['html_caption']] <- paste0(p$labels$caption," <a href='",p_path,"'>ggplot file: ",basename(p_path),"</a>")
         p_path <- file.path(outdir, paste0(file,".RData"))
-        save(list=names(p_list), file=p_path)
+        var_name <- paste(plot_name,"extra_objects", sep="_")
+        assign(var_name, list(...))
+        save(list=c(names(p_list),var_name), file=p_path)
     } 
     p_list[[plot_name]]
 }

@@ -529,7 +529,8 @@ abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
 abundanceSample <- eeplot(abundanceSample, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
-                     caption="Clonal abundance plot.")
+                     caption="Clonal abundance plot.",
+                     a)
 abundanceSample
 caption <- abundanceSample$enchantr$html_caption  
 ```
@@ -614,7 +615,8 @@ diversitySample <- diversitySample +
 diversitySample <- eeplot(diversitySample, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
-                     caption="Clonal diversity per `sample_id`.")
+                     caption="Clonal diversity per `sample_id`.",
+                     d)
 diversitySample
 caption <- diversitySample$enchantr$html_caption 
 ```
