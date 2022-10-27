@@ -670,7 +670,7 @@ caption <- overlapthrplot$enchantr$html_caption
 
 Find your final repertoires here:
 
-```{r dbpass}
+```{r dbpass, results='asis'}
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
