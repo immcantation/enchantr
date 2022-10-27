@@ -32,7 +32,7 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
             file <- plot_name
         }
         p_path <- paste0(file,".RData")
-        p_list[[plot_name]][['enchantr']][['html_caption']] <- paste0(p$labels$caption," <a href='",p_path,"'>ggplot file: ",basename(p_path),"</a>")
+        p_list[[plot_name]][['enchantr']][['html_caption']] <- paste0(caption," <a href='",p_path,"'>ggplot file: ",basename(p_path),"</a>")
         p_path <- file.path(outdir, paste0(file,".RData"))
         var_name <- paste(plot_name,"extra_objects", sep="_")
         assign(var_name, list(...))
