@@ -61,7 +61,7 @@ immcantation <- function(...) {
                       highlight = immcantation_config[['highlight']],
                       keep_md = immcantation_config[['config']][['keep_md']],
                       config=c(immcantation_config[['config']],immcantation_config['fontsettings']),
-                      code_folding="show"
+                      code_folding="hide"
                       )
     invisible(b)
 }

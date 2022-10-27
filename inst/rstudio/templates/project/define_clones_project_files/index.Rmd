@@ -83,7 +83,7 @@ params:
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
-      value: FALSE
+      value: TRUE
    cache:
       label: '`cache`: Use cached results'
       input: checkbox
@@ -126,6 +126,8 @@ file.copy(params$logo,
 
 ```{r input-parameters, results='asis'}
 printParams(params)
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
@@ -158,6 +160,8 @@ input_samples_summary <- db %>%
    arrange(subject_id)
 
 eetable(input_samples_summary)$table
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="input_samples_summary", text="Input samples summary.")
 ```
 
@@ -184,6 +188,8 @@ tab_caption <- paste0("Input data. Number of sequences in each ",
                    " and locus."
       )
 eetable(input_locus_summary)$table
+```
+```{r echo=FALSE,results='asis'}
 print_table_caption(tag="input_locus_summary", text=tab_caption)
 ```
 
@@ -202,6 +208,8 @@ tab_caption <- paste0("Input data. Number of sequences in each ",
                    " and c_call"
       )
 eetable(input_c_call_summary)$table
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="input_c_call_summary", text=tab_caption)
 ```
 
@@ -384,6 +392,8 @@ num_clones_table <- db %>%
 tab_caption <- "Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
 tab <- eetable(num_clones_table, caption=tab_caption, outdir=params$outdir, file="num_clones_table")
 tab$table
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="num_clones_table", text=tab$caption)
 ```
 
@@ -406,6 +416,8 @@ num_clones_table_nosingle <- db %>%
 tab_caption <- "Summary of the number of clones of size > 1, and their clone sizes, per sample."
 tab <- eetable(num_clones_table_nosingle, caption = tab_caption, outdir=params$outdir)
 tab$table
+```
+```{r echo=FALSE,results='asis'}
 print_table_caption(tag="num_clones_table_nosingle", text=tab_caption)
 ```
 
@@ -425,6 +437,8 @@ any_tissues <- db %>%
     
 tab_caption <- paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " . Subsetting to clones of size > 1 in the cloning group (not the sample).")
 eetable(any_tissues, caption=tab_caption)$table
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="any_tissues", text=tab_caption)
 ```
 
@@ -446,6 +460,8 @@ multi_tissue <- multi_tissue %>%
 
 tab_caption <- "Summary of clones spanning more than one tissue."
 eetable(multi_tissue, caption=tab_caption)$table
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="multi_tissue", text=tab_caption)
 ```
 
@@ -500,6 +516,8 @@ tab <- eetable(a@abundance, file = "clonal_abundance",
                caption="Example 10 lines of the clonal abundance file.")
 tab$table %>%
         DT::formatRound(columns=c("p","p_sd","lower","upper"),digits=3)
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption("clonal_abundance", tab$caption)
 ```
 
@@ -580,6 +598,8 @@ tab <- eetable(d@diversity, file = "clonal_diversity",
                caption="Example 10 lines of the clonal diversity file.")
 tab$table %>%
         DT::formatRound(columns=c("q","d","d_sd","d_lower", "d_upper", "e", "e_lower", "e_upper"),digits=3)
+```
+```{r echo=FALSE,results='asis'}
 print_table_caption("clonal_diversity", tab$caption)
 ```
 

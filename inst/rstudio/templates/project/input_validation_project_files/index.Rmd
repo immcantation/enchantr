@@ -50,7 +50,7 @@ params:
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
-      value: FALSE
+      value: TRUE
    cache:
       label: '`cache`: Use cached results'
       input: checkbox
@@ -82,6 +82,8 @@ file.copy(params$logo,
 
 ```{r input-parameters, results='asis'}
 printParams(params)
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```

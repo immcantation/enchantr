@@ -55,7 +55,7 @@ params:
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
-      value: FALSE
+      value: TRUE
    cache:
       label: '`cache`: Use cached results'
       input: checkbox
@@ -97,6 +97,8 @@ file.copy(params$logo,
 
 ```{r input-parameters, results='asis'}
 printParams(params)
+```
+```{r echo=FALSE, results='asis'}
 print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
@@ -146,6 +148,8 @@ input_summary <- db %>%
        pivot_wider(names_from=locus, values_from=n)
 
 eetable(input_summary) 
+```
+```{r echo=FALSE,results='asis'}
 print_table_caption(tag="input_summary", text="Input data summary.")
 ```
 
@@ -282,6 +286,8 @@ tab <- eetable(threshold_summary, outdir=params$outdir, caption=tab_caption)
 tab$table %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
                     digits=3)
+```
+```{r echo=FALSE,results='asis'}
 print_table_caption(tag="threshold_summary",text=tab$caption)
 ```
 
