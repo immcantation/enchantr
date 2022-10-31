@@ -62,13 +62,16 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
 #' @export
 eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
     element_id <- deparse1(substitute(df))
+    element_id <- paste0(element_id,format(Sys.time(), "%Y%m%d%H%M%S"))
     
     # caption and numbering https://stackoverflow.com/questions/49819892/cross-referencing-dtdatatable-in-bookdown
     # tag <- gsub("_","-",paste0("(\\#tab:",element_id,")"))
     tag <- ""
-    if (!is.null(caption)) {
+    if (is.null(caption)) {
+        caption=""
+    } else (!is.null(caption)) {
         caption <- paste0(tag," ",caption)   
-    }
+    } 
     if (!is.null(outdir)) {
         if (is.null(file)) {
             file <- element_id
