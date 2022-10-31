@@ -69,7 +69,7 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
     tag <- ""
     if (is.null(caption)) {
         caption=""
-    } else (!is.null(caption)) {
+    } else if (!is.null(caption)) {
         caption <- paste0(tag," ",caption)   
     } 
     if (!is.null(outdir)) {
