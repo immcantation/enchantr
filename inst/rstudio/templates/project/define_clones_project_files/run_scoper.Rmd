@@ -1,0 +1,132 @@
+Clonal assignment performed with `scoper::hierarchicalClones`, version `r v <- packageVersion("scoper"); v` within `r paste(params$cloneby, collapse=", ")`.
+
+To know more details about the method, visit the documentation website [https://scoper.readthedocs.io/en/](https://scoper.readthedocs.io/en/`r v`/topics/hierarchicalClones/)
+
+```{r, warning=TRUE}
+if (sum(heavy_chains)>0) {
+    if (params$model == "hierarchical") {
+        if (all(db[[ params$singlecell ]] == T )) {
+            cell_id <- 'cell_id'
+        } else {
+            cell_id <- NULL
+            if (all(c(T,F) %in% db[[ params$singlecell ]])) {
+                warning("Mix of single and bulk data. Setting cell_id=`NULL`.")
+            }
+        }
+        db <- hierarchicalClones(db, 
+                                 params$threshold, 
+                                 method=params$method,
+                                 linkage=params$linkage, 
+                                 normalize="len",
+                                 junction="junction", 
+                                 v_call="v_call", j_call="j_call", 
+                                 clone="clone_id", 
+                                 fields=params$cloneby,
+                                 cell_id=cell_id, 
+                                 locus="locus", 
+                                 only_heavy=TRUE, 
+                                 split_light=TRUE,
+                                 first=FALSE, 
+                                 cdr3=FALSE, mod3=FALSE, 
+                                 max_n=0, nproc=params$nproc,
+                                 verbose=FALSE, log=NULL,
+                                 summarize_clones=FALSE) 
+    } else {
+        stop("Unsuported model requested. Supported models: hierarchical")
+    }
+} else {
+    warning("No heavy chain sequences found.")
+    db$clone_id <- NA
+}
+```
+
+`r nrow(db)` sequences passed the clonal assignment step 
+and `r input_size - nrow(db)` were removed. `r sum(is.na(db[['clone_id']]))` sequences
+have `clone_id==NA`.
+
+## Create germlines
+
+```{r}
+dowser_v <- packageVersion("dowser")
+```
+
+
+Identification of the V(D)J germline sequences from which each of the observed 
+sequences is derived is performed with `dowser::createGermlines`, version `r dowser_v`.
+These reconstructed germlines will be used in downstream analysis to infer somatic 
+mutations and reconstruct lineages. 
+
+`dowser::createGermlines` takes the alignment information 
+in the rearrangement file as well as the reference database used by the 
+alignment software and generates a germline sequence for each individual observed sequence.
+Because clonal relations have already been inferred, the function assigns the 
+same germline to all sequences belonging to the same clone. 
+
+Two types of germlines
+are created, `germline_alignment` and `germline_alignment_d_mask`. The last one
+has the D region masked, meaning that all nucleotides in the N/P and D-segments
+are replaced with N's. This is often done because the germline base calls from 
+this region are unreliable for B cell receptor alignments.
+
+Documentation for `dowser::createGermlines` is available here: [https://dowser.readthedocs.io/en/latest/topics/createGermlines](https://dowser.readthedocs.io/en/latest/topics/createGermlines/).
+
+```{r}
+if ( length(unique(db[['species']])) > 1 ) {
+    message("Message: multiple species found.")
+} 
+pre_germ_size <- nrow(db)
+db[['tmp_nrow']] <- 1:nrow(db)
+db <- bind_rows(lapply(split(db,db[['species']]),
+                 function(db_sp) { 
+                     species <- db_sp[['species']][1]
+                     references <- dowser::readIMGT(file.path(params[['imgt_db']], species, "vdj"),
+                                                    quiet=TRUE)
+                     
+
+                     # tmp fix (add unique sequence id ) for
+                     # Error in dowser::createGermlines(db_sp, references, locus = "locus",  :
+                     #   Sequence IDs are not unique!
+                     dup_ids <- db_sp %>%
+                         ungroup() %>%
+                         group_by(!!!rlang::syms(c(params$cloneby))) %>%
+                         mutate(dup=duplicated(sequence_id)) %>%
+                         pull(dup) %>% any()
+                     
+                     if (dup_ids) {
+                        db_sp <- db_sp %>%
+                         mutate(sequence_id = paste(sample_id, sequence_id, sep = '_'))
+                     }
+
+                     dowser::createGermlines(
+                         db_sp,
+                         references,
+                         locus = "locus",
+                         nproc = params$nproc,
+                         seq = "sequence_alignment",
+                         v_call = "v_call",
+                         d_call = "d_call",
+                         j_call = "j_call",
+                         amino_acid = FALSE,
+                         id = "sequence_id",
+                         clone = "clone_id",
+                         v_germ_start = "v_germline_start",
+                         v_germ_end = "v_germline_end",
+                         v_germ_length = "v_germline_length",
+                         d_germ_start = "d_germline_start",
+                         d_germ_end = "d_germline_end",
+                         d_germ_length = "d_germline_length",
+                         j_germ_start = "j_germline_start",
+                         j_germ_end = "j_germline_end",
+                         j_germ_length = "j_germline_length",
+                         np1_length = "np1_length",
+                         np2_length = "np2_length",
+                         na.rm = TRUE,
+                         fields = params$cloneby
+                     )
+                 })) %>%
+    arrange(tmp_nrow) %>%
+    select(-tmp_nrow)
+```
+
+`r nrow(db)` sequences passed the germline reconstruction step
+and `r pre_germ_size - nrow(db)` failed.
