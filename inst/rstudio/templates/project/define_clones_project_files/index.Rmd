@@ -313,7 +313,7 @@ num_clones_table_nosingle <- db %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
 tab_caption <- "Summary of the number of clones of size > 1, and their clone sizes, per sample."
-tab <- eetable(num_clones_table_nosingle, caption = tab_caption, outdir=params$outdir)
+tab <- eetable(num_clones_table_nosingle, caption = tab_caption, outdir=params$outdir, file="num_clones_table_nosingle")
 tab$table
 ```
 ```{r echo=FALSE,results='asis'}
@@ -587,11 +587,20 @@ overlapthrplot
 caption <- overlapthrplot$enchantr$html_caption
 ```
 
-# Final repertoires
+# Final repertoires and tables
+
+Summary tables:
+
+```{r, results='asis', echo=FALSE}
+cat("- [Clonal abundance](clonal_abundance.tsv)\n", sep="")
+cat("- [Clonal diversity](clonal_diversity.tsv)\n", sep="")
+cat("- [Number of clones](num_clones_table.tsv)\n", sep="")
+```
+
 
 Find your final repertoires here:
 
-```{r dbpass, results='asis'}
+```{r dbpass, results='asis', echo=F}
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
@@ -641,7 +650,7 @@ if (sum(heavy_chains)>0 & nrow(db)>0) {
 ```
 
 
-```{r log}
+```{r log, results='asis', echo=FALSE}
 cat("START>ClonePass", file=log_fn, append=F)
 cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
 if (length(output_files==1)) {
