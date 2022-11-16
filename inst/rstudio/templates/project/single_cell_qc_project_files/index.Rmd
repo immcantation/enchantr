@@ -20,6 +20,10 @@ params:
       label: "`outname`"
       input: text
       value: "scqc"
+   outputby:
+      label: "`outputby` name of the column in `input` that contains identifiers that will be used to split the output db."      
+      input: text
+      value: "sample_id"      
    log:
       label: "`log`"
       input: text
@@ -92,7 +96,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 # Read repertoires
 
 
-```{r}
+```{r, results='asis'}
 # Check input file
 if (!file.exists(params$input)) {
     stop(paste0("File ", basename(params$input), " doesn't exist."))
@@ -107,11 +111,15 @@ input_summary <- db %>%
     group_by(sample_id, locus) %>%
     summarize(n=n()) %>%
     pivot_wider(id_cols = sample_id, values_from = n, names_from = locus)
+caption_text <- paste0("Summary of input data. Number of reads per sample and locus. ",
+    nrow(input_summary), " repertoires loaded, with ",input_size," sequences.")
 eetable(
     input_summary,
-    caption=paste0("Summary of input data. Number of reads per sample and locus. ",
-    nrow(input_summary), " repertoires loaded, with ",input_size," sequences.")
-)
+    caption=caption_text
+)$table
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="input_summary", text=caption_text)
 ```
 
 # Distribution of the number of sequences per cell and locus
@@ -287,16 +295,47 @@ if (!is.null(params$log)) {
 
 # Save data, sequences that pass, while making cell_id and sequence id unique
 sample_ids <- unique(db[["sample_id"]])
-write_rearrangement(db[pass,] %>%
-                        mutate(cell_id = paste(cell_id,match(sample_id,sample_ids),sep="-"),
-                               sequence_id = paste(sequence_id,match(sample_id,sample_ids),sep="-")), 
-                    file=output_fn)
+db <- db[pass,] %>%
+    mutate(cell_id = paste(cell_id,match(sample_id,sample_ids),sep="-"),
+           sequence_id = paste(sequence_id,match(sample_id,sample_ids),sep="-"))
+
+output_groups <- db %>%
+    ungroup() %>%
+    select(!!!rlang::syms(params$outputby)) %>%
+    distinct() 
+output_files <- c()
+output_sizes <- c()
+
+if (nrow(output_groups)>0) {
+    for (i in 1:nrow(output_groups))  {
+        group_db <- right_join(db,
+                               output_groups[i,,drop=F],
+                               by=params$outputby)
+        
+        group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
+        group_fn <- file.path(params$outdir,paste0(group_db_label,"_",output_fn))
+        output_files <- c(output_files, group_fn)
+        output_sizes <- c(output_sizes, nrow(group_db))
+        write_rearrangement(group_db, file=group_fn)
+        cat("- [",group_db_label,"](",basename(group_fn),")\n", sep="")
+    }
+} else {
+    write_rearrangement(db, file=output_fn)
+}
 ```
 
 ```{r log}
-cat("START> SingleCellQC", file=log_fn, append=F)
+cat("START>SingleCellQC", file=log_fn, append=F)
 cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
-cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+if (length(output_files==1)) {
+    cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
+    cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
+} else {
+    for (i in 1:length(output_files)) {
+        cat(paste0("\nOUTPUT",i,"> ",output_files[i]), file=log_fn, append=T)
+        cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
+    }
+}
 cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
 cat(paste0("\nFAIL> ",input_size-sum(pass)), file=log_fn, append=T)
 ```
@@ -304,5 +343,3 @@ cat(paste0("\nFAIL> ",input_size-sum(pass)), file=log_fn, append=T)
 
 ```{r, child=c('versions.Rmd')}
 ```
-
-
