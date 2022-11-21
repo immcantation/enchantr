@@ -129,3 +129,21 @@ diversitySample <- eeplot(diversitySample,
 diversitySample
 caption <- diversitySample$enchantr$html_caption 
 ```
+
+## Diversity at different `q`
+
+```{r div_at_q, eval=TRUE,  fig.cap=caption, fig.width=7, fig.height=6}
+# plot duplicated cells
+div_data <- d@diversity %>% dplyr::filter(q==0 | q==1 | q==2) 
+
+div_at_q <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
+    geom_point() +
+    scale_x_continuous(breaks= c(0,1,2))
+    
+div_at_q <- eeplot(div_at_q, 
+                     outdir=params$outdir, 
+                     file="div_at_q",
+                     caption="Diversity at differet q.")
+div_at_q
+caption <- div_at_q$enchantr$html_caption  
+```
