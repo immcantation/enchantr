@@ -37,7 +37,7 @@ params:
       input: numeric
       value: 1
    min_n:
-      label: "`min_n`"
+      label: "`min_n` minimum number of observations to sample to run alakazam::estimateAbundance."
       input: numeric
       value: 30
    outputby:

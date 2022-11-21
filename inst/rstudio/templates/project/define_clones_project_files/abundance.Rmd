@@ -94,9 +94,13 @@ weighted by their proportion in the sample.
 * At $q>1$ more weight is given to the clones with higher proportions in the sample.
 
 
+## Diversity curves
+
 ```{r diversity, results='asis'}
 # generate the Hill diversity curve
-d <- alphaDiversity(db %>% filter(isHeavyChain(locus)), group = "sample_id")
+d <- alphaDiversity(db %>% filter(isHeavyChain(locus)), 
+                    group = "sample_id", 
+                    min_n=params$min_n)
 diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
 
 tab <- eetable(d@diversity, file = "clonal_diversity", 
