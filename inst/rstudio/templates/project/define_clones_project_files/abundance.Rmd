@@ -96,7 +96,7 @@ weighted by their proportion in the sample.
 
 ```{r diversity, results='asis'}
 # generate the Hill diversity curve
-d <- alphaDiversity(db %>% filter(isHEavyChain(locus)), group = "sample_id")
+d <- alphaDiversity(db %>% filter(isHeavyChain(locus)), group = "sample_id")
 diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
 
 tab <- eetable(d@diversity, file = "clonal_diversity", 
