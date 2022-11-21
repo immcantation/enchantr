@@ -36,6 +36,10 @@ params:
       label: "`threshold`"
       input: numeric
       value: 1
+   min_n:
+      label: "`min_n`"
+      input: numeric
+      value: 30
    outputby:
       label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db."      
       input: text
@@ -157,7 +161,7 @@ input_size <- nrow(db)
 if (!"locus" %in% colnames(db)) {
     db[['locus']] <- getLocus(db[['v_call']])
 }
-heavy_chains <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
+heavy_chains <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
 
 if ("clone_id" %in% colnames(db)) {
     if (params$force) {
@@ -263,7 +267,7 @@ sequences with the same `clone_id`.
 ```{r}
 # Add clone_size 
 clone_sizes <- countClones(
-            db %>% filter(grepl("[hHBbDc]", locus)), # Keep heavy chains only
+            db %>% filter(isHeavyChain(locus)), # Keep heavy chains only
             groups=unique(c("sample_id", params$cloneby)))
 
 db <- db %>%
@@ -277,7 +281,7 @@ db <- db %>%
 
 ```{r, results='asis'}
 num_clones_table <- db %>%
-   filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
+   filter(isHeavyChain(locus)) %>% # Keep heavy chains only
    group_by(sample_id) %>%
    mutate(sequences=n()) %>%
    group_by(sample_id) %>%
@@ -300,7 +304,7 @@ print_table_caption(tag="num_clones_table", text=tab$caption)
 
 ```{r, results='asis'}
 num_clones_table_nosingle <- db %>%
-   filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
+   filter(isHeavyChain(locus)) %>% # Keep heavy chains only
    filter(clone_size_count>1) %>%
    group_by(sample_id) %>%
    mutate(sequences=n()) %>%
@@ -324,7 +328,7 @@ print_table_caption(tag="num_clones_table_nosingle", text=tab_caption)
 
 ```{r, results='asis'}
 any_tissues <- db %>%
-   filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
+   filter(isHeavyChain(locus)) %>% # Keep heavy chains only
    group_by(!!!rlang::syms(c("clone_id", params$cloneby))) %>%
    summarize(
              clone_size_group_count=n(),
@@ -345,13 +349,13 @@ print_table_caption(tag="any_tissues", text=tab_caption)
 
 ```{r, results='asis'}
 multi_tissue <- db %>%
-    filter(grepl("[hHBbDc]", locus)) %>% # Keep heavy chains only
+    filter(isHeavyChain(locus)) %>% # Keep heavy chains only
     group_by(!!!rlang::syms(c(params$cloneby, "clone_id"))) %>%
     summarize(num_tissues=length(unique(tissue))) %>%
     filter(num_tissues>1)
 
 multi_tissue <- multi_tissue %>%
-   left_join(db %>% filter(grepl("[hHBbDc]", locus)), 
+   left_join(db %>% filter(isHeavyChain(locus)), 
    by=c("clone_id", params$cloneby)) %>%
    select(!!!rlang::syms(unique(c("clone_id", "tissue", "sample_id", "clone_size_count", "clone_size_freq", params$clone_by, "sequence_id")))) %>%
    group_by(!!!rlang::syms(c("clone_id", "clone_size_count", "clone_size_freq","tissue", "sample_id", params$clone_by))) %>%
@@ -392,8 +396,8 @@ Clonal abundance is the size of each clone (as a fraction of the entire repertoi
 
 ```{r abundancebysample}
 # calculate the rank-abundance curve
-a <- estimateAbundance(db %>% filter(grepl("[hHBbDc]", locus)),
-                       group = "sample_id", min_n = 15) # Default min_n=30
+a <- estimateAbundance(db %>% filter(isHeavyChain(locus)),
+                       group = "sample_id", min_n = params$min_n)
 # annotate
 a@abundance <- a@abundance %>%
    left_join( db %>% 
@@ -490,7 +494,7 @@ weighted by their proportion in the sample.
 
 ```{r diversity, results='asis'}
 # generate the Hill diversity curve
-d <- alphaDiversity(db %>% filter(grepl("[hHBbDc]", locus)), group = "sample_id")
+d <- alphaDiversity(db %>% filter(isHEavyChain(locus)), group = "sample_id")
 diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
 
 tab <- eetable(d@diversity, file = "clonal_diversity", 
@@ -530,7 +534,7 @@ Identity of the `junction` and `junction_aa` heavy chain sequences between `samp
 
 ```{r overlap}
 overlap <- plotDbOverlap(db %>% 
-                            filter(grepl("[hHBbDc]", locus)), 
+                         filter(isHeavyChain(locus)), 
                          group="sample_id", 
                          features=c("junction_aa","junction"), 
                          heatmap_colors=c("white","orange", "grey80"), 
@@ -562,7 +566,7 @@ Similarity of the `junction` and `junction_aa` heavy chain sequences between `sa
 
 ```{r overlapthr}
 overlap_thr <- plotDbOverlap(db %>% 
-                                filter(grepl("[hHBbDc]", locus)), 
+                         filter(isHeavyChain(locus)), 
                          group="sample_id", 
                          features=c("junction_aa","junction"), 
                          heatmap_colors=c("white","orange", "grey80"), 

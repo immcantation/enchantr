@@ -153,3 +153,31 @@ printParams <- function(p) {
                 value = values)
     eetable(input)$table
 }
+
+
+
+#' isHeavyChain
+#'
+#' \code{isHeavyChain} checks if a locus is a heavy or light chain locus.
+#'
+#' @param    loci        a vector of valid loci
+#' @param    cell_id     column in \code{db} containing cell identifiers
+#' @param    locus       column in \code{db} containing locus assignments
+#' @param    sequence_id column in \code{db} containing locus assignments
+#' @param    fields      Columns in \code{db}, in addition to \code{sample_id},
+#'                       that should be used to group sequences to be 
+#'                       analyzed independently.
+#'                       
+#' @return   The input data.frame (\code{db}) with doublets removed.
+#' @examples
+#' isHeavyChain(c("IGH","igh","TRA"))
+#' @export
+isHeavyChain <- function(loci) {
+    igh_h <- "IGH"
+    igh_l <- c("IGK","IGL")
+    tr_h <- c("TRB","TRD")
+    tr_l <- c("TRA", "TRG")
+    h <- c(igh_h, tr_h)
+    # IGH, TRB, TRD
+    toupper(loci) %in% h
+}

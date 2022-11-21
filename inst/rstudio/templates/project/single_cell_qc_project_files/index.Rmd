@@ -108,7 +108,7 @@ db_files <- read.delim(params[['input']], header=F)[[1]]
 db <- bind_rows(lapply(db_files, read_rearrangement))
 input_size <- nrow(db)
 input_summary <- db %>%
-    group_by(sample_id, locus) %>%
+    group_by(!!!rlang::syms(unique(c("sample_id", params$outputby, "locus")))) %>%
     summarize(n=n()) %>%
     pivot_wider(id_cols = sample_id, values_from = n, names_from = locus)
 caption_text <- paste0("Summary of input data. Number of reads per sample and locus. ",

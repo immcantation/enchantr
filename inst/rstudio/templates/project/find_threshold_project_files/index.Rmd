@@ -122,7 +122,7 @@ db <- bind_rows(lapply(db_files, function(x) {
 # db <- bind_rows(lapply(db_files, read_rearrangement))
 
 input_size <- nrow(db)
-is_heavy <- db[['locus']] %in% c("IGH", "TRB", "TRD")
+is_heavy <- isHeavyChain(db[['locus']])
 
 na_single <- is.na(db[[params$singlecell]])
 if (sum(na_single)>0) {

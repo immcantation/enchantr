@@ -123,7 +123,7 @@ input_size <- nrow(db)
 # Formatting clones
 
 ```{r}
-h <- grepl("[hHBbDc]", db[['locus']]) #IGH, TRB, TRD
+h <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
 if (sum(h)>0) {
     heavy <- unique(db[['locus']][h])
     if (length(heavy)>1) {

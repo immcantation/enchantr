@@ -98,7 +98,7 @@ findLightOnlyCells <- function(db,
     
     db <- db %>%
         group_by(!!!rlang::syms(c(cell_id, groups))) %>%
-        mutate(light_only_cell=sum(grepl("[hHBbDc]", !!rlang::sym(locus))) == 0) %>%
+        mutate(light_only_cell=sum(isHeavyChain(!!rlang::sym(locus))) == 0) %>%
         ungroup()
     
     num_cells <- db %>%
@@ -129,7 +129,7 @@ findLightOnlyCells <- function(db,
 #' @return   The input data.frame (\code{db}) with doublets removed.
 #' @export
 removeDoublets <- function(db, cell_id="cell_id", locus="locus", sequence_id='sequence_id', fields=NULL) {
-    db_h <- db[grepl("[hHBbDc]", db[[locus]]),,drop=F] #IGH, TRB, TRD
+    db_h <- db[isHeavyChain(db[[locus]]),,drop=F] #IGH, TRB, TRD
     if ( nrow(db_h) == 0 ) {
       message("db contains light chain sequences only.")  
       return (db)
