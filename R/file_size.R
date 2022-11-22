@@ -103,11 +103,24 @@ getConsoleLogsGraph <- function(logs) {
 
 plotLog <- function(g) {
     ggraph(g) + 
-        geom_node_point(aes(size = num_seqs), colour = "black") +
+        #geom_node_point(aes(size = num_seqs), colour = "black") +
+        geom_node_label(aes(label=paste0(name,": ", num_seqs, " sequences")), 
+                        colour = "black", label.size=0) +
         geom_edge_link(aes(start_cap = label_rect(node1.name), 
                            end_cap = label_rect(node2.name),
-                           colour = factor(task)), 
-                       arrow = arrow(type = "closed", length = unit(3, 'mm'))) 
+                           # colour = factor(task),
+                           label=task), 
+                       color="grey50",
+                       angle_calc = "across",
+                       arrow = arrow(type = "closed", 
+                                     length = unit(3, 'mm'))) +
+        theme_enchantr() +
+        theme(
+            axis.title=element_blank(),
+            axis.text=element_blank(),
+            axis.ticks=element_blank(),
+            panel.border = element_blank()
+        )
 }
 
 plotWorkflow <- function(g) {
@@ -126,7 +139,14 @@ plotWorkflow <- function(g) {
         geom_node_point(shape=21,col="white",fill="black",size=5,stroke=1)+
         geom_node_label(aes(label = name), repel = FALSE) +
         theme_graph(plot_margin = margin(5, 50, 5, 40)) +
-        coord_cartesian(clip = "off") 
+        coord_cartesian(clip = "off") +
+        theme_enchantr() +
+        theme(
+            axis.title=element_blank(),
+            axis.text=element_blank(),
+            axis.ticks=element_blank(),
+            panel.border = element_blank()
+        )
     p
 }
 

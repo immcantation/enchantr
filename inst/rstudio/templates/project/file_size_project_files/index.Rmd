@@ -53,6 +53,8 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
 
 suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("ggplot2"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
@@ -73,30 +75,78 @@ print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-```{r}
-log_files <- read.delim(params[['input']], header=F)[[1]]
-log_files
-```
-
 # Workflow
 
-```{r, fig.width=5}
+```{r}
+log_files <- read.delim(params[['input']], header=F)[[1]]
 plotConsoleLogs(log_files, "workflow")
+cat("\n\n")
 ```
-
 
 # File processing 
 
-```{r, results="asis", echo=FALSE}
-plot_list <- plotConsoleLogs(log_files)
+```{r, results="asis", echo=FALSE, fig.width=8,fig.height=5}
+plot_list <- plotConsoleLogs(log_files, "decompose")
+log_data <- igraph::as_long_data_frame(getConsoleLogs(log_files, format="graph")) %>%
+    select(from_name, from_num_seqs, task, to_name, to_num_seqs) %>%
+    mutate(file_0 = NA)
 for (i in 1:length(plot_list)) {
-   plot_data <- plot_list[[i]]$data
-   input_filename <- plot_data[['name']][which(plot_data[[".ggraph.index"]] == 1)]
-   cat(paste0("## ",input_filename,"\n\n"))
-   print(plot_list[[i]])
-   cat("\n\n")
+    plot_data <- plot_list[[i]]$data
+    input_filename <- plot_data[['name']][which(plot_data[[".ggraph.index"]] == 1)]
+    cat(paste0("## ",input_filename,"\n\n"))
+    cat("### Data flow \n\nNumber of sequences at each processing step of `", input_filename,"`.", sep="")
+    print(plot_list[[i]])
+    plot_table <- plot_data %>%
+        mutate(step = abs(y-max(y))) %>%
+        arrange(step,x) %>%
+        select(step ,name, num_seqs) %>%
+        mutate(file_0=input_filename) %>%
+        mutate(name = factor(name, levels=unique(name), ordered = T))
+    
+    idx <- which(log_data[["from_name"]] %in% plot_table[['name']])
+    if (length(idx)>0) {
+        log_data[["file_0"]][idx] <- input_filename
+    }
+
+    out_filename <- sub("\\.[^\\.]*$","",input_filename)
+    
+    cat("\n\n### Barplot \n\n")
+    caption <- paste0("Number of reads at different stages of the processing of ",input_filename)
+    tab <- eetable(plot_table, 
+                   caption=caption,
+                   outdir = params$outdir, 
+                   file=out_filename)
+    
+    p <- ggplot(plot_table, 
+           aes(x=name, y=num_seqs, group=name)) +
+        geom_bar(stat="identity") +
+        theme_enchantr() +
+        theme(
+            axis.text.x = element_text(angle = 90, hjust=0.5, vjust=0)
+        ) +
+        labs(x="File", y="Number of sequences") +
+        scale_x_discrete(labels= function(x) { gsub("(.*_)([^_]*$)","\\2",x)} )
+    cat(tab$caption)
+    p <- eeplot(p,outdir=params$outdir,
+           file=strsplit(input_filename,"\\.")[[1]][1],
+           caption="")
+    print(p)
+    cat(p$enchantr$html_caption)
+    cat("\n\n")
 }
 ```
+
+# Final table
+
+```{r, echo=F, results='asis'}
+log_data <- log_data %>% select(file_0, everything())
+tab <- eetable(log_data, caption="Table showing the number of sequences at each processing step. `file_0` is the first file for each sample analysis tree.", outdir = params$outdir, file="log_data")
+tab$table
+```
+```{r echo=FALSE,results='asis'}
+print_table_caption(tag="log_data", text=tab$caption)
+```
+
 
 ```{r, child=c('versions.Rmd')}
 ```

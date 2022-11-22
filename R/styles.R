@@ -4,5 +4,7 @@ theme_enchantr <- function() {
         theme(strip.background=element_blank(),
               plot.background=element_blank(),
               panel.grid.major=element_blank(), 
-              panel.grid.minor=element_blank())
+              panel.grid.minor=element_blank()
+              )
 }
+
