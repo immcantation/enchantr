@@ -89,7 +89,7 @@ define_clones_project <- function(path,...) {
 #' ## To edit the axis labels. the title and change the color scale and change
 #' ## the theme
 #' overlap$p + xlab("Sequence") + ylab("Clone") + ggtitle("New title") +
-#'  scale_fill_gradient(low="white", high="orange", na.value="black") + theme_bw()
+#'  scale_fill_gradient(low="white", high="orange", na.value="black") + theme_enchantr()
 #' }
 #' 
 #' @export
@@ -417,7 +417,7 @@ plotDbOverlap <- function(db, group="sample",
     # plot the heatmap
     p <- ggplot(melt_overlap_perc, aes(Var1, Var2, group=Var2), environment = .e) +
         geom_tile(aes(fill = value)) + 
-        theme_bw() +
+        theme_enchantr() +
         geom_text(aes(label = melt_overlap_note$value), na.rm = TRUE, size=geom_text_size) +
         geom_text(data=group_tables[[1]]$description %>% dplyr::mutate("Var1"=GROUP_NAME, "Var2"=GROUP_NAME),
                   aes(label = NUM_FEATURES), angle = 45, color="white", vjust=1.5, hjust=0.5, na.rm = TRUE, size=geom_text_size) +

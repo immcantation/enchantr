@@ -16,7 +16,9 @@
 #'     labs(title = "Title of the plot",
 #'          subtitle = "Subtitle of the plot",
 #'          caption = "This is the caption")
-#' eeplot(diamonds_plot, outdir=tempdir(), file="diamonds-plot")
+#' p <- eeplot(diamonds_plot, outdir=tempdir(), file="diamonds-plot")
+#' p
+#' p$enchantr$html_caption
 #' @export
 eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
     # This hack is for the plot to maintain the original name in the file,
@@ -31,11 +33,12 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
         if (is.null(file)) {
             file <- plot_name
         }
-        p_path <- paste0(file,".RData")
+        p_path <- file.path("ggplots",paste0(file,".RData"))
         p_list[[plot_name]][['enchantr']][['html_caption']] <- paste0(caption," <a href='",p_path,"'>ggplot file: ",basename(p_path),"</a>")
-        p_path <- file.path(outdir, paste0(file,".RData"))
+        p_path <- file.path(outdir, p_path)
         var_name <- paste(plot_name,"extra_objects", sep="_")
         assign(var_name, list(...))
+        dir.create(dirname(p_path))
         save(list=c(names(p_list),var_name), file=p_path)
     } 
     p_list[[plot_name]]
@@ -77,8 +80,9 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
             file <- element_id
         }
         #tab_path <- file.path(outdir, paste0(file,".tsv"))
-        tab_path <- paste0(file,".tsv")
+        tab_path <- file.path("tables", paste0(file,".tsv"))
         caption <- paste0(caption, " File can be found here: <a href='",tab_path,"'> ",basename(tab_path),"</a>")
+        dir.create(dirname(file.path(outdir,tab_path)))
         write.table(df, 
                     file = file.path(outdir,tab_path), 
                     sep="\t", quote = F, row.names = F)
@@ -173,11 +177,11 @@ printParams <- function(p) {
 #' isHeavyChain(c("IGH","igh","TRA"))
 #' @export
 isHeavyChain <- function(loci) {
-    igh_h <- "IGH"
-    igh_l <- c("IGK","IGL")
+    ig_h <- "IGH"
+    ig_l <- c("IGK","IGL")
     tr_h <- c("TRB","TRD")
     tr_l <- c("TRA", "TRG")
-    h <- c(igh_h, tr_h)
+    h <- c(ig_h, tr_h)
     # IGH, TRB, TRD
     toupper(loci) %in% h
 }

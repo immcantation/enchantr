@@ -264,11 +264,14 @@ sequences with the same `clone_id`.
 
 ## Number of clones (heavy chain, incl. singletons)
 
-```{r}
+```{r clone_sizes_table}
 # Add clone_size 
 clone_sizes <- countClones(
             db %>% filter(isHeavyChain(locus)), # Keep heavy chains only
             groups=unique(c("sample_id", params$cloneby)))
+tmp <- eetable(clone_sizes, 
+               caption=NULL, 
+               outdir=params$outdir, file="clone_sizes_table")
 
 db <- db %>%
    left_join(clone_sizes) %>%
@@ -370,12 +373,12 @@ print_table_caption(tag="multi_tissue", text=tab_caption)
 
 # Clone size distribution
 
-Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure
-to compare clone size between samples. See [Clonal abundance](#clonal_abundance)
+Find your [clone sizes table here](tables/clone_sizes_table.tsv). Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure to compare clone size between samples. See [Clonal abundance](#clonal_abundance)
+
 
 ```{r clone-size, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
-    geom_bar() + theme_bw() +
+    geom_bar() + theme_enchantr() +
     facet_wrap(~sample_id, scales = "free_y", ncol=3) +
     xlab("Clone size (Number of sequences per clone)")
 ```
@@ -384,7 +387,7 @@ ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
 
 ```{r clone-size-atleast2, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
-    geom_bar() + theme_bw() +
+    geom_bar() + theme_enchantr() +
     facet_wrap(~sample_id, scales = "free_y", ncol=3) +
     xlab("Clone size (Sequences per clone)")
 ```
@@ -478,11 +481,12 @@ caption <- overlapthrplot$enchantr$html_caption
 Summary tables:
 
 ```{r, results='asis', echo=FALSE}
-cat("- [Number of clones](num_clones_table.tsv)\n", sep="")
+cat("- [Summary of number of clones](tables/num_clones_table.tsv)\n", sep="")
+cat("- [Clone sizes table](tables/clone_sizes_table.tsv)\n", sep="")
 ```
 ```{r, results='asis', echo=FALSE, eval=nrow(a@abundance)>0}
-cat("- [Clonal abundance](clonal_abundance.tsv)\n", sep="")
-cat("- [Clonal diversity](clonal_diversity.tsv)\n", sep="")
+cat("- [Clonal abundance](tables/clonal_abundance.tsv)\n", sep="")
+cat("- [Clonal diversity](tables/clonal_diversity.tsv)\n", sep="")
 ```
 
 Find your final repertoires here:
@@ -505,7 +509,7 @@ if (!is.null(params$log)) {
 output_files <- c()
 output_sizes <- c()
 if (sum(heavy_chains)>0 & nrow(db)>0) {
-    
+    dir.create(file.path(params$outdir,"repertoires"))   
     output_groups <- db %>%
         ungroup() %>%
         select(!!!rlang::syms(params$outputby)) %>%
@@ -518,14 +522,14 @@ if (sum(heavy_chains)>0 & nrow(db)>0) {
                                    by=params$outputby)
             
             group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
-            group_fn <- file.path(params$outdir,paste0(group_db_label,"_",output_fn))
+            group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
             output_files <- c(output_files, group_fn)
             output_sizes <- c(output_sizes, nrow(group_db))
             write_rearrangement(group_db, file=group_fn)
-            cat("- [",group_db_label,"](",basename(group_fn),")\n", sep="")
+            cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
         }
     } else {
-        write_rearrangement(db, file=output_fn)
+        write_rearrangement(db, file=file.path("repertoires",output_fn))
     }
 }
 ```
@@ -539,8 +543,8 @@ if (length(output_files==1)) {
     cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
 } else {
     for (i in 1:length(output_files)) {
-        cat(paste0("\nOUTPUT",i,"> ",output_files[i]), file=log_fn, append=T)
-        cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
+        cat(paste0("\nOUTPUT",i,"> ",basesname(output_files[i])), file=log_fn, append=T)
+        cat(paste0("\nPASS",i,"> ",basename(output_sizes[i])), file=log_fn, append=T)
     }
 }
 cat(paste0("\nPASS> ",sum(output_sizes)), file=log_fn, append=T)
