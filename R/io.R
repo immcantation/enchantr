@@ -146,7 +146,7 @@ makeLabel <- function(db, fields='id'){
     })
     # too long
     #paste(names(labels), labels, sep="_", collapse="_")
-    paste(labels, collapse="_")
+    sub("\\....$","",paste(labels, collapse="_"))
 }
 
 #' @export

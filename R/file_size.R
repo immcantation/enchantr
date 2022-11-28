@@ -22,72 +22,109 @@ formatConsoleLog <- function(log_file){
     task <- unique(log_table[['task']])
     
     if (length(task)>1) {
-        stop("TODO: current version of the code expects one task in each log file.")
+        stop("more than one task in the same log")
     }
-    input_df <- log_table %>%
-        filter(field %in% c("FILE", "ALIGNER_FILE")) %>%
-        select(value) %>%
+    
+    if (task == "ParseDb-split") {
+        file_field <- grepl("FILE",log_table[['field']])
+        if (sum(file_field)>1) {
+            stop("Can't deal with multiple input files.")
+        }
+        log_table[['field']][file_field] <- 'FILE1'
+        records_field <- grepl("RECORDS",log_table[['field']])
+        log_table[['field']][records_field] <- 'RECORDS1'
+        parts <- as.numeric(log_table[['value']][log_table[['field']]=="PARTS"])
+        i <- 2
+        while (i <= parts) {
+            log_table <- bind_rows(log_table,
+                      log_table[which(file_field),]   
+            )
+            log_table[['field']][nrow(log_table)] <- paste0("FILE",i)
+            i <- i + 1
+        }
+        
+        
+    }
+    
+    if (task == "MakeDB-igblast") {
+        log_table <- log_table %>%
+            filter(field != "SEQ_FILE")
+    }
+    
+    .getFileID <- function(x) {
+        sapply(x, function(i){
+            if (grepl("[0-9]$",i)){
+                gsub("(.*)([0-9]+)$","\\2",i)  
+            } else {
+                0
+            }
+        })
+        
+    }
+    log_table <- log_table %>%
+        filter(    grepl("ALIGNER_FILE",field) |
+                       grepl("SEQ_FILE",field) |
+                       grepl("FILE[0-9]*",field) |
+                       grepl("PASS",field) |
+                       grepl("FAIL",field) |
+                       grepl("RECORDS",field) |
+                       grepl("SIZE",field) |
+                       grepl("OUTPUT[0-9]*",field)                     
+        ) %>%
+        mutate(file_id=.getFileID(field)) %>%
+        mutate(
+            field_type = case_when(grepl("OUTPUT", field) ~ "output", 
+                                   grepl("FILE", field) ~ "input",
+                                   grepl("ALIGNER_FILE", field) ~ "input",
+                                   grepl("SEQ_FILE", field) ~ "input",
+                                   grepl("PASS", field) ~ "output_size",
+                                   grepl("RECORDS", field) ~ "input_size",
+                                   grepl("SIZE", field) ~ "output_size",
+                                   grepl("FAIL", field) ~ "fail")
+        ) %>%
+        select(-field, -step) 
+    
+    log_table_input <- log_table %>%
+        filter(grepl("input", field_type))
+    input_fields <- log_table_input[["field_type"]] == "input"
+    
+    if (!all(input_fields)) {
+        log_table_input <- log_table_input[input_fields,] %>%
+            left_join(
+                log_table_input <- log_table_input[!input_fields,] %>%
+                    pivot_wider(id_cols=file_id, 
+                                values_from=value, names_from=field_type)
+            )
+    }
+    log_table_input <- log_table_input %>%
         rename(input=value)
-
-    if (nrow(input_df)>1) {
-        stop("TODO: current version of the code expects one input file.")
-    }
     
-    output_df <- log_table %>%
-        filter(grepl("OUTPUT",field)) %>%
-        select(value) %>%
-        rename(output=value)
+    log_table_output <- log_table %>%
+        filter(!grepl("input", field_type)) %>%
+        pivot_wider(id_cols=file_id, 
+                    values_from=value, names_from=field_type)
     
-    if (any(grepl("PASS|FAIL",log_table[['field']]))) {
-        input_size <- log_table %>%
-            filter(grepl("PASS|FAIL",field)) %>%
-            summarize(input_size = sum(as.numeric(value))) %>%
-            mutate(input=input_df[['input']])
-    } else if ((any(grepl("RECORDS",log_table[['field']])))) {
-        input_size <- log_table %>%
-            filter(field == "RECORDS") %>%
-            select(value) %>%
-            rename(input_size=value) %>%
-            mutate(input=input_df[['input']],
-                   input_size=as.numeric(input_size))
-    } else {
-        input_size <- NA
-        stop("Unknown input size")
-    }
-
-    if (any(grepl("PASS|FAIL",log_table[['field']]))) {
-        if (nrow(output_df) == 1) {
-            output_size <- log_table %>%
-                filter(grepl("PASS",field)) %>%
-                summarize(output_size=as.numeric(value)) %>%
-                mutate(output=output_df[['output']])
+    log_table <- log_table_input %>%
+        left_join(log_table_output)
+    
+    if (!"input_size" %in% colnames(log_table)) {
+        if (all(c("output_size", "fail") %in% colnames(log_table))) {
+            log_table <- log_table %>%
+                group_by(file_id) %>%
+                rowwise() %>%
+                mutate(input_size=as.numeric(output_size)+as.numeric(fail))   
         } else {
-            stop("TODO")
+            log_table[['input_size']] <- NA
         }
-    } else {
-        if (any(grepl("OUTPUT|SIZE",log_table[['field']])) ) {
-            output_size <- log_table %>%
-                select(field, value) %>%
-                filter(grepl("OUTPUT|SIZE", field)) %>%
-                mutate(field=gsub("([1-9]+$)","-\\1",field)) %>%
-                tidyr::separate(col=field, c("type", "id"), sep="-") %>%
-                tidyr::pivot_wider(id_cols=id, names_from = type) %>%
-                rename(output=OUTPUT,
-                       output_size=SIZE) %>%
-                mutate(output_size=as.numeric(output_size)) %>%
-                select(-id)
-        } else {
-            output_size <- NA
-            stop("Unknown output size")   
-        }
-    }
-    data.frame(
-        "input"=input_df,
-        "output"=output_df,
-        "task"=task
-    ) %>%
-    left_join(input_size, by="input") %>%
-    left_join(output_size, by="output")
+    } 
+    log_table[['task']] <- task
+    log_table[['input_size']] <- as.numeric(log_table[['input_size']])
+    log_table[['output_size']] <- as.numeric(log_table[['output_size']])
+    log_table %>%
+        ungroup() %>%
+        select(input, output, task, input_size, output_size) %>%
+        as.data.frame(stringsAsFactors = F)
+    
 }
 
 getConsoleLogsGraph <- function(logs) {
@@ -95,8 +132,17 @@ getConsoleLogsGraph <- function(logs) {
         logs %>% select(input,input_size) %>% rename(vertex=input, num_seqs=input_size),
         logs %>% select(output,output_size)  %>% rename(vertex=output, num_seqs=output_size),        
     ) %>%
-        distinct()
-    g <- graph_from_data_frame(logs[,c("input","output", "task")], directed = TRUE, vertices = vertex_size)
+    distinct() 
+    # rm duplicate vertex names
+    dup_v <- duplicated(vertex_size$vertex)
+    if (any(dup_v)) {
+        rm_me <- vertex_size$vertex %in% vertex_size$vertex[duplicated(vertex_size$vertex)] &
+            is.na(vertex_size$num_seqs)
+        vertex_size <- vertex_size[!rm_me,,drop=F]
+    }
+    g <- graph_from_data_frame(logs[,c("input","output", "task")], 
+                               directed = TRUE, 
+                               vertices = vertex_size)
     g
 }
 
@@ -155,7 +201,7 @@ plotWorkflow <- function(g) {
 getConsoleLogs <- function(log_files, format=c("df", "graph")) {
     format <- match.arg(format)
     #log_files <-  strsplit(log_files,"[ ,]")[[1]]
-    logs <- bind_rows(lapply(log_files, formatConsoleLog))
+    logs <- bind_rows(lapply(log_files, enchantr:::formatConsoleLog))
     if (format=="df") {
         logs
     } else {
@@ -168,7 +214,7 @@ plotConsoleLogs <- function(log_files, style=c("decompose", "workflow")) {
     style <- match.arg(style)
     logs <- getConsoleLogs(log_files, format="graph")
     if (style == "decompose") {
-        lapply(decompose(logs), plotLog)
+        lapply(decompose(logs), enchantr:::plotLog)
     } else {
         plotWorkflow(logs)
     }

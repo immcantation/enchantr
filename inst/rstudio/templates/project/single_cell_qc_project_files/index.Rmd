@@ -47,7 +47,7 @@ params:
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
-      value: TRUE
+      value: FALSE
    cache:
       label: '`cache`: Use cached results'
       input: checkbox
@@ -105,8 +105,13 @@ if (!file.exists(params$input)) {
 db_files <- read.delim(params[['input']], header=F)[[1]]
 
 # Read db file
-db <- bind_rows(lapply(db_files, read_rearrangement))
+db <- bind_rows(sapply(db_files, read_rearrangement, simplify = F, USE.NAMES = T), .id="input_file")
+
+input_sizes <- db %>%
+    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+    summarize(input_size=n())
 input_size <- nrow(db)
+
 input_summary <- db %>%
     group_by(!!!rlang::syms(unique(c("sample_id", params$outputby, "locus")))) %>%
     summarize(n=n()) %>%
@@ -124,17 +129,24 @@ print_table_caption(tag="input_summary", text=caption_text)
 
 # Distribution of the number of sequences per cell and locus
 
-```{r}
+```{r, results='asis'}
 seqs_per_cell <- countSequencesPerCell(db)
-eetable(
+tab <- eetable(
     seqs_per_cell %>% filter(cell_num_sequences > 1),
     caption="Cells with more than one sequence"
 )
+tab$table
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="seqs_per_cell", text=tab$caption)
 ```
 
-```{r p-seqs-per-cell, fig.width=5, fig.height=length(unique(seqs_per_cell[['sample_id']]))*1, fig.cap=p_seqs_per_cell$enchantr$html_caption}
+```{r p-seqs-per-cell, fig.width=5, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell)
-p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir, knitr::opts_current$get('label'))
+p_seqs_per_cell <- eeplot(
+    p_seqs_per_cell, 
+    params$outdir, 
+    knitr::opts_current$get('label'))
 p_seqs_per_cell
 ```
 
@@ -142,7 +154,7 @@ p_seqs_per_cell
 
 Since most of the analyses are based on heavy chains, we remove cells with only light chains.
 
-```{r findLightOnlyCells}
+```{r findLightOnlyCells, results='asis'}
 db <- findLightOnlyCells(db, sample_id = "sample_id", 
                     cell_id="cell_id", locus="locus", 
                     fields=NULL)
@@ -161,9 +173,13 @@ db <- db %>%
     filter(!light_only_cell)
 db_with_heavy_size <- nrow(db)
 
-eetable(light_only,
+tab <- eetable(light_only,
     caption=paste0("Cells with only light chains account for ", light_only_size, " sequences removed.")
-)        
+)
+tab$table
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="light_only", text=tab$caption)
 ```
 
 # Remove cells with multiple heavy chains
@@ -185,12 +201,18 @@ db_no_doublets_size <- nrow(db)
 Sequences in different samples that share the same cell_id and nucleotide sequence
 can indicate contamination.
 
-## stacked bar
-
-```{r p_sc_duplicates, fig.cap=caption}
+```{r sc_duplicates, results='asis'}
 dups <- findSingleCellDuplicates(db, fields="sample_id", 
                                  cell_id="cell_id", 
                                  seq="sequence_alignment")
+if (nrow(dups[['dups']]) == 0 ) {
+    cat("No suspicious overlaps detected.\n\n")
+}
+```
+
+## stacked bar
+
+```{r p_sc_duplicates, fig.cap=caption, results='asis'}
 caption <- NULL
 if (nrow(dups[['dups']]) > 0 ) {
    dups_summary <- dups[['dups']] %>%
@@ -272,8 +294,9 @@ different samples of the same subject happen to share `cell_id`,
 To avoid this, we add a numeric suffix (`-1`, `-2`,... up to the number of 
 samples) to `sequence_id` and `cell_id`.
 
+# Final repertoires 
 
-```{r dbpass}
+```{r outsetup}
 #pass <- qc_results$log$scqc_pass
 if (sum(dups[['dups']][['sc_duplicate']]>0)) {
     pass <- dups[['dups']][['sc_duplicate']] == FALSE
@@ -292,7 +315,9 @@ if (!is.null(params$log)) {
 } else {
     log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
+```
 
+```{r dbpass, results='asis'}
 # Save data, sequences that pass, while making cell_id and sequence id unique
 sample_ids <- unique(db[["sample_id"]])
 db <- db[pass,] %>%
@@ -301,45 +326,43 @@ db <- db[pass,] %>%
 
 output_groups <- db %>%
     ungroup() %>%
-    select(!!!rlang::syms(params$outputby)) %>%
-    distinct() 
+    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarize(output_size=n(),
+              input_file=unique(input_file),
+              num_input_files=length(unique(input_file))) %>%
+    left_join(input_sizes)
+   
+if (any(output_groups[["num_input_files"]] > 1)) {
+   stop("Unhandled.")
+}
+
 output_files <- c()
 output_sizes <- c()
-
-if (nrow(output_groups)>0) {
-    for (i in 1:nrow(output_groups))  {
-        group_db <- right_join(db,
-                               output_groups[i,,drop=F],
-                               by=params$outputby)
-        
-        group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
-        group_fn <- file.path(params$outdir,paste0(group_db_label,"_",output_fn))
-        output_files <- c(output_files, group_fn)
-        output_sizes <- c(output_sizes, nrow(group_db))
-        write_rearrangement(group_db, file=group_fn)
-        cat("- [",group_db_label,"](",basename(group_fn),")\n", sep="")
-    }
-} else {
-    write_rearrangement(db, file=output_fn)
+for (i in 1:nrow(output_groups))  {
+    group_db <- right_join(db,
+                           output_groups[i,,drop=F],
+                           by=c(params$outputby,"input_file")) %>%
+       select(-input_file,-num_input_files,-input_size, -output_size)
+    
+    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
+    group_fn <- file.path(params$outdir,paste0(group_db_label,"_",output_fn))
+    output_files <- c(output_files, group_fn)
+    output_sizes <- c(output_sizes, nrow(group_db))
+    write_rearrangement(group_db, file=group_fn)
+    cat("- [",group_db_label,"](",basename(group_fn),")\n", sep="")
 }
 ```
 
 ```{r log}
-cat("START>SingleCellQC", file=log_fn, append=F)
-cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
-if (length(output_files==1)) {
-    cat(paste0("\nOUTPUT> ",basename(output_fn)), file=log_fn, append=T)
-    cat(paste0("\nPASS> ",nrow(db)), file=log_fn, append=T)
-} else {
-    for (i in 1:length(output_files)) {
-        cat(paste0("\nOUTPUT",i,"> ",output_files[i]), file=log_fn, append=T)
-        cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
-    }
+cat("START> SingleCellQC", file=log_fn, append=F)
+for (i in 1:nrow(output_groups)) {
+    cat(paste0("\nFILE",i,"> ",output_groups[['input_file']][i]), file=log_fn, append=T)
+    cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
+    cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
+    cat(paste0("\nFAIL",i,"> ",output_groups[['input_size']][i]-output_sizes[i]), file=log_fn, append=T)    
 }
-cat(paste0("\nPASS> ",sum(pass)), file=log_fn, append=T)
-cat(paste0("\nFAIL> ",input_size-sum(pass)), file=log_fn, append=T)
 ```
-
 
 ```{r, child=c('versions.Rmd')}
 ```

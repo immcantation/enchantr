@@ -36,13 +36,13 @@ params:
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
-      value: TRUE
+      value: FALSE
    cache:
       label: '`cache`: Use cached results'
       input: checkbox
       value: FALSE
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -75,11 +75,24 @@ print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-# Workflow
+## Log files loaded
 
 ```{r}
 log_files <- read.delim(params[['input']], header=F)[[1]]
+```
+```{r echo=FALSE, results='asis'}
+for (x in sort(log_files)) {
+   cat("* ", x, "\n")
+}
+```
+
+# Workflow
+
+```{r}
 plotConsoleLogs(log_files, "workflow")
+```
+
+```{r echo=F}
 cat("\n\n")
 ```
 
