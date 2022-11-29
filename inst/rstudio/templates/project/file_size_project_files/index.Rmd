@@ -163,15 +163,16 @@ ordered <- p_workflow$data %>%
     arrange(-y,x) %>%
     pull(name) %>%
     unique()
+ordered <- ordered[ordered %in% log_data$task]
 if (!all(log_data$task %in% ordered)) {
     stop("Task missing in worklow")
 }
 
-log_data$task <- factor(log_data$task, levels=ordered, ordered = T)
+log_data$task <- factor(log_data$task, levels=ordered , ordered = T)
 
 ggplot(log_data, aes(x=task, y=to_num_seqs, fill=file_0)) +
     geom_bar(stat="identity", width=.5, position = "dodge") +
-    scale_alpha_discrete(limits=ordered) +
+    scale_x_discrete(limits=ordered) +
     theme_enchantr() +
     theme(
         axis.text.x = element_text(angle = 90, hjust=0.5, vjust=0)
