@@ -89,7 +89,8 @@ for (x in sort(log_files)) {
 # Workflow
 
 ```{r}
-plotConsoleLogs(log_files, "workflow")
+p_workflow <- plotConsoleLogs(log_files, "workflow")
+p_workflow
 ```
 
 ```{r echo=F}
@@ -156,6 +157,31 @@ log_data <- log_data %>% select(file_0, everything())
 tab <- eetable(log_data, caption="Table showing the number of sequences at each processing step. `file_0` is the first file for each sample analysis tree.", outdir = params$outdir, file="log_data")
 tab$table
 ```
+
+```{r}
+ordered <- p_workflow$data %>%
+    arrange(-y,x) %>%
+    pull(name) %>%
+    unique()
+if (!all(log_data$task %in% ordered)) {
+    stop("Task missing in worklow")
+}
+
+log_data$task <- factor(log_data$task, levels=ordered, ordered = T)
+
+ggplot(log_data, aes(x=task, y=to_num_seqs, fill=file_0)) +
+    geom_bar(stat="identity", width=.5, position = "dodge") +
+    scale_alpha_discrete(limits=ordered) +
+    theme_enchantr() +
+    theme(
+        axis.text.x = element_text(angle = 90, hjust=0.5, vjust=0)
+    ) +
+    labs(x="Step", y="Number of sequences", fill="Input file")
+    
+    
+
+```
+
 ```{r echo=FALSE,results='asis'}
 print_table_caption(tag="log_data", text=tab$caption)
 ```
