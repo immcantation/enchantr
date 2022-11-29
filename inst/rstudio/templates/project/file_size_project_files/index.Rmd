@@ -16,6 +16,10 @@ params:
       label: "`input`: Path a file of files, with paths to the log files."
       input: file
       value: "example-input.txt"
+   metadata: 
+      label: "`metadata`: Path to metadata."
+      input: file
+      value: !r NULL     
    output: 'tmp_input'
    outdir:
       label: '`outdir`: Output directory'
@@ -86,6 +90,17 @@ for (x in sort(log_files)) {
 }
 ```
 
+```{r}
+if (!is.null(params$metadata)) {
+    metadata <- read.delim(params$metadata) %>%
+        mutate(filename = basename(filename)) %>%
+        select(filename, sample_id)
+} else {
+    metadata <- data.frame(stringsAsFactors = F)
+}
+```
+
+
 # Workflow
 
 ```{r}
@@ -153,12 +168,20 @@ for (i in 1:length(plot_list)) {
 # Final table
 
 ```{r, echo=F, results='asis'}
-log_data <- log_data %>% select(file_0, everything())
-tab <- eetable(log_data, caption="Table showing the number of sequences at each processing step. `file_0` is the first file for each sample analysis tree.", outdir = params$outdir, file="log_data")
-tab$table
+# Add sample_id
+if (nrow(metadata)>0){
+    log_data <- log_data %>% 
+        left_join(metadata, by=c("file_0"="filename")) %>%
+        select(sample_id, file_0, everything())
+    id_col <- "sample_id"
+} else {
+    log_data <- log_data %>% 
+        select(file_0, everything())
+    id_col <- "file_0"
+}
 ```
 
-```{r}
+```{r fig.width=8, fig.height=6, fig.cap=caption}
 ordered <- p_workflow$data %>%
     arrange(-y,x) %>%
     pull(name) %>%
@@ -170,19 +193,27 @@ if (!all(log_data$task %in% ordered)) {
 
 log_data$task <- factor(log_data$task, levels=ordered , ordered = T)
 
-ggplot(log_data, aes(x=task, y=to_num_seqs, fill=file_0)) +
+sequence_count_plot <- ggplot(log_data, aes(x=task, y=to_num_seqs, fill=!!rlang::sym(id_col))) +
     geom_bar(stat="identity", width=.5, position = "dodge") +
     scale_x_discrete(limits=ordered) +
     theme_enchantr() +
     theme(
-        axis.text.x = element_text(angle = 90, hjust=0.5, vjust=0)
+        axis.text.x = element_text(angle = 90, hjust=0.5, vjust=0),
+        legend.position = "bottom"
     ) +
-    labs(x="Step", y="Number of sequences", fill="Input file")
-    
-    
-
+    labs(x="Step", y="Number of sequences", fill="")
+sequence_count_plot <- eeplot(sequence_count_plot,
+                              outdir = params$outdir,
+                              file="sequence_count_plot", 
+                              caption = "Number of sequences at each processing step.")
+caption <- sequence_count_plot$enchantr$html_caption
+sequence_count_plot
 ```
 
+```{r echo=F, results='asis'}
+tab <- eetable(log_data, caption="Table showing the number of sequences at each processing step. `file_0` is the first file for each sample analysis tree.", outdir = params$outdir, file="log_data")
+tab$table
+```
 ```{r echo=FALSE,results='asis'}
 print_table_caption(tag="log_data", text=tab$caption)
 ```
