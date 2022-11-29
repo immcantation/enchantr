@@ -58,6 +58,7 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
 
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("ggplot2"))
 
 if (!dir.exists(params[['outdir']])) {
@@ -93,8 +94,11 @@ for (x in sort(log_files)) {
 ```{r}
 if (!is.null(params$metadata)) {
     metadata <- read.delim(params$metadata) %>%
-        mutate(filename = basename(filename)) %>%
-        select(filename, sample_id)
+        select(contains("filename"), sample_id) %>%
+        pivot_longer(col=contains("filename")) %>%
+        rename(filename=value) %>%
+        mutate(filename=basename(filename)) %>%
+        select(sample_id, filename)
 } else {
     metadata <- data.frame(stringsAsFactors = F)
 }
@@ -169,7 +173,7 @@ for (i in 1:length(plot_list)) {
 
 ```{r, echo=F, results='asis'}
 # Add sample_id
-if (nrow(metadata)>0){
+if (nrow(metadata)>0) {
     log_data <- log_data %>% 
         left_join(metadata, by=c("file_0"="filename")) %>%
         select(sample_id, file_0, everything())
