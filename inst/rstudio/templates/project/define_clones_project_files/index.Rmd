@@ -530,6 +530,7 @@ if (any(output_groups[["num_input_files"]] > 1)) {
 
 output_files <- c()
 output_sizes <- c()
+dir.create(file.path(params$outdir,"repertoires")) 
 for (i in 1:nrow(output_groups))  {
     group_db <- right_join(db,
                            output_groups[i,,drop=F],
