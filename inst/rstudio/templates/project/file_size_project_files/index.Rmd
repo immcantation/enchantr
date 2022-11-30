@@ -94,8 +94,8 @@ for (x in sort(log_files)) {
 ```{r}
 if (!is.null(params$metadata)) {
     metadata <- read.delim(params$metadata) %>%
-        select(contains("filename"), sample_id) %>%
-        pivot_longer(col=contains("filename")) %>%
+        select(starts_with("filename"), sample_id) %>%
+        pivot_longer(col=starts_with("filename")) %>%
         rename(filename=value) %>%
         mutate(filename=basename(filename)) %>%
         select(sample_id, filename)
