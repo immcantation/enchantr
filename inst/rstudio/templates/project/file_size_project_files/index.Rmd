@@ -177,7 +177,11 @@ if (nrow(metadata)>0) {
     log_data <- log_data %>% 
         left_join(metadata, by=c("file_0"="filename")) %>%
         select(sample_id, file_0, everything())
-    id_col <- "sample_id"
+    if (any(is.na(log_data$sample_id))) {
+        id_col <- "file_0"
+    } else {
+       id_col <- "sample_id"
+    }
 } else {
     log_data <- log_data %>% 
         select(file_0, everything())
