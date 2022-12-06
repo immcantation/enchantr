@@ -392,11 +392,15 @@ ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
 
 ## Subset to clone size > 1
 
-```{r clone-size-atleast2, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
+```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
 ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
     facet_wrap(~sample_id, scales = "free_y", ncol=3) +
     xlab("Clone size (Sequences per clone)")
+```
+
+```{r, eval=max(clone_sizes[['seq_count']])<=1, results='asis'}
+cat("Only singletons detected: there aren't clones of size>1.\n\n")
 ```
 
 

@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
-Version: 0.0.5
-Date: 2022-12-01
+Version: 0.0.5.999
+Date: 2022-12-06
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
              person("Steven", "Kleinstein", role=c("aut", "cph"),
@@ -41,4 +41,4 @@ Imports:
     tidyr
 Suggests:
     testthat
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.2
