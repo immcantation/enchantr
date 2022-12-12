@@ -1,4 +1,4 @@
-# Gene usage analysis
+# enchantR reports
 
 The 'enchantr' package provides template parametrized reports to analize AIRR-seq
 data with the Immcantation framework. The different reports can be used from the 
