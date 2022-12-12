@@ -1,15 +1,22 @@
-theme: readthedocs
 site_name: enchantr
-docs_dir: docs
+site_url: https://enchantr.readthedocs.io
+site_favicon: img/favicon.ico
+repo_url: https://bitbucket.org/kleinstein/enchantr
+edit_uri: src/master/docs/
+theme:
+  name: readthedocs
+  navigation_depth: 2
+  collapse_navigation: False
+  titles_only: False
 markdown_extensions:
   - def_list
   - sane_lists
   - smarty
   - toc:
-      permalink: True
       baselevel: 1
       toc_depth: 1-4
-      permalink: True      
+      permalink: True
+docs_dir: 'docs'    
 nav:
   - 'About':
     - 'Introduction': index.md
