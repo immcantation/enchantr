@@ -9,14 +9,12 @@ analysis framework for Adaptive Immune Receptor Repertoire sequencing
 (AIRR-seq). Immcantation provides a set of tools to investigate lymphocyte 
 receptor clonal lineages, diversity, gene usage, and other repertoire level 
 properties, with a focus on high-throughput immunoglobulin (Ig) sequencing.
-enchantR provides additional quality control and reporting functions, and 
-template analysis workflows. 
 
-enchantR serves five main purposes:
+enchantR:
 
-1. Providing additional quality control and reporting functions for other R
+1. Provides additional quality control and reporting functions for other R
    packages in the Immcantation framework. 
-2. Providing `.Rmd` reports for standard analysis.
+2. Provides parametrized `.Rmd` reports for standard analysis.
 
 
 Contact
