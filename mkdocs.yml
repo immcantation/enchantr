@@ -1,0 +1,44 @@
+theme: readthedocs
+site_name: enchantr
+docs_dir: docs
+markdown_extensions:
+  - def_list
+  - sane_lists
+  - smarty
+  - pymdownx.arithmatex
+  - toc:
+      permalink: True
+extra_javascript:
+  - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML
+pages:
+  - 'About':
+    - 'Introduction': index.md
+    - 'Package Overview': topics/enchantr.md
+    - 'Release Notes': news.md
+  - 'Vignettes':
+    - 'Gene usage analysis': vignettes/enchantr-vignette.md
+  - 'Help Topics':
+    - topics/chimera_analysis_project.md
+    - topics/collapse_duplicates_project.md
+    - topics/contamination_project.md
+    - topics/countSequencesPerCell.md
+    - topics/define_clones_project.md
+    - topics/dowser_lineage_project.md
+    - topics/eeplot.md
+    - topics/eetable.md
+    - topics/enchantr_report.md
+    - topics/file_size_project.md
+    - topics/find_threshold_project.md
+    - topics/findLightOnlyCells.md
+    - topics/findSingleCellDuplicates.md
+    - topics/isHeavyChain.md
+    - topics/loadConsoleLog.md
+    - topics/plotDbOverlap.md
+    - topics/plotOverlapSingleCell.md
+    - topics/plotSequencesPerCell.md
+    - topics/removeDoublets.md
+    - topics/removeSingleCellDuplicates.md
+    - topics/single_cell_qc_project.md
+    - topics/singlecell_sharing_matrix.md
+    - topics/singleCellSharingCounts.md
+    - topics/validate_input_project.md
