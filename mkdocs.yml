@@ -8,9 +8,10 @@ markdown_extensions:
   - pymdownx.arithmatex
   - toc:
       permalink: True
-extra_javascript:
-  - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML
-pages:
+      baselevel: 1
+      toc_depth: 1-4
+      permalink: True      
+nav:
   - 'About':
     - 'Introduction': index.md
     - 'Package Overview': topics/enchantr.md
