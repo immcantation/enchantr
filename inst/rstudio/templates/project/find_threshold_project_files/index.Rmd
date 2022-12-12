@@ -117,8 +117,6 @@ db <- bind_rows(lapply(db_files, function(x) {
     read_rearrangement(x)
     }))
 
-
-
 # db <- bind_rows(lapply(db_files, read_rearrangement))
 
 input_size <- nrow(db)
@@ -136,7 +134,6 @@ sc_heavy <- is_heavy & db[[params$singlecell]]
 bulk_dtn <- data.frame()
 sc_dtn <- data.frame()
 
-
 ```
 
 Number of sequences loaded: `r input_size`.
@@ -147,7 +144,8 @@ input_summary <- db %>%
    summarize(n=n(), .groups="drop") %>%
        pivot_wider(names_from=locus, values_from=n)
 
-eetable(input_summary) 
+input_summary_table <- eetable(input_summary) 
+input_summary_table$table
 ```
 ```{r echo=FALSE,results='asis'}
 print_table_caption(tag="input_summary", text="Input data summary.")
@@ -163,6 +161,11 @@ Clonal relationships can be inferred from sequencing data. Hierarchical clusteri
 `distToNearest` first splits sequences into groups that share the same V and J gene assignments and that have the same junction (or equivalently CDR3) length. This is based on the assumption that members of a clone will share all of these properties. `distToNearest` performs this grouping step, then counts the number of mismatches in the junction region between all pairs of sequences in each group and returns the smallest non-zero value for each sequence. At the end of this step, a new column (`dist_nearest`) which contains the distances to the closest non-identical sequence in each group will be added to db.
 
 Typically, the distance-to-nearest distribution for a repertoire is bimodal. The first mode (on the left) represents sequences that have at least one clonal relative in the dataset, while the second mode (on the right) is representative of the sequences that do not have any clonal relatives in the data (sometimes called "singletons"). A reasonable threshold will separate these two modes of the distribution. In this case, it is easy to manually determine a threshold as a value intermediate between the two modes. However, `findThreshold` can be used to automatically find the threshold.
+
+Specifying the `cross` argument to `distToNearest` forces distance calculations to be performed across groups, such that the nearest neighbor of each sequence will always be a sequence in a different group.
+This measurement is particularly useful when the distance-to-nearest distribution is not a clear bimodal. Because the cross distance-to-nearest represents distances to extern groups, they will typically
+be larger than the distances to sequences in the same group, and the distribution of the cross distance-to-nearest values will facilitate the identification of the second mode of the bimodal.
+
 
 ```{r sum_heavy_0, eval=sum(is_heavy)==0, echo=sum(is_heavy)==0, results='asis'}
 cat("0 heavy chain sequences present. `distToNearest` requires heavy chain data. Setting `dist_neartest` to 'NA'")
@@ -218,16 +221,28 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r dtnplot, fig.width=9, fig.height=2*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/3}
-wrap_formula <- as.formula(paste0(params$singlecell,"~sample_id"))
+```{r dtnplot, fig.width=9, fig.height=2*nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/3, fig.cap=caption}
+
+caption <- paste0("Distribution of the distance to the nearest sequence within ",
+            paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
+            "cross ",paste(params$cloneby, collapse=","),
+            " distances are availalbe, they are shown in an inverse y-axis.")
+
+wrap_formula <- as.formula(paste0(
+                        c(
+                            params$singlecell,
+                            "~",
+                            paste(unique(c("sample_id", params$clone_by)), collapse = "+")
+                        ),collapse="")
+)
 db <- bind_rows(bulk_dtn,sc_dtn)
-p <- ggplot(db) + 
+dtnplot <- ggplot(db) + 
     geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01)
 
 if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
    
    if (any(!is.na(db[['cross_dist_nearest']]))) {
-    p <- p + 
+    dtnplot <- dtnplot + 
         geom_histogram(
             aes(x=cross_dist_nearest, y=-(..count..), fill=sample_id), 
             binwidth=0.01, position="identity") +
@@ -238,11 +253,18 @@ if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
 
 }
 
-p <- p +
+dtnplot <- dtnplot +
     facet_wrap(wrap_formula, scales = "free_y", ncol=3, labeller = "label_both") +
-    expand_limits(x = 0, y =0) %>%
-    geom_vline(xintercept = 0.2, color="grey30", linetype="dotted")
-p
+    expand_limits(x = 0, y =0) +
+    theme_enchantr()
+
+dtnplot <- eeplot(dtnplot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('dtnplot'),
+       caption=caption
+       )
+dtnplot
+caption <- dtnplot$enchantr$html_caption
 ```
 
 ## Find threshold
@@ -282,7 +304,10 @@ threshold_summary <- gmmSummary(threshold) %>%
 mean_threshold <- round(threshold_summary$mean_threshold[1],2)
 
 tab_caption <- paste0("Summary of threshold values. Mean threshold is: ", mean_threshold)
-tab <- eetable(threshold_summary, outdir=params$outdir, caption=tab_caption)  
+tab <- eetable(threshold_summary, 
+               outdir=params$outdir, 
+               file="threshold_summary",
+               caption=tab_caption)  
 tab$table %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
                     digits=3)

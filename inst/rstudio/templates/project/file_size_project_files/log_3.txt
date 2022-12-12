@@ -1,5 +1,0 @@
-START> FilterQuality
-FILE> input_id_1_db-pass.tsv
-OUTPUT> input_id_1_quality-pass.tsv
-PASS> 2545
-FAIL> 3
