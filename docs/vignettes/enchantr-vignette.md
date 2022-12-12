@@ -17,7 +17,7 @@ Rscript -e "enchantr:::enchantr_report('report_name', \
 
 ### RStudio
 
-Got to `File > New Project... > New Directory...` and select an Immcantation project.
+Go to `File > New Project... > New Directory...` and select an Immcantation project.
 
 
 
