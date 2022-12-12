@@ -20,7 +20,7 @@ nav:
     - 'Package Overview': topics/enchantr.md
     - 'Release Notes': news.md
   - 'Vignettes':
-    - 'Gene usage analysis': vignettes/enchantr-vignette.md
+    - 'enchantR reports': vignettes/enchantr-vignette.md
   - 'Help Topics':
     - topics/chimera_analysis_project.md
     - topics/collapse_duplicates_project.md
