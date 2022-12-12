@@ -434,8 +434,8 @@ removeSingleCellDuplicates <- function(db, fields,
 
 # TODO: document, return
 # TODO: test
-#' dups <- findSingleCellDuplicates(db, groups="sample_id")
-#' counts <- singleCellSharingCounts(dups)
+# dups <- findSingleCellDuplicates(db, groups="sample_id")
+# counts <- singleCellSharingCounts(dups)
 #' @export
 singleCellSharingCounts <- function(dups) {
     

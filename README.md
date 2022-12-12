@@ -15,6 +15,8 @@ enchantR:
 1. Provides additional quality control and reporting functions for other R
    packages in the Immcantation framework. 
 2. Provides parametrized `.Rmd` reports for standard analysis.
+3. Is part of the magic behind [nf-co.re/airrflow](https://nf-co.re/airrflow),
+   a start-to-finish Nextflow pipeline to analyze AIRR-seq data.
 
 
 Contact
