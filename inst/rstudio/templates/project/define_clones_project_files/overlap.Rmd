@@ -1,0 +1,66 @@
+# `junction` and `junction_aa` overlap
+
+Similarity of the junction sequence is sometimes used as a proxy of antibody convergence.
+
+## Same sequence
+
+Identity of the `junction` and `junction_aa` heavy chain sequences between `sample_id`.
+
+```{r overlap}
+overlap <- plotDbOverlap(db %>% 
+                         filter(isHeavyChain(locus)), 
+                         group="sample_id", 
+                         features=c("junction_aa","junction"), 
+                         heatmap_colors=c("white","orange", "grey80"), 
+                         print_zero=FALSE, long_x_angle=90,
+                         title=NULL,xlab=NULL, ylab=NULL,
+                         plot_order=c("tissue","sample_id"), 
+                         silent=T, similarity=c("min","min"),
+                         na.rm=FALSE, 
+                         identity=c('ham_aa', 'ambiguous'), 
+                         threshold=0,
+                         geom_text_size=3) 
+```
+
+```{r overlapplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))),fig.cap=caption}
+caption <- "Number of shared nt and aa heavy chain junction unique sequences. The percent represents the number of shared sequences over the number of sequences in the smaller set."
+overlapplot <- overlap$p
+overlapplot <- eeplot(overlapplot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('label'),
+       caption=caption
+       )
+overlapplot
+caption <- overlapplot$enchantr$html_caption
+```
+
+## Threshold (`r round(params$threshold,3)`)
+
+Similarity of the `junction` and `junction_aa` heavy chain sequences between `sample_id`.
+
+```{r overlapthr}
+overlap_thr <- plotDbOverlap(db %>% 
+                         filter(isHeavyChain(locus)), 
+                         group="sample_id", 
+                         features=c("junction_aa","junction"), 
+                         heatmap_colors=c("white","orange", "grey80"), 
+                         print_zero=FALSE, long_x_angle=90,
+                         title=NULL,xlab=NULL, ylab=NULL,
+                         plot_order=c("tissue","sample_id"), 
+                         silent=T, similarity=c("min","min"),
+                         na.rm=FALSE, 
+                         identity=c('ham_aa', 'ham_nt'), 
+                         threshold=round(params$threshold,3),
+                         geom_text_size=3) 
+```
+
+```{r overlapthrplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
+caption <- paste0("Number of similar nt and aa heavy chain junction unique sequences. Two sequences are similar if their hamming distance is <=",round(params$threshold,3), ". The percent represents the number of similar sequences over the number of sequences in the smaller set.")
+overlapthrplot <- overlap_thr$p
+overlapthrplot <- eeplot(overlapthrplot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('label'),
+       caption=caption)
+overlapthrplot
+caption <- overlapthrplot$enchantr$html_caption
+```
