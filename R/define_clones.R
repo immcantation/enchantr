@@ -101,7 +101,7 @@ plotDbOverlap <- function(db, group="sample",
                           plot_order=NULL, silent=F, similarity=c("min", "jaccard"),
                           na.rm=FALSE, identity=c("exact", "ambiguous", "ham_nt", "ham_aa"), 
                           threshold=0, geom_text_size=3 ){
-    
+    # TODO: parallelize
     valid_similarities <- match.arg(similarity, several.ok = TRUE)
     identity <- match.arg(identity, several.ok = TRUE)
     
