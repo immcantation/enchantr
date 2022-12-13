@@ -17,7 +17,7 @@ install()
 ```
 
 Alternatively, you can install directly form the bitbucket repository, but this
-will not build the documentation::
+will not build the documentation:
 
 ```R
 library(devtools)
