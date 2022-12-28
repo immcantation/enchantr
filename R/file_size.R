@@ -54,7 +54,7 @@ formatConsoleLog <- function(log_file){
     .getFileID <- function(x) {
         sapply(x, function(i){
             if (grepl("[0-9]$",i)){
-                gsub("(.*)([0-9]+)$","\\2",i)  
+                gsub("(.*?)([0-9]+)$","\\2",i)  
             } else {
                 0
             }
