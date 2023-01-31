@@ -1,66 +1,69 @@
-# `junction` and `junction_aa` overlap
+# Convergence
 
-Similarity of the junction sequence is sometimes used as a proxy of antibody convergence.
+Run clonal detection combining all samples to identify overlapping "clones". The field
+`convergent_clone_id` will be created.
 
-## Same sequence
-
-Identity of the `junction` and `junction_aa` heavy chain sequences between `sample_id`.
+```{r, warning=TRUE}
+if (sum(heavy_chains)>0) {
+    if (params$model == "hierarchical") {
+        if (all(db[[ params$singlecell ]] == T )) {
+            cell_id <- 'cell_id'
+        } else {
+            cell_id <- NULL
+            if (all(c(T,F) %in% db[[ params$singlecell ]])) {
+                warning("Mix of single and bulk data. Setting cell_id=`NULL`.")
+            }
+        }
+        db <- hierarchicalClones(db, 
+                                 0.2, 
+                                 method="aa",
+                                 linkage=params$linkage, 
+                                 normalize="len",
+                                 junction="junction", 
+                                 v_call="v_call", j_call="j_call", 
+                                 clone="convergent_clone_id", 
+                                 fields=NULL,
+                                 cell_id=cell_id, 
+                                 locus="locus", 
+                                 only_heavy=TRUE, 
+                                 split_light=TRUE,
+                                 first=FALSE, 
+                                 cdr3=FALSE, mod3=FALSE, 
+                                 max_n=0, nproc=params$nproc,
+                                 verbose=FALSE, log=NULL,
+                                 summarize_clones=FALSE) 
+    } else {
+        stop("Unsuported model requested. Supported models: hierarchical")
+    }
+} else {
+    warning("No heavy chain sequences found.")
+    db$convergent_clone_id <- NA
+}
+```
 
 ```{r overlap}
-overlap <- plotDbOverlap(db %>% 
+convergence_overlap <- plotDbOverlap(db %>% 
                          filter(isHeavyChain(locus)), 
                          group="sample_id", 
-                         features=c("junction_aa","junction"), 
+                         features=c("convergent_clone_id","junction"), 
                          heatmap_colors=c("white","orange", "grey80"), 
                          print_zero=FALSE, long_x_angle=90,
                          title=NULL,xlab=NULL, ylab=NULL,
                          plot_order=c("tissue","sample_id"), 
                          silent=T, similarity=c("min","min"),
                          na.rm=FALSE, 
-                         identity=c('ham_aa', 'ambiguous'), 
-                         threshold=0,
-                         geom_text_size=3) 
-```
-
-```{r overlapplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))),fig.cap=caption}
-caption <- "Number of shared nt and aa heavy chain junction unique sequences. The percent represents the number of shared sequences over the number of sequences in the smaller set."
-overlapplot <- overlap$p
-overlapplot <- eeplot(overlapplot, 
-       outdir=params$outdir, 
-       file=knitr::opts_current$get('label'),
-       caption=caption
-       )
-overlapplot
-caption <- overlapplot$enchantr$html_caption
-```
-
-## Threshold (`r round(params$threshold,3)`)
-
-Similarity of the `junction` and `junction_aa` heavy chain sequences between `sample_id`.
-
-```{r overlapthr}
-overlap_thr <- plotDbOverlap(db %>% 
-                         filter(isHeavyChain(locus)), 
-                         group="sample_id", 
-                         features=c("junction_aa","junction"), 
-                         heatmap_colors=c("white","orange", "grey80"), 
-                         print_zero=FALSE, long_x_angle=90,
-                         title=NULL,xlab=NULL, ylab=NULL,
-                         plot_order=c("tissue","sample_id"), 
-                         silent=T, similarity=c("min","min"),
-                         na.rm=FALSE, 
-                         identity=c('ham_aa', 'ham_nt'), 
+                         identity=c('exact', 'ham_nt'), 
                          threshold=round(params$threshold,3),
                          geom_text_size=3) 
 ```
 
-```{r overlapthrplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
-caption <- paste0("Number of similar nt and aa heavy chain junction unique sequences. Two sequences are similar if their hamming distance is <=",round(params$threshold,3), ". The percent represents the number of similar sequences over the number of sequences in the smaller set.")
-overlapthrplot <- overlap_thr$p
-overlapthrplot <- eeplot(overlapthrplot, 
+```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
+caption <- paste0("Number of identical convergent_clone_id and similar nt heavy chain junction unique sequences. Two sequences are similar if their nt hamming distance is <=",round(params$threshold,3), ". The percent represents the number of similar sequences over the number of sequences in the smaller set.")
+overlapconvergenceplot <- convergence_overlap$p
+overlapconvergenceplot <- eeplot(overlapconvergenceplot, 
        outdir=params$outdir, 
        file=knitr::opts_current$get('label'),
        caption=caption)
-overlapthrplot
-caption <- overlapthrplot$enchantr$html_caption
+overlapconvergenceplot
+caption <- overlapconvergenceplot$enchantr$html_caption
 ```
