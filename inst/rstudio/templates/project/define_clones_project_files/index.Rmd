@@ -56,8 +56,8 @@ params:
        label: "`linkage`"
        input: text
        value: "single"
-   skip_overlap:
-       label: "`skip_overlap`"
+   skip_convergence:
+       label: "`skip_convergence`"
        input: logical
        value: !r FALSE       
    nboot:
@@ -425,7 +425,7 @@ if (nrow(a@abundance)==0) {
 ```
 
 
-```{r, child=c('overlap.Rmd'), eval=!as.logical(params$skip_overlap)}
+```{r, child=c('overlap.Rmd'), eval=!as.logical(params$skip_convergence)}
 ```
 
 # Final repertoires and tables
