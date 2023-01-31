@@ -19,7 +19,11 @@ params:
    cloneby:
       label: "`cloneby`"
       input: text
-      value: "sample_id"    
+      value: "sample_id"   
+   crossby:
+      label: "`crossby`"
+      input: text
+      value: "sample_id"
    singlecell:
       label: "`singlecell`"
       input: text
@@ -184,7 +188,7 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
     
     bulk_dtn <- distToNearest(bulk_dtn, 
                                fields=NULL,
-                               cross=params$cloneby,
+                               cross=params$crossby,
                                sequenceColumn="junction", 
                                vCallColumn="v_call", jCallColumn="j_call",
                                model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
@@ -208,7 +212,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
                           locusColumn = "locus",
                           onlyHeavy = TRUE)
     sc_dtn <- distToNearest(sc_dtn, 
-                          cross=params$cloneby,
+                          cross=params$crossby,
                           sequenceColumn="junction", 
                           vCallColumn="v_call", jCallColumn="j_call",
                           model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
@@ -225,7 +229,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 
 caption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
-            "cross ",paste(params$cloneby, collapse=","),
+            "cross ",paste(params$crossby, collapse=","),
             " distances are availalbe, they are shown in an inverse y-axis.")
 
 wrap_formula <- as.formula(paste0(
