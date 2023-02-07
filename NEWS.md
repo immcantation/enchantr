@@ -7,4 +7,4 @@ Breaks:
 
 General:
 
-+ Added dependency ComplexHeatmap.
++ Added dependencies: ComplexHeatmap, plotly

@@ -60,6 +60,7 @@ suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("ggplot2"))
+suppressPackageStartupMessages(library("plotly"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
@@ -107,7 +108,7 @@ if (!is.null(params$metadata)) {
 
 # Workflow
 
-```{r}
+```{r, echo=FALSE}
 p_workflow <- plotConsoleLogs(log_files, "workflow")
 p_workflow
 ```
@@ -189,7 +190,7 @@ if (nrow(metadata)>0) {
 }
 ```
 
-```{r fig.width=8, fig.height=6, fig.cap=caption}
+```{r fig.width=7, fig.height=4, fig.cap=caption}
 ordered <- p_workflow$data %>%
     arrange(-y,x) %>%
     pull(name) %>%
@@ -215,7 +216,7 @@ sequence_count_plot <- eeplot(sequence_count_plot,
                               file="sequence_count_plot", 
                               caption = "Number of sequences at each processing step.")
 caption <- sequence_count_plot$enchantr$html_caption
-sequence_count_plot
+ggplotly(sequence_count_plot)
 ```
 
 ```{r echo=F, results='asis'}

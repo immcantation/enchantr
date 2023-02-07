@@ -32,6 +32,7 @@ Imports:
     igraph,
     knitr,
     optparse,
+    plotly,
     RColorBrewer,
     reshape2,
     rmarkdown,

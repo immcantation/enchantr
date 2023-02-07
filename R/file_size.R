@@ -136,7 +136,8 @@ getConsoleLogsGraph <- function(logs) {
     # rm duplicate vertex names
     dup_v <- duplicated(vertex_size$vertex)
     if (any(dup_v)) {
-        rm_me <- vertex_size$vertex %in% vertex_size$vertex[duplicated(vertex_size$vertex)] &
+        dup_v_names <- unique(vertex_size$vertex[duplicated(vertex_size$vertex)])
+        rm_me <- vertex_size$vertex %in% dup_v_names &
             is.na(vertex_size$num_seqs)
         vertex_size <- vertex_size[!rm_me,,drop=F]
     }
