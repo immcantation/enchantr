@@ -41,20 +41,26 @@ if (sum(heavy_chains)>0) {
 }
 ```
 
+
 ```{r overlap}
 convergence_overlap <- plotDbOverlap(db %>% 
-                         filter(isHeavyChain(locus)), 
-                         group="sample_id", 
-                         features=c("convergent_clone_id","junction"), 
-                         heatmap_colors=c("white","orange", "grey80"), 
-                         print_zero=FALSE, long_x_angle=90,
-                         title=NULL,xlab=NULL, ylab=NULL,
-                         plot_order=c("tissue","sample_id"), 
-                         silent=T, similarity=c("min","min"),
-                         na.rm=FALSE, 
-                         identity=c('exact', 'ham_nt'), 
-                         threshold=round(params$threshold,3),
-                         geom_text_size=3) 
+                                         filter(isHeavyChain(locus)) %>%
+                                         rowwise() %>%
+                                         mutate(clone_id = paste(
+                                             unique(c(!!rlang::sym(params$cloneby), 
+                                                      clone_id)), collapse ="_")
+                                         ), 
+                                     group="sample_id", 
+                                     features=c("convergent_clone_id","clone_id"), 
+                                     heatmap_colors=c("white","orange", "grey80"), 
+                                     print_zero=FALSE, long_x_angle=90,
+                                     title=NULL,xlab=NULL, ylab=NULL,
+                                     plot_order=c("tissue","sample_id"), 
+                                     silent=T, similarity=c("min","min"),
+                                     na.rm=FALSE, 
+                                     identity=c('exact', 'exact'), 
+                                     threshold=0,
+                                     geom_text_size=3) 
 ```
 
 ```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
@@ -66,4 +72,35 @@ overlapconvergenceplot <- eeplot(overlapconvergenceplot,
        caption=caption)
 overlapconvergenceplot
 caption <- overlapconvergenceplot$enchantr$html_caption
+```
+
+```{r}
+# Add clone_size 
+convergent_clone_sizes <- countClones(
+            db %>% filter(isHeavyChain(locus)) %>% select(-clone_id), # Keep heavy chains only
+            groups=unique(c("sample_id", params$cloneby)),
+            clone = "convergent_clone_id")
+```
+
+
+```{r upsetplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
+caption <- paste0("Unique convergent_clone_id and clone_id overlap.")
+upset_data <- convergent_clone_sizes %>%
+  ungroup() %>%
+  rowwise() %>%
+  mutate(convergent_clone_id=paste(unique(c(convergent_clone_id,!!rlang::sym(params$cloneby))), collapse="_")) %>%
+  select(sample_id, convergent_clone_id, seq_count) %>%
+  pivot_wider(names_from=sample_id, values_from = seq_count,values_fill=0) %>%
+  data.frame()
+rownames(upset_data) <- upset_data[['convergent_clone_id']]
+upset_data <- upset_data %>% select(-convergent_clone_id)
+upset_data[upset_data>0] <- 1
+upset_m <- make_comb_mat(upset_data)
+upset_plot <- UpSet(upset_m)
+upset_plot <- eeplot(upset_plot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('label'),
+       caption=caption)
+upset_plot
+caption <- upset_plot$enchantr$html_caption
 ```

@@ -6,6 +6,7 @@
 #' @docType  package
 
 #' @import      alakazam
+#' @importFrom  ComplexHeatmap make_comb_mat UpSet
 #' @importFrom  foreach foreach %dopar% registerDoSEQ
 #' @importFrom  doParallel  registerDoParallel
 #' @import      dplyr

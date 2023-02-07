@@ -123,6 +123,7 @@ suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("scoper"))
 suppressPackageStartupMessages(library("dowser"))
 suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("ComplexHeatmap"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
@@ -425,7 +426,7 @@ if (nrow(a@abundance)==0) {
 ```
 
 
-```{r, child=c('overlap.Rmd'), eval=!as.logical(params$skip_convergence)}
+```{r, child=c('convergence.Rmd'), eval=!as.logical(params$skip_convergence)}
 ```
 
 # Final repertoires and tables
@@ -459,7 +460,7 @@ if (!is.null(params$log)) {
 }
 ```
 
-```{r dbpass, results='asis'}
+```{r dbpass, results='asis', echo=FALSE}
 output_groups <- db %>%
     ungroup() %>%
     select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
@@ -491,7 +492,7 @@ for (i in 1:nrow(output_groups))  {
 }
 ```
 
-```{r log}
+```{r log, echo=FALSE}
 cat("START> ClonePass", file=log_fn, append=F)
 for (i in 1:nrow(output_groups)) {
     cat(paste0("\nFILE",i,"> ",basename(output_groups[['input_file']][i])), file=log_fn, append=T)
