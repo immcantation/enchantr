@@ -241,7 +241,10 @@ wrap_formula <- as.formula(paste0(
 )
 db <- bind_rows(bulk_dtn,sc_dtn)
 dtnplot <- ggplot(db) + 
-    geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01)
+    geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01) +
+    scale_x_continuous(
+        breaks = seq(0, 1, 0.1)
+    )     
 
 if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
    
@@ -322,12 +325,16 @@ print_table_caption(tag="threshold_summary",text=tab$caption)
 
 ```{r, eval=!all(is.na(db[['dist_nearest']])), results='asis'}
 invisible(lapply(threshold, function(thr) {
-   this_thr <- NA
-   if (!is.null(attributes(thr$GmmThreshold))) {
-      this_thr <- round(attributes(thr$GmmThreshold)$threshold,2)
-   }
-   cat ("\n\n### ",paste(c(thr[['fields']], ": ", this_thr),collapse=" "),"\n\n")
-   print(thr[['plot']])
+    this_thr <- NA
+    if (!is.null(attributes(thr$GmmThreshold))) {
+        this_thr <- round(attributes(thr$GmmThreshold)$threshold,2)
+    }
+    cat ("\n\n### ",paste(c(thr[['fields']], ": ", this_thr),collapse=" "),"\n\n")
+    print(thr[['plot']] +
+              scale_x_continuous(
+                  breaks = seq(0, 1, 0.1)
+              )
+    )
 }))
 ```
 
