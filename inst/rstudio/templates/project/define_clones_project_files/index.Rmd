@@ -488,7 +488,7 @@ for (i in 1:nrow(output_groups))  {
     output_files <- c(output_files, group_fn)
     output_sizes <- c(output_sizes, nrow(group_db))
     write_rearrangement(group_db, file=group_fn)
-    cat("- [",group_db_label,"](",basename(group_fn),")\n", sep="")
+    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
 ```
 
