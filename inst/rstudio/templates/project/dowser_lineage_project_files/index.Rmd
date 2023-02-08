@@ -131,12 +131,17 @@ if (sum(h)>0) {
     } 
     
     clones <- data.frame()
-    c_call <- "c_call"
-    if (!"c_call" %in% colnames(db)) {c_call <- NULL}
+    
+    traits <- intersect(c("c_call"),colnames(db))
+    if (length(traits) == 0 ) { traits <- NULL }
+    
+    num_fields <- intersect(c("duplicate_count", "consensus_count"),colnames(db))
+    if (length(num_fields) == 0 ) { num_fields <- NULL }
+    
     try (
         clones <- formatClones(db,
-                               traits = intersect(c("c_call"),colnames(db)),
-                               # num_fields=intersect(c("duplicate_count", "consensus_count"),colnames(db)), ## TODO: check not all NA
+                               traits=traits ,
+                               num_fields=num_fields,
                                chain="H",
                                locus='locus',
                                heavy=heavy[[1]],
