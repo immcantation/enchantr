@@ -230,7 +230,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 caption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
             "cross ",paste(params$crossby, collapse=","),
-            " distances are availalbe, they are shown in an inverse y-axis.")
+            " distances are available, they are shown in an inverse y-axis.")
 
 wrap_formula <- as.formula(paste0(
                         c(
@@ -339,7 +339,7 @@ tmp <- lapply(threshold, function(thr) {
             paste(thr[['fields']],collapse="_")
             ,"). When ",
             "cross ",paste(params$crossby, collapse=","),
-            " distances are availalbe, they are shown in an inverse y-axis.")
+            " distances are available, they are shown in an inverse y-axis.")
     p <- thr[['plot']] +
         scale_x_continuous(
             breaks = seq(0, 1, 0.1)
