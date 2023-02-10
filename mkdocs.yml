@@ -10,7 +10,6 @@ markdown_extensions:
   - def_list
   - sane_lists
   - smarty
-  - pymdownx.arithmatex
   - toc:
       permalink: True
 extra_javascript:
