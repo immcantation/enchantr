@@ -2,6 +2,23 @@
 #' 
 #' Reports
 #' 
+#' For additional details regarding the use of the \code{enchantr} package see the 
+#' vignettes:\cr
+#' \code{browseVignettes("enchantr")}
+#' 
+#' 
+#' @section  Reports:
+#' \itemize{
+#'   \item  \link{chimera_analysis_project}:    Create an Immcantation Chimera detection project
+#'   \item  \link{collapse_duplicates_project}: Create an Immcantation Collapse duplicates project
+#'   \item  \link{contamination_project}:       Create an Immcantation Detect contamination project
+#'   \item  \link{find_threshold_project}:      Create an Find threshold project
+#'   \item  \link{define_clones_project}:       Create an Immcantation Define clones project
+#'   \item  \link{dowser_lineage_project}:      Create an Immcantation Dowser project
+#'   \item  \link{single_cell_qc_project}:      Create an Immcantation sc QC project            
+#' }
+#' 
+#' 
 #' @name     enchantr
 #' @docType  package
 
