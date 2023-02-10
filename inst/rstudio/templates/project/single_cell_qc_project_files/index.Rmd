@@ -339,6 +339,7 @@ if (any(output_groups[["num_input_files"]] > 1)) {
 
 output_files <- c()
 output_sizes <- c()
+dir.create(file.path(params$outdir,"repertoires")) 
 for (i in 1:nrow(output_groups))  {
     group_db <- right_join(db,
                            output_groups[i,,drop=F],
@@ -346,11 +347,11 @@ for (i in 1:nrow(output_groups))  {
        select(-input_file,-num_input_files,-input_size, -output_size)
     
     group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
-    group_fn <- file.path(params$outdir,paste0(group_db_label,"_",output_fn))
+    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
     output_files <- c(output_files, group_fn)
     output_sizes <- c(output_sizes, nrow(group_db))
     write_rearrangement(group_db, file=group_fn)
-    cat("- [",group_db_label,"](",basename(group_fn),")\n", sep="")
+    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
 ```
 
