@@ -4,18 +4,22 @@ site_favicon: img/favicon.ico
 repo_url: https://bitbucket.org/kleinstein/enchantr
 edit_uri: src/master/docs/
 theme: readthedocs
+site_name: enchantr
+docs_dir: docs
 markdown_extensions:
   - def_list
   - sane_lists
   - smarty
+  - pymdownx.arithmatex
   - toc:
       permalink: True
-docs_dir: 'docs'    
+extra_javascript:
+  - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML
 nav:
   - 'Immcantation Portal': https://immcantation.readthedocs.io/
   - 'About':
     - 'Introduction': index.md
-    - 'Download & Installation': install.md    
+    - 'Download & Installation': install.md
     - 'Package Overview': topics/enchantr.md
     - 'Release Notes': news.md
   - 'Vignettes':
@@ -43,5 +47,4 @@ nav:
     - topics/removeSingleCellDuplicates.md
     - topics/single_cell_qc_project.md
     - topics/singlecell_sharing_matrix.md
-    - topics/singleCellSharingCounts.md
     - topics/validate_input_project.md
