@@ -225,7 +225,7 @@ if (nrow(dups[['dups']]) > 0 ) {
 
    eetable(dups_summary %>% mutate(duplication_percent=round(duplication_percent, 2)),
        caption=paste0("Summay of duplicated sequences: sequences that have the same cell_id and sequence across samples.")
-   )  %>% formatStyle(
+   )$table  %>% formatStyle(
            'duplication_percent',
            target = 'cell',
            backgroundColor = styleInterval(0:100, 
@@ -261,7 +261,7 @@ if (nrow(dup_count) > 0) {
    eetable(
       overlap_summary,
       caption=paste0("Summay of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
-   )   %>% formatStyle(
+   )$table   %>% formatStyle(
       'overlap_percent',
       target = 'cell',
       backgroundColor = styleInterval(0:100, 
