@@ -93,7 +93,8 @@ formatConsoleLog <- function(log_file){
             left_join(
                 log_table_input <- log_table_input[!input_fields,] %>%
                     pivot_wider(id_cols=file_id, 
-                                values_from=value, names_from=field_type)
+                                values_from=value, names_from=field_type),
+                by="file_id"
             )
     }
     log_table_input <- log_table_input %>%
@@ -105,7 +106,7 @@ formatConsoleLog <- function(log_file){
                     values_from=value, names_from=field_type)
     
     log_table <- log_table_input %>%
-        left_join(log_table_output)
+        left_join(log_table_output, by="file_id")
     
     if (!"input_size" %in% colnames(log_table)) {
         if (all(c("output_size", "fail") %in% colnames(log_table))) {
@@ -127,7 +128,8 @@ formatConsoleLog <- function(log_file){
     
 }
 
-getConsoleLogsGraph <- function(logs) {
+#' @export
+consoleLogsAsGraph <- function(logs) {
     vertex_size <- bind_rows(
         logs %>% select(input,input_size) %>% rename(vertex=input, num_seqs=input_size),
         logs %>% select(output,output_size)  %>% rename(vertex=output, num_seqs=output_size),        
@@ -149,7 +151,7 @@ getConsoleLogsGraph <- function(logs) {
 
 
 plotLog <- function(g) {
-    ggraph(g) + 
+    ggraph(g, layout="tree") + 
         #geom_node_point(aes(size = num_seqs), colour = "black") +
         geom_node_label(aes(label=paste0(name,": ", num_seqs, " sequences")), 
                         colour = "black", label.size=0) +
@@ -180,7 +182,7 @@ plotWorkflow <- function(g) {
     g2 <- make_line_graph(g) 
     V(g2)$name <- E(g)$task
     g3 <- graph_from_edgelist(unique(as_edgelist(g2)))
-    p <- ggraph(g3, layout = "auto") +
+    p <- ggraph(g3, layout = "tree") +
     # geom_edge_link0(aes(col=1,edge_width=2), arrow = arrow(length = unit(8, 'mm')))+
         geom_edge_link(color="darkblue",edge_width=3, arrow = arrow(length = unit(6, 'mm')))+
         geom_node_point(shape=21,col="white",fill="black",size=5,stroke=1)+
@@ -198,26 +200,34 @@ plotWorkflow <- function(g) {
 }
 
 # log_files <- list.files(system.file("extdata", package="enchantr"), full.names=T)
+#' @param log_files Vector of paths to log files
 #' @export
-getConsoleLogs <- function(log_files, format=c("df", "graph")) {
-    format <- match.arg(format)
+getConsoleLogs <- function(log_files) {
     #log_files <-  strsplit(log_files,"[ ,]")[[1]]
-    logs <- bind_rows(lapply(log_files, enchantr:::formatConsoleLog))
-    if (format=="df") {
-        logs
-    } else {
-        getConsoleLogsGraph(logs)
-    }
+    logs_df <- bind_rows(lapply(log_files, enchantr:::formatConsoleLog))
+    logs_df
 }
 
+#' @param log_df data.frame of log data
+#' @param style  Style plot. \code{workflow} will plot one figure with 
+#'               the pipeline steps. \code{decompose} will plot one figure
+#'               for each starting input file.
+#' @seealso  See also \link{getConsoleLogs}.
 #' @export
-plotConsoleLogs <- function(log_files, style=c("decompose", "workflow")) {
+plotConsoleLogs <- function(log_df, style=c("decompose", "workflow")) {
     style <- match.arg(style)
-    logs <- getConsoleLogs(log_files, format="graph")
+    logs <- consoleLogsAsGraph(log_df)
     if (style == "decompose") {
         lapply(decompose(logs), enchantr:::plotLog)
     } else {
         plotWorkflow(logs)
     }
 
+}
+
+#' @export
+graphDataFrame <- function(log_df) {
+    as_long_data_frame(consoleLogsAsGraph(log_df)) %>%
+        select(from_name, from_num_seqs, task, to_name, to_num_seqs) %>%
+        mutate(file_0 = NA)
 }

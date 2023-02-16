@@ -109,7 +109,8 @@ if (!is.null(params$metadata)) {
 # Workflow
 
 ```{r, echo=FALSE}
-p_workflow <- plotConsoleLogs(log_files, "workflow")
+log_data <- getConsoleLogs(log_files)
+p_workflow <- plotConsoleLogs(log_data, "workflow")
 p_workflow
 ```
 
@@ -120,10 +121,8 @@ cat("\n\n")
 # File processing 
 
 ```{r, results="asis", echo=FALSE, fig.width=8,fig.height=5}
-plot_list <- plotConsoleLogs(log_files, "decompose")
-log_data <- igraph::as_long_data_frame(getConsoleLogs(log_files, format="graph")) %>%
-    select(from_name, from_num_seqs, task, to_name, to_num_seqs) %>%
-    mutate(file_0 = NA)
+plot_list <- plotConsoleLogs(log_data, "decompose")
+log_data <- graphDataFrame(log_data)
 for (i in 1:length(plot_list)) {
     plot_data <- plot_list[[i]]$data
     input_filename <- plot_data[['name']][which(plot_data[[".ggraph.index"]] == 1)]
