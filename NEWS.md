@@ -1,5 +1,10 @@
-Version 0.0.6.999: February 07, 2023
+Version 0.0.6.999: February 21, 2023
 -------------------------------------------------------------------------------
+
+Bug fixes:
+
++ Fixed a bug in collapse duplicates report, where it was trying to select columns
+  that sometimes did not exist.
 
 Breaks:
 

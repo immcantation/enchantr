@@ -41,12 +41,13 @@ findDuplicates <- function (db, groups="sample_id",
     if (!check == TRUE ) { stop(check) }
     
     db[['row_idx']] <- 1:nrow(db)
+    db[['seq_len']] <- sapply(db[[seq]], nchar)
     
     db[['collapse_idx']] <- db %>%
         mutate(v_gene=getGene(v_call),
                d_gene=getGene(d_call),
                j_gene=getGene(j_call)) %>%
-        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, "junction_length", "productive"))) %>%
+        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, "junction_length", "productive", "seq_len"))) %>%
         group_indices()
     
     
