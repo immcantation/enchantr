@@ -63,6 +63,18 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
 
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("shazam"))
+
+mutThresh <- 6
+windowSize <- 10
+mutThreshRange <- 2:5
+windowSizeRange <- 5:10
+
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
 }
@@ -85,18 +97,6 @@ save(params, file=file.path(params$outdir,"params.RData"))
 # Chimera Filter
 
 ```{r}
-# Libraries
-suppressPackageStartupMessages(library("enchantr"))
-suppressPackageStartupMessages(library("DT"))
-suppressPackageStartupMessages(library("dplyr"))
-suppressPackageStartupMessages(library("airr"))
-suppressPackageStartupMessages(library("shazam"))
-
-mutThresh <- 6
-windowSize <- 10
-mutThreshRange <- 2:5
-windowSizeRange <- 5:10
-
 # Check input file
 if (!file.exists(params$input)) {
     stop(paste0("File ", basename(params$input), " doesn't exist."))
