@@ -90,28 +90,37 @@ findDuplicates <- function (db, groups="sample_id",
     
     group_idx <- unique(db[['collapse_idx']])
     
-    collapse_pass <- bind_rows(foreach(i=1:length(group_idx),
-                             .verbose=FALSE,
-                             .errorhandling='stop') %dopar% {
-                              
-                              this_group <- group_idx[i]
-                              
-                              collapsed_db <- collapseDuplicates(db %>%
-                                                                     filter(collapse_idx == this_group),
-                                                     id = id,
-                                                     seq = seq,
-                                                     text_fields = text_fields, 
-                                                     num_fields = num_fields, 
-                                                     seq_fields = seq_fields,
-                                                     add_count = add_count,
-                                                     ignore = ignore, sep=sep,
-                                                     dry = dry, verbose = verbose)
-                              if (add_count) {
-                                  columns <- c(columns, 'collapse_count','row_idx')
-                              }
-                              collapsed_db %>%
-                                  select(!!!rlang::syms(columns))
-                             })
+    collapse_pass <- bind_rows(
+        foreach(i=1:length(group_idx), .verbose=FALSE, .errorhandling='stop') %dopar% {
+                                           
+            this_group <- group_idx[i]
+            this_group_size <- sum(db[["collapse_idx"]] == this_group)
+            if (this_group_size == 1 ) {
+                return(
+                    db %>%
+                    filter(collapse_idx == this_group) %>%
+                    select(!!!rlang::syms(columns))
+                    )
+                }
+                                           
+            collapsed_db <- collapseDuplicates(db %>%
+                                                   filter(collapse_idx == this_group),
+                                               id = id,
+                                               seq = seq,
+                                               text_fields = text_fields, 
+                                               num_fields = num_fields, 
+                                               seq_fields = seq_fields,
+                                               add_count = add_count,
+                                               ignore = ignore, sep=sep,
+                                               dry = dry, verbose = verbose)
+            out_columns <- columns
+            if (add_count) {
+                out_columns <- c(columns, 'collapse_count','row_idx')
+            }
+            collapsed_db %>%
+                select(!!!rlang::syms(out_columns))
+        }
+    )
     
     if (stop_cluster & !is.numeric(nproc)) {
         parallel::stopCluster(cluster)
