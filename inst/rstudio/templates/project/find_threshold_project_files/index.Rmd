@@ -84,6 +84,7 @@ suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("plotly"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
@@ -112,7 +113,12 @@ save(params, file=file.path(params$outdir,"params.RData"))
 ```{r}
 # Read repertoires
 db <- readInput(params[['input']])
+input_sizes <- db %>%
+    count(input_file)
+eetable(input_sizes) 
+```
 
+```{r}
 input_size <- nrow(db)
 is_heavy <- isHeavyChain(db[['locus']])
 
@@ -127,7 +133,6 @@ bulk_heavy <- is_heavy & !db[[params$singlecell]]
 sc_heavy <- is_heavy & db[[params$singlecell]]
 bulk_dtn <- data.frame()
 sc_dtn <- data.frame()
-
 ```
 
 Number of sequences loaded: `r input_size`.
