@@ -111,17 +111,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 ```{r}
 # Read repertoires
-db_files <- strsplit(params[['input']], ",")[[1]]
-
-# Check input file
-db <- bind_rows(lapply(db_files, function(x) {
-    if (!file.exists(x)) {
-        stop(paste0("File ", basename(x), " doesn't exist."))
-    }
-    read_rearrangement(x)
-    }))
-
-# db <- bind_rows(lapply(db_files, read_rearrangement))
+db <- readInput(params[['input']])
 
 input_size <- nrow(db)
 is_heavy <- isHeavyChain(db[['locus']])

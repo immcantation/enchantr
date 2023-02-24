@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr single cell qc report"
+description: "enchantr collapse duplicates report"
 output: enchantr::immcantation
 params:
    input: 
@@ -99,15 +99,8 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 
 ```{r}
-# Check input file
-if (!file.exists(params$input)) {
-    stop(paste0("File ", basename(params$input), " doesn't exist."))
-}
-
-db_files <- read.delim(params[['input']], header=F)[[1]]
-
-# Read db file
-db <- bind_rows(sapply(db_files, read_rearrangement, simplify = F, USE.NAMES = T), .id="input_file")
+# Read input
+db <- readInput(params[['input']])
 
 input_sizes <- db %>%
     group_by(!!!rlang::syms(unique(c("input_file")))) %>%
@@ -116,6 +109,12 @@ input_size <- nrow(db)
 ```
 
 # Collapse Duplicates
+
+Duplicated `sequence_alignment` (exact character string):
+
+```{r}
+table(duplicated(db[['sequence_alignment']]))
+```
 
 ```{r findDuplicates}
 num_fields <- c("conscount","dupcount")

@@ -50,6 +50,10 @@ findDuplicates <- function (db, groups="sample_id",
         group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, "junction_length", "productive", "seq_len"))) %>%
         group_indices()
     
+    db_subset <- db %>%
+        select(all_of(c(columns, "row_idx", "collapse_idx")))
+    db <- db %>%
+        select(!any_of(c(columns, "collapse_idx")))
     
     # If the user has previously set the cluster and does not wish to reset it
     if(!is.numeric(nproc)){
@@ -80,30 +84,30 @@ findDuplicates <- function (db, groups="sample_id",
         }
         if (cluster_type == "PSOCK") {
             parallel::clusterExport(cluster,
-                                    list('db', id, seq, text_fields,
-                                         num_fields, seq_fields, add_count, 
-                                         ignore, sep, dry, verbose, columns),
+                                    list('db_subset', 'id', 'seq', 'text_fields',
+                                         'num_fields', 'seq_fields', 'add_count', 
+                                         'ignore', 'sep', 'dry', 'verbose', 'columns'),
                                     envir=environment() )
         }
         registerDoParallel(cluster)
     }
     
-    group_idx <- unique(db[['collapse_idx']])
+    group_idx <- unique(db_subset[['collapse_idx']])
     
     collapse_pass <- bind_rows(
-        foreach(i=1:length(group_idx), .verbose=FALSE, .errorhandling='stop') %dopar% {
+        foreach(i=iterators::icount(length(group_idx)), .verbose=FALSE, .errorhandling='stop') %dopar% {
                                            
             this_group <- group_idx[i]
-            this_group_size <- sum(db[["collapse_idx"]] == this_group)
+            this_group_size <- sum(db_subset[["collapse_idx"]] == this_group)
             if (this_group_size == 1 ) {
                 return(
-                    db %>%
+                    db_subset %>%
                     filter(collapse_idx == this_group) %>%
                     select(!!!rlang::syms(columns))
                     )
                 }
                                            
-            collapsed_db <- collapseDuplicates(db %>%
+            collapsed_db <- collapseDuplicates(db_subset %>%
                                                    filter(collapse_idx == this_group),
                                                id = id,
                                                seq = seq,
@@ -127,7 +131,9 @@ findDuplicates <- function (db, groups="sample_id",
     }
     
     db %>%
+        left_join(db_subset, by="row_idx") %>%
         mutate(collapse_pass=row_idx %in% collapse_pass[['row_idx']]) %>%
+        left_join(collapse_pass %>% select(any_of(c("row_idx", "collapse_count"))), by="row_idx") %>%
         arrange(row_idx) %>%
-        select(-collapse_idx, -row_idx)
+        select(!any_of(c('collapse_idx', 'row_idx')))
 }

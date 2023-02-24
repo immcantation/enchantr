@@ -1,3 +1,42 @@
+#' Load input repertertoires
+#' 
+#' @param input   Path to repertoire(s). Can be a directory or comma separated paths.
+#'                The target files can be repertoire files or file-of-files (
+#'                tabulated text files with one or more paths to repertoires in the first column).
+#' @param pattern If input is a directory, the pattern to select the input 
+#'                repertoire files to be loaded.
+#' 
+#' @export
+readInput  <- function(input, pattern="pass.tsv") {
+    # input is a directory
+    if (dir.exists(input)) {
+        input_files <- list.files(input, pattern = pattern, full.names = T)
+    } else {
+        input_files <- strsplit(input, ",")[[1]]
+    }
+    # input is now one or more files
+    # could be repertoires or file of files 
+    # (one column with paths to repertoires)
+    bind_rows(lapply(input_files, function(in_file) {
+        if (!file.exists(in_file)) {
+            stop(paste0("File ", basename(in_file), " doesn't exist."))
+        } 
+        # check if fof, reading first line
+        # if >1 column -> repertoire; if 1 column, fof
+        input_repertoires <- in_file
+        input_header <- read.delim(in_file, nrows=1, header=F, sep="\t")
+        if (ncol(input_header) == 1 ) {
+            input_repertoires <- read.delim(in_file, header=F, sep="\t")[[1]]
+        } 
+        bind_rows(lapply(input_repertoires, function(repertoire) {
+            if (!file.exists(repertoire)) {
+                stop(paste0("File ", basename(repertoire), " doesn't exist."))
+            } 
+            bind_cols(read_rearrangement(repertoire),data.frame("input_file"=basename(repertoire)))
+        }))
+    }))
+}
+
 #' eeplot: a convenience function to save ggplot figures
 #' 
 #' This function takes a \code{ggplot}, and saves it in an .RData file in
