@@ -38,7 +38,6 @@
 #'                      decompose degree
 #'                      graph_from_data_frame graph_from_edgelist
 #'                      make_line_graph vcount as_long_data_frame
-#' @importFrom  iterators icount                      
 #' @importFrom  plotly  ggplotly                      
 #' @importFrom  RColorBrewer brewer.pal
 #' @importFrom  stringi stri_trim_both stri_split_fixed stri_join
