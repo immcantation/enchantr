@@ -40,7 +40,7 @@ findDuplicates <- function (db, groups="sample_id",
     check <- alakazam:::checkColumns(db, columns)
     if (!check == TRUE ) { stop(check) }
     
-    db[['row_idx']] <- 1:nrow(db)
+    db[['finddups_row_idx']] <- 1:nrow(db)
     db[['seq_len']] <- sapply(db[[seq]], nchar)
     
     db[['collapse_idx']] <- db %>%
@@ -51,7 +51,7 @@ findDuplicates <- function (db, groups="sample_id",
         group_indices()
     
     db_subset <- db %>%
-        select(all_of(c(columns, "row_idx", "collapse_idx")))
+        select(all_of(c(columns, "'finddups_row_idx'", "collapse_idx")))
     db <- db %>%
         select(!any_of(c(columns, "collapse_idx")))
     
@@ -102,8 +102,7 @@ findDuplicates <- function (db, groups="sample_id",
             if (this_group_size == 1 ) {
                 return(
                     db_subset %>%
-                    filter(collapse_idx == this_group) %>%
-                    select(!!!rlang::syms(columns))
+                    filter(collapse_idx == this_group)
                     )
                 }
                                            
@@ -117,13 +116,9 @@ findDuplicates <- function (db, groups="sample_id",
                                                add_count = add_count,
                                                ignore = ignore, sep=sep,
                                                dry = dry, verbose = verbose)
-            out_columns <- columns
-            if (add_count) {
-                out_columns <- c(columns, 'collapse_count','row_idx')
-            }
             collapsed_db %>%
-                select(!!!rlang::syms(out_columns))
-        }
+                select(any_of(c(columns,'collapse_count', 'finddups_row_idx')))
+        },
     )
     
     if (stop_cluster & !is.numeric(nproc)) {
@@ -131,9 +126,9 @@ findDuplicates <- function (db, groups="sample_id",
     }
     
     db %>%
-        left_join(db_subset, by="row_idx") %>%
-        mutate(collapse_pass=row_idx %in% collapse_pass[['row_idx']]) %>%
-        left_join(collapse_pass %>% select(any_of(c("row_idx", "collapse_count"))), by="row_idx") %>%
-        arrange(row_idx) %>%
-        select(!any_of(c('collapse_idx', 'row_idx')))
+        left_join(db_subset, by="'finddups_row_idx'") %>%
+        mutate(collapse_pass='finddups_row_idx' %in% collapse_pass[['finddups_row_idx']]) %>%
+        left_join(collapse_pass %>% select(any_of(c("'finddups_row_idx'", "collapse_count"))), by="'finddups_row_idx'") %>%
+        arrange('finddups_row_idx') %>%
+        select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
