@@ -51,7 +51,7 @@ findDuplicates <- function (db, groups="sample_id",
         group_indices()
     
     db_subset <- db %>%
-        select(all_of(c(columns, "'finddups_row_idx'", "collapse_idx")))
+        select(all_of(c(columns, "finddups_row_idx", "collapse_idx")))
     db <- db %>%
         select(!any_of(c(columns, "collapse_idx")))
     
@@ -126,9 +126,9 @@ findDuplicates <- function (db, groups="sample_id",
     }
     
     db %>%
-        left_join(db_subset, by="'finddups_row_idx'") %>%
+        left_join(db_subset, by="finddups_row_idx") %>%
         mutate(collapse_pass='finddups_row_idx' %in% collapse_pass[['finddups_row_idx']]) %>%
-        left_join(collapse_pass %>% select(any_of(c("'finddups_row_idx'", "collapse_count"))), by="'finddups_row_idx'") %>%
+        left_join(collapse_pass %>% select(any_of(c("finddups_row_idx", "collapse_count"))), by="finddups_row_idx") %>%
         arrange('finddups_row_idx') %>%
         select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
