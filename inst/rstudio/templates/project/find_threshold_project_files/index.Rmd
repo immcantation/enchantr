@@ -111,8 +111,14 @@ save(params, file=file.path(params$outdir,"params.RData"))
 ## Input repertoires
 
 ```{r}
-# Read repertoires
-db <- readInput(params[['input']])
+# Read repertoires, 
+# keep only needed columns
+selected_columns <- unique(c("sequence_id", 
+                      params$cloneby,
+                      params$crossby,
+                      "v_call", "j_call", "junction", 
+                      params$singlecell, "locus"))
+db <- readInput(params[['input']], col_select=selected_columns)
 input_sizes <- db %>%
     count(input_file)
 eetable(input_sizes) 

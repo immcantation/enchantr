@@ -5,15 +5,17 @@
 #'                tabulated text files with one or more paths to repertoires in the first column).
 #' @param pattern If input is a directory, the pattern to select the input 
 #'                repertoire files to be loaded.
+#' @param col_select  Columns to select from the repertoire. Will be passed to airr::read_rearrangement
 #' 
 #' @export
-readInput  <- function(input, pattern="pass.tsv") {
+readInput  <- function(input, pattern="pass.tsv", col_select=NULL) {
     # input is a directory
     if (dir.exists(input)) {
         input_files <- list.files(input, pattern = pattern, full.names = T)
     } else {
         input_files <- strsplit(input, ",")[[1]]
     }
+    
     # input is now one or more files
     # could be repertoires or file of files 
     # (one column with paths to repertoires)
@@ -32,7 +34,12 @@ readInput  <- function(input, pattern="pass.tsv") {
             if (!file.exists(repertoire)) {
                 stop(paste0("File ", basename(repertoire), " doesn't exist."))
             } 
-            bind_cols(read_rearrangement(repertoire),data.frame("input_file"=basename(repertoire)))
+            if (!is.null(col_select)) {
+                bind_cols(read_rearrangement(repertoire, col_select=col_select),data.frame("input_file"=basename(repertoire)))
+            } else {
+                bind_cols(read_rearrangement(repertoire),data.frame("input_file"=basename(repertoire)))
+            }
+
         }))
     }))
 }
