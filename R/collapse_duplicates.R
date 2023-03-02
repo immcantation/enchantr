@@ -127,8 +127,8 @@ findDuplicates <- function (db, groups="sample_id",
     
     db %>%
         left_join(db_subset, by="finddups_row_idx") %>%
-        mutate(collapse_pass='finddups_row_idx' %in% collapse_pass[['finddups_row_idx']]) %>%
+        mutate(collapse_pass=finddups_row_idx %in% collapse_pass[['finddups_row_idx']]) %>%
         left_join(collapse_pass %>% select(any_of(c("finddups_row_idx", "collapse_count"))), by="finddups_row_idx") %>%
-        arrange('finddups_row_idx') %>%
+        arrange(finddups_row_idx) %>%
         select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
