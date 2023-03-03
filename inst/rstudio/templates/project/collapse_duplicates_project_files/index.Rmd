@@ -163,7 +163,7 @@ for (i in 1:nrow(output_groups))  {
     group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
     output_files <- c(output_files, group_fn)
     output_sizes <- c(output_sizes, nrow(group_db))
-    write_rearrangement(group_db %>% select(-input_file), file=group_fn)
+    write_rearrangement(group_db %>% select(!any_of(c("input_file", "input_size", "output_size"))), file=group_fn)
     cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
 ```
