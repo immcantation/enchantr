@@ -35,7 +35,7 @@ readInput  <- function(input, pattern="pass.tsv", col_select=NULL) {
                 stop(paste0("File ", basename(repertoire), " doesn't exist."))
             } 
             if (!is.null(col_select)) {
-                bind_cols(read_rearrangement(repertoire, col_select=col_select),data.frame("input_file"=basename(repertoire)))
+                bind_cols(read_rearrangement(repertoire) %>% select(any_of(col_select)),data.frame("input_file"=basename(repertoire)))
             } else {
                 bind_cols(read_rearrangement(repertoire),data.frame("input_file"=basename(repertoire)))
             }
