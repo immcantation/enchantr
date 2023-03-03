@@ -113,7 +113,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 ```{r}
 # Read repertoires, 
 # keep only needed columns
-selected_columns <- unique(c("sequence_id", 
+selected_columns <- unique(c("sample_id", "sequence_id", 
                       params$cloneby,
                       params$crossby,
                       "v_call", "j_call", "junction", 
