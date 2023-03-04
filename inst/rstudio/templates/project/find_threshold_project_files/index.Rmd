@@ -117,7 +117,7 @@ selected_columns <- unique(c("sample_id", "sequence_id",
                       params$cloneby,
                       params$crossby,
                       "v_call", "j_call", "junction", 
-                      params$singlecell, "locus"))
+                      "cell_id", params$singlecell, "locus"))
 db <- readInput(params[['input']], col_select=selected_columns)
 input_sizes <- db %>%
     count(input_file)
