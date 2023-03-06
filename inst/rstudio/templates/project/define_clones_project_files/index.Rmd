@@ -149,21 +149,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 ```{r}
 # Read repertoire
-db<- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
-    # Check input file
-    if (!file.exists(x)) {
-        stop(paste0("File ", basename(x), " doesn't exist."))
-    }
-    # Make _length fields numeric
-    aux_cols <- c("v_germline_length"="numeric",
-                  "d_germline_length"="numeric",
-                  "j_germline_length"="numeric")
-    airr <- read_rearrangement(x, aux_types=aux_cols)
-    airr[['input_file']] <- basename(x)
-    airr[['input_size']] <- NULL
-    airr
-
-}))
+db <- readInput(params[['input']], pattern = "pass.tsv", col_select = NULL)
 db[[ params$singlecell ]] <- as.logical(db[[ params$singlecell ]] )
 input_size <- nrow(db)
 input_sizes <- db %>%
