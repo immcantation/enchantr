@@ -124,6 +124,7 @@ suppressPackageStartupMessages(library("scoper"))
 suppressPackageStartupMessages(library("dowser"))
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("ComplexHeatmap"))
+suppressPackageStartupMessages(library("plotly"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
@@ -374,20 +375,36 @@ print_table_caption(tag="multi_tissue", text=tab_caption)
 Find your [clone sizes table here](tables/clone_sizes_table.tsv). Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure to compare clone size between samples. See [Clonal abundance](#clonal_abundance)
 
 
-```{r clone-size, fig.width=8, fig.height=max(4,0.7*length(unique(db[['sample_id']])))}
-ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
+```{r clonesize, fig.width=8, fig.height=max(4,0.7*length(unique(db[['sample_id']]))), fig.cap=caption}
+caption <- "Clone size distribution. Size is measured as number of heavy chain sequences belonging to the same clone."
+clone_size_plot <- ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
     facet_wrap(~sample_id, scales = "free_y", ncol=3) +
     xlab("Clone size (Number of sequences per clone)")
+clone_size_plot <- eeplot(clone_size_plot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('clone-size'),
+       caption=caption
+       )
+ggplotly(clone_size_plot + theme(panel.spacing=unit(2, 'lines'), legend.position="right"))
+caption <- clone_size_plot$enchantr$html_caption
 ```
 
 ## Subset to clone size > 1
 
-```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=max(4,0.7*length(unique(db[['sample_id']]))) }
-ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
+```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=max(4,0.7*length(unique(db[['sample_id']]))), fig.cap=caption }
+caption <- "Clone size distribution, excluding singletons (subset to clone size > 1). Size is measured as number of heavy chain sequences belonging to the same clone."
+clone_size_atleast2 <- ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
     facet_wrap(~sample_id, scales = "free_y", ncol=3) +
     xlab("Clone size (Sequences per clone)")
+clone_size_atleast2 <- eeplot(clone_size_atleast2, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('clone-size_atleast2'),
+       caption=caption
+       )
+ggplotly(clone_size_atleast2 + theme(panel.spacing=unit(2, 'lines'), legend.position="right"))
+caption <- clone_size_atleast2$enchantr$html_caption
 ```
 
 ```{r, eval=max(clone_sizes[['seq_count']])<=1, results='asis'}
