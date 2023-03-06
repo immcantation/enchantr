@@ -121,7 +121,7 @@ selected_columns <- unique(c("sample_id", "sequence_id",
 db <- readInput(params[['input']], col_select=selected_columns)
 input_sizes <- db %>%
     count(input_file)
-eetable(input_sizes) 
+eetable(input_sizes)$table
 ```
 
 ```{r}
