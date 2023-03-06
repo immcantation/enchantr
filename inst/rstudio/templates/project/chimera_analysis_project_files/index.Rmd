@@ -106,7 +106,8 @@ if (!file.exists(params$input)) {
 db <- read_rearrangement(params[['input']])
 
 is_chimeric <- slideWindowDb(
-    db,
+    db %>%
+        select(all_of(c("sequence_id", "sequence_alignment", "germline_alignment_d_mask"))),
     sequenceColumn = "sequence_alignment",
     germlineColumn = "germline_alignment_d_mask",
     mutThresh,
@@ -146,7 +147,8 @@ cat(paste0("\nFAIL> ",sum(is_chimeric)), file=log_fn, append=T)
 
 ```{r swt}
 swt <- slideWindowTune(
-   db,
+   db %>%
+        select(all_of(c("sequence_id", "sequence_alignment", "germline_alignment_d_mask"))),
    sequenceColumn = "sequence_alignment",
    germlineColumn = "germline_alignment_d_mask",
    dbMutList = NULL,
