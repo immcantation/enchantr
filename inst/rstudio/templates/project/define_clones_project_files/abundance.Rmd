@@ -28,23 +28,35 @@ print_table_caption("clonal_abundance", tab$caption)
 
 ## Abundance plot by sample
 
-```{r abundanceSample, eval=TRUE,  fig.cap=caption, fig.width=8, fig.height=0.7*length(unique(db[['sample_id']]))}
-# plot duplicated cells
+```{r eval=TRUE, echo=F}
+getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
+    ncols <- min(nfacets, ncols)
+    min(max_w, max(ncols*2, min_w))
+}
+
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=12) {
+    nrows <- ceiling(nfacets/ncols)
+    min(max_h, max(nrows*2, min_h))
+}
+```
+
+
+```{r abundanceSample, eval=TRUE, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
 abundanceSample <- eeplot(abundanceSample, 
                      outdir=params$outdir, 
-                     file=knitr::opts_current$get('label'),
+                     file=knitr::opts_current$get('abundanceSample'),
                      caption="Clonal abundance plot.",
                      a)
-abundanceSample
+abundanceSample +
+    theme(legend.position = "none")
 caption <- abundanceSample$enchantr$html_caption  
 ```
 
 ## Abundance plot by tissue
 
-```{r abundanceTissue, eval=TRUE, fig.width=6, fig.height=2*length(unique(db[['tissue']])), fig.cap=caption}
-# plot duplicated cells
-abundanceTissue <- p + facet_wrap(~ tissue)
+```{r abundanceTissue, eval=TRUE, fig.width=getPrettyWidth(length(unique(db[['tissue']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['tissue']])), ncols=3), fig.cap=caption}
+abundanceTissue <- p + facet_wrap(~ tissue, ncol=3)
 abundanceTissue <- eeplot(abundanceTissue, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
