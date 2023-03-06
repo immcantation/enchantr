@@ -41,6 +41,7 @@ if (sum(heavy_chains)>0) {
 }
 ```
 
+## Heatmap
 
 ```{r overlap}
 convergence_overlap <- plotDbOverlap(db %>% 
@@ -64,7 +65,7 @@ convergence_overlap <- plotDbOverlap(db %>%
 ```
 
 ```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
-caption <- paste0("Number of identical convergent_clone_id and similar nt heavy chain junction unique sequences. Two sequences are similar if their nt hamming distance is <=",round(params$threshold,3), ". The percent represents the number of similar sequences over the number of sequences in the smaller set.")
+caption <- paste0("Number of identical clone_id and convergent_clone_id. The percent represents the number of shared clones over the number of clones in the smaller set.")
 overlapconvergenceplot <- convergence_overlap$p
 overlapconvergenceplot <- eeplot(overlapconvergenceplot, 
        outdir=params$outdir, 
@@ -73,6 +74,8 @@ overlapconvergenceplot <- eeplot(overlapconvergenceplot,
 overlapconvergenceplot
 caption <- overlapconvergenceplot$enchantr$html_caption
 ```
+
+## UpSet plot
 
 ```{r}
 # Add clone_size 
