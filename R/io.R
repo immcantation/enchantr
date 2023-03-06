@@ -139,6 +139,9 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
     dt <- DT::datatable(df,
                         filter="top", elementId = element_id, 
                         rownames = FALSE, fillContainer = F, 
+                        # style = 'bootstrap', 
+                        # class = 'table-bordered table-condensed',
+                        class = 'stripe hover order-column row-border compact',
                         options = list(
                             scrollX = TRUE)#,
                         # caption = htmltools::tags$caption(
