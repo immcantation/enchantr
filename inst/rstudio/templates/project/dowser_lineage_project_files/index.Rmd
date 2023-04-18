@@ -28,6 +28,10 @@ params:
        label: "`minseq`"
        input: numeric
        value: 5
+   tips:
+       label: "`tips`"
+       input: text
+       value: "c_call"       
    outname:
       label: "`outname`"
       input: text
@@ -152,7 +156,13 @@ if (sum(h)>0) {
                           build=params$build, 
                           exec=params$exec,
                           nproc=params$nproc)
-        plots <- plotTrees(trees, tips=c_call, tipsize=2)
+        
+        if ( params$tips %in% colnames(db) ) {
+            tips <- params$tips
+        } else {
+            tips <- NULL
+        }
+        plots <- plotTrees(trees, tips=tips, tipsize=2)
         for (i in 1:length(plots)) {
             cat(paste0("## Tree ",i,"\n\n"))
             print(plots[[i]])
