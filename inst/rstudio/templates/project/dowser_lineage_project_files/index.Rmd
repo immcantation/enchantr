@@ -28,6 +28,10 @@ params:
        label: "`minseq`"
        input: numeric
        value: 5
+   traits:
+       label: "`traits`"
+       input: text
+       value: "c_call"            
    tips:
        label: "`tips`"
        input: text
@@ -136,8 +140,11 @@ if (sum(h)>0) {
     
     clones <- data.frame()
     
-    traits <- intersect(c("c_call"),colnames(db))
-    if (length(traits) == 0 ) { traits <- NULL }
+    traits <- params[['traits']]
+    if (!is.null(traits)) {
+        traits <- intersect(traits,colnames(db))
+        if (length(traits) == 0 ) { traits <- NULL }
+    }
     
     num_fields <- intersect(c("duplicate_count", "consensus_count"),colnames(db))
     if (length(num_fields) == 0 ) { num_fields <- NULL }
