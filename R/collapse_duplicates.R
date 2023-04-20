@@ -34,12 +34,19 @@ findDuplicates <- function (db, groups="sample_id",
             c_call <- "c_call"   
         }
     }
+    
+    d_call <- NULL
+    if ("d_call" %in% colnames(db)) { 
+        if (any(!is.na(db[['d_call']]))) {
+            d_call <- "d_call"   
+        }
+    }
     columns <- c(groups, id, seq, text_fields, num_fields, seq_fields, 
-                 "v_call", "d_call", "j_call", "junction_length", c_call, "productive")
+                 "v_call", d_call, "j_call", "junction_length", c_call, "productive")
     columns <- columns[!is.null(columns)]
     check <- alakazam:::checkColumns(db, columns)
     if (!check == TRUE ) { stop(check) }
-    
+
     db[['finddups_row_idx']] <- 1:nrow(db)
     db[['seq_len']] <- sapply(db[[seq]], nchar)
     
