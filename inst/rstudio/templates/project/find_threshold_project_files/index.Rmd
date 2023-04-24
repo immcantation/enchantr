@@ -201,7 +201,7 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
 ```{r distToNearest_single, eval=(any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) }
 if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
     message("Using ",sum(sc_heavy), " sc heavy chain sequences.")
-    # Create unique sequence_id
+    # Create unique cell_id
     db[['cell_id']] <- paste0(db[['sample_id']],db[['cell_id']])
     sc_dtn <- distToNearest(db[sc_heavy,] , 
                           fields=params$cloneby,
