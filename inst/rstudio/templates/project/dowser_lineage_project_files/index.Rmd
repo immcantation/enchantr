@@ -142,9 +142,29 @@ if (sum(h)>0) {
     
     traits <- params[['traits']]
     if (!is.null(traits)) {
-        traits <- intersect(traits,colnames(db))
-        if (length(traits) == 0 ) { traits <- NULL }
+        validTraits <- function(traits, db) {
+            trait_exists <- sapply(traits, function(x) { 
+                x %in% colnames(db)}
+            )
+            if (any(!trait_exists)) {
+                message("Ignoring non-existing traits: ",paste(traits[!trait_exists], collapse = ", "))
+                traits <- traits[trait_exists]
+            }
+            if (length(traits) == 0 ) { 
+                traits <- NULL
+                return (traits)
+            }
+            traits
+        }
+        traits <- validTraits(traits, db)
     }
+    
+    # Convert NA traits to "missing"
+    miss <- function(x) {
+        ifelse(is.na(x), "missing",x)
+    }
+    db <- db %>%
+        mutate(across(all_of(c(traits)), miss)) 
     
     num_fields <- intersect(c("duplicate_count", "consensus_count"),colnames(db))
     if (length(num_fields) == 0 ) { num_fields <- NULL }
