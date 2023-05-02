@@ -206,7 +206,7 @@ if (sum(h)>0) {
         names(graphs) <- trees$clone_id
 
         # Saving all trees in graphML format
-        lapply(names(graphs), function(x)igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]]))
+        lapply(names(graphs), function(x) igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]]))
 
     } else {
         cat("All clones have less than minseq = ",params$minseq," sequences.")
