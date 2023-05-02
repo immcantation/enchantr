@@ -93,6 +93,8 @@ suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("scoper"))
 suppressPackageStartupMessages(library("dowser"))
+suppressPackageStartupMessages(library("igraph"))
+
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
@@ -195,6 +197,17 @@ if (sum(h)>0) {
             print(plots[[i]])
             cat("\n\n")
         }
+
+        # Saving all trees in a PDF
+        treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
+
+        # Converting trees to graphs
+        graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
+        names(graphs) <- trees$clone_id
+
+        # Saving all trees in graphML format
+        lapply(names(graphs), function(x)igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]]))
+
     } else {
         cat("All clones have less than minseq = ",params$minseq," sequences.")
     }
