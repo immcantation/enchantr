@@ -75,3 +75,5 @@ for (i in 1:length(idx)) {
     this_package_version <-  imports[idx[[i]]]
     installDep(pkg_version, this_package_name, this_package_version)
 }
+install.packages(c("bookdown", "DT", "ggraph", "plotly", "reshape2" ))
+BiocManager::install("ComplexHeatmap")
