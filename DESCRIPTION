@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.1.1.999
-Date: 2023-04-25
+Date: 2023-05-03
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
              person("Steven", "Kleinstein", role=c("aut", "cph"),
@@ -18,7 +18,7 @@ Depends:
     R (>= 3.5.0),
 Imports:
     airr (>= 1.4.1),
-    alakazam,
+    alakazam (>= 1.2.1),
     bookdown (>= 0.29),
     ComplexHeatmap,
     data.table,
@@ -37,7 +37,7 @@ Imports:
     reshape2,
     rmarkdown,
     scales,
-    scoper,
+    scoper (>= 1.2.1),
     shazam (> 1.1.0),
     stringi,
     stringr,
