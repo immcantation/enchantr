@@ -1,0 +1,13 @@
+image:
+  name: immcantation/suite:devel
+
+pipelines:
+  default:
+    - step:
+        name: Update and push immcantation/suite:devel
+        script:
+        - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+        - docker build -t immcantation/suite:devel -f docker/Dockerfile .
+        - docker push immcantation/suite:devel
+        services:
+        - docker
