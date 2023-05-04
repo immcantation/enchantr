@@ -17,5 +17,8 @@ pipelines:
           - docker build -t immcantation/suite:devel -f docker/Dockerfile .
           - docker push immcantation/suite:devel
         services:
-          - docker:
-              memory: 3072
+          - docker
+definitions:
+  services:
+    docker:
+      memory: 3072
