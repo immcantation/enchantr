@@ -1,13 +1,21 @@
-image:
-  name: immcantation/suite:devel
-
 pipelines:
   default:
     - step:
-        name: Update and push immcantation/suite:devel
+        name: Test
+        image:
+            name: immcantation/test:devel 
         script:
-        - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-        - docker build -t immcantation/suite:devel -f docker/Dockerfile .
-        - docker push immcantation/suite:devel
+          - sed -i '/test/ d' .Rbuildignore
+          - R CMD build .
+          - R CMD check *.tar.gz --as-cran --run-donttest --timings            
+    - step:
+        name: Update and push immcantation/suite:devel
+        image:
+            name: immcantation/suite:devel
+        script:
+          - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          - docker build -t immcantation/suite:devel -f docker/Dockerfile .
+          - docker push immcantation/suite:devel
         services:
-        - docker
+          - docker:
+              memory: 3072
