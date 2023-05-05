@@ -26,12 +26,12 @@ Imports:
     dowser (>= 1.1.0),
     dplyr,
     DT,
+    foreach,
     ggraph,
     ggplot2,
     gridExtra,
     igraph,
     knitr,
-    optparse,
     plotly,
     RColorBrewer,
     reshape2,
@@ -43,5 +43,6 @@ Imports:
     stringr,
     tidyr
 Suggests:
+    optparse,
     testthat
-RoxygenNote: 7.2.3
+RoxygenNote: 7.2.1

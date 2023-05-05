@@ -28,6 +28,7 @@ single_cell_qc_project <- function(path,...) {
 #' 
 #' @return   A data.frame with cell counts
 #' @examples
+#' data(Example10x, package="alakazam")
 #' db <- Example10x
 #' db[['sample_id']] <- 'example_sample'
 #' countSequencesPerCell(db[1:10,])
