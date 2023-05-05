@@ -8,7 +8,3 @@ pipelines:
           - sed -i '/test/ d' .Rbuildignore
           - Rscript tests/setup/install_dep.R
           - R CMD build .
-definitions:
-  services:
-    docker:
-      memory: 3072
