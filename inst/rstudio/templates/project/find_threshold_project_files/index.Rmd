@@ -24,6 +24,26 @@ params:
       label: "`crossby`"
       input: text
       value: "sample_id"
+   findthreshold_method:
+      label: "`findthreshold_method`"
+      input: text
+      value: "gmm"
+   findthreshold_model:
+      label: "`findthreshold_model`"
+      input: text
+      value: "gamma-norm"
+   findthrehold_edge:
+      label: "`findthreshold_edge`"
+      input: numeric
+      value: 0.9
+   findthreshold_cutoff:
+      label: "`findthreshold_cutoff`"
+      input: text
+      value: "user"
+   findthreshold_spc:
+      label: "`findthreshold_spc`"
+      input: numeric
+      value: 0.995
    singlecell:
       label: "`singlecell`"
       input: text
@@ -180,13 +200,15 @@ db$dist_nearest <- NA
 ```{r distToNearest_bulk, eval=(any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) }
 if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
     message("Using ",sum(bulk_heavy), " bulk heavy chain sequences.")
+
+    # Add distances to nearest neighbor within a "cloneby" group
     bulk_dtn <- distToNearest(db[bulk_heavy,] , 
                                fields=params$cloneby,
                                sequenceColumn="junction", 
                                vCallColumn="v_call", jCallColumn="j_call",
                                model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
                                nproc=params$nproc)
-    
+    # Add distances to nearest neighbor across a "crossby" group
     bulk_dtn <- distToNearest(bulk_dtn, 
                                fields=NULL,
                                cross=params$crossby,
@@ -201,8 +223,11 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
 ```{r distToNearest_single, eval=(any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) }
 if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
     message("Using ",sum(sc_heavy), " sc heavy chain sequences.")
+
     # Create unique cell_id
     db[['cell_id']] <- paste0(db[['sample_id']],db[['cell_id']])
+
+    # Add distances to nearest neighbor within a "cloneby" group
     sc_dtn <- distToNearest(db[sc_heavy,] , 
                           fields=params$cloneby,
                           sequenceColumn="junction", 
@@ -212,6 +237,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
                           cellIdColumn = "cell_id",
                           locusColumn = "locus",
                           onlyHeavy = TRUE)
+    # Add distances to nearest neighbor across a "crossby" group
     sc_dtn <- distToNearest(sc_dtn, 
                           cross=params$crossby,
                           sequenceColumn="junction", 
@@ -302,10 +328,12 @@ if ("cross_dist_nearest" %in% colnames(db)) {
 threshold <- findThresholdDb(db, 
                             distanceColumn="dist_nearest", 
                             crossDistanceColumn=cross_dist_nearest,
-                            method="gmm", 
-                            model="gamma-norm",
-                            edge = 0.9, subsample=NULL, 
-                            cutoff = "user", spc = 0.995,
+                            method=params$findthreshold_method, 
+                            model=params$findthreshold_model,
+                            edge=params$findthreshold_edge, 
+                            subsample=NULL, 
+                            cutoff = params$findthreshold_cutoff, 
+                            spc = params$findthreshold_spc,
                             nproc=params$nproc, 
                             fields=params$cloneby)
 
