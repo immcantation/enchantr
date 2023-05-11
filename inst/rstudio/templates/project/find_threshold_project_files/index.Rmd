@@ -32,7 +32,7 @@ params:
       label: "`findthreshold_model`"
       input: text
       value: "gamma-norm"
-   findthrehold_edge:
+   findthreshold_edge:
       label: "`findthreshold_edge`"
       input: numeric
       value: 0.9
