@@ -95,6 +95,8 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       eval.after="fig.cap",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+options(rlang_backtrace_on_error_report = "full")
+
 
 # Libraries
 suppressPackageStartupMessages(library("enchantr"))
@@ -268,10 +270,10 @@ wrap_formula <- as.formula(paste0(
 )
 db <- bind_rows(bulk_dtn,sc_dtn)
 dtnplot <- ggplot(db) + 
-    geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01) +
-    scale_x_continuous(
-        breaks = seq(0, 1, 0.1)
-    )     
+    geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01) #+
+    #scale_x_continuous(
+    #    breaks = seq(0, 1, 0.1)
+    #)     
 
 if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
    
@@ -280,7 +282,7 @@ if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
         geom_histogram(
             aes(x=cross_dist_nearest, y=-(..count..), fill=sample_id), 
             binwidth=0.01, position="identity") +
-            scale_y_continuous(labels = abs) +
+            #scale_y_continuous(labels = abs) +
             ylab("count")
    } else {
       warning("All `cross_dist_nearest` values are NA.")
