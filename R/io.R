@@ -58,7 +58,8 @@ readInput  <- function(input, pattern="pass.tsv", col_select=NULL) {
 #'                the output file.
 #' @param ...   Additional objects to be save in the same output file               
 #' @examples 
-#' diamonds_plot <- ggplot(ggplot2::diamonds, aes(carat)) + geom_histogram() +
+#' library(ggplot2)
+#' diamonds_plot <- ggplot(diamonds, aes(carat)) + geom_histogram() +
 #'     labs(title = "Title of the plot",
 #'          subtitle = "Subtitle of the plot",
 #'          caption = "This is the caption")

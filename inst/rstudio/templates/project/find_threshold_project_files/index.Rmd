@@ -227,7 +227,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
     message("Using ",sum(sc_heavy), " sc heavy chain sequences.")
 
     # Create unique cell_id
-    db[['cell_id']] <- paste0(db[['sample_id']],db[['cell_id']])
+    # db[['cell_id']] <- paste0(db[['sample_id']],db[['cell_id']])
 
     # Add distances to nearest neighbor within a "cloneby" group
     sc_dtn <- distToNearest(db[sc_heavy,] , 
@@ -241,6 +241,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
                           onlyHeavy = TRUE)
     # Add distances to nearest neighbor across a "crossby" group
     sc_dtn <- distToNearest(sc_dtn, 
+                          fields=NULL,
                           cross=params$crossby,
                           sequenceColumn="junction", 
                           vCallColumn="v_call", jCallColumn="j_call",
@@ -269,14 +270,21 @@ wrap_formula <- as.formula(paste0(
                         ),collapse="")
 )
 db <- bind_rows(bulk_dtn,sc_dtn)
-dtnplot <- ggplot(db) + 
-    geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01) #+
-    #scale_x_continuous(
-    #    breaks = seq(0, 1, 0.1)
-    #)     
+
+dtnplot <- NULL
+
+if (any(!is.na(db[['dist_nearest']]))) {
+    dtnplot <- ggplot(db) +
+        geom_histogram(aes(dist_nearest, fill=sample_id),binwidth = 0.01) +
+        scale_x_continuous(
+            breaks = seq(0, 1, 0.1)
+        )
+} else {
+    cat("All `dist_nearest` values are NA.")
+    warning("All `dist_nearest` values are NA.")
+}
 
 if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
-   
    if (any(!is.na(db[['cross_dist_nearest']]))) {
     dtnplot <- dtnplot + 
         geom_histogram(
@@ -285,24 +293,28 @@ if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
             #scale_y_continuous(labels = abs) +
             ylab("count")
    } else {
+      cat("All `cross_dist_nearest` values are NA.")
       warning("All `cross_dist_nearest` values are NA.")
    }
-
 }
 
-dtnplot <- dtnplot +
-    facet_wrap(wrap_formula, scales = "free_y", ncol=2, labeller = "label_both") +
-    expand_limits(x = 0, y =0) +
-    theme_enchantr() +
-    theme(legend.position = "bottom")
+if (!is.null(dtnplot)) {
+    dtnplot <- dtnplot +
+        facet_wrap(wrap_formula, scales = "free_y", ncol=2, labeller = "label_both") +
+        expand_limits(x = 0, y =0) +
+        theme_enchantr() +
+        theme(legend.position = "bottom")
 
-dtnplot <- eeplot(dtnplot, 
-       outdir=params$outdir, 
-       file=knitr::opts_current$get('dtnplot'),
-       caption=caption
-       )
-ggplotly(dtnplot + theme(panel.spacing=unit(2, 'lines'), legend.position="none"))
-caption <- dtnplot$enchantr$html_caption
+    dtnplot <- eeplot(dtnplot, 
+        outdir=params$outdir, 
+        file=knitr::opts_current$get('dtnplot'),
+        caption=caption
+        )
+    ggplotly(dtnplot + theme(panel.spacing=unit(2, 'lines'), legend.position="none"))
+    caption <- dtnplot$enchantr$html_caption
+} else {
+    cat("All distance values are NA.")
+}
 ```
 
 ## Find threshold
@@ -316,6 +328,7 @@ caption <- dtnplot$enchantr$html_caption
 # This chunk runs when all dist_nearest values are NA
 threshold <- NA
 threshold_summary <- data.frame(mean_threshold = NA)
+cat("All `dist_nearest` values are NA. Skipping threshold analysis.")
 ```
 
 ```{r threshold, eval=!all(is.na(db[['dist_nearest']])), results='asis'}
@@ -352,7 +365,7 @@ tab$table %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
                     digits=3)
 ```
-```{r echo=FALSE,results='asis'}
+```{r echo=FALSE,eval=!all(is.na(db[['dist_nearest']])),results='asis'}
 print_table_caption(tag="threshold_summary",text=tab$caption)
 ```
 
