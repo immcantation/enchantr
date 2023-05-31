@@ -51,13 +51,20 @@ enchantr_report <- function(name=c("validate_input",
     # render
     xfun::in_dir(
         outdir,
-        book <- bookdown::render_book(
-            "index.Rmd",
-            output_format='enchantr::immcantation',
-            config_file = "_bookdown.yml",
-            clean=FALSE,
-            new_session=FALSE,
+        book <- render_book(
+            input="index.Rmd",
             params=report_params)
     )
     book
+}
+
+#' @export
+render_book <- function(input,...) {
+    bookdown::render_book(
+    input,
+    output_file=I("index.html"),
+    output_format='enchantr::immcantation',
+    config_file = "_bookdown.yml",
+    clean=FALSE,
+    new_session=FALSE,...)
 }

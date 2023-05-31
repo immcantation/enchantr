@@ -3,6 +3,7 @@
 # https://github.com/rstudio/bookdown/tree/main/inst/resources/gitbook
 # https://github.com/rstudio/bookdown/blob/main/inst/templates/gitbook.html
 # https://github.com/rstudio/bookdown/blob/main/inst/rstudio/templates/project/resources/gitbook/_output.yml
+# https://github.com/rstudio/bookdown/issues/61#issuecomment-200996786
 
 #' @importFrom rmarkdown output_format knitr_options pandoc_options
 #' @export
@@ -60,8 +61,10 @@ immcantation <- function(...) {
                       fig_caption=immcantation_config[['config']][['fig_caption']],
                       highlight = immcantation_config[['highlight']],
                       keep_md = immcantation_config[['config']][['keep_md']],
-                      config=c(immcantation_config[['config']],immcantation_config['fontsettings']),
-                      code_folding="hide"
+                      config=c(immcantation_config[['config']],
+                               immcantation_config['fontsettings']
+                               ),
+                      code_folding="hide", self_contained=TRUE, split_by = "none" 
                       )
     invisible(b)
 }
