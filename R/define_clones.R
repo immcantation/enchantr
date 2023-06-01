@@ -464,3 +464,57 @@ plotDbOverlap <- function(db, group="sample",
                               !!rlang::sym(ylab) := Var2))
     )
 }
+
+
+# TODO: document
+#' @export
+plotConvergenceUpSet <- function(convergent_clone_sizes) {
+    upset_data <- convergent_clone_sizes %>%
+        ungroup() %>%
+        select(sample_id, convergent_clone_id, seq_count) %>%
+        pivot_wider(names_from=sample_id, values_from = seq_count,values_fill=0) %>%
+        data.frame()
+    rownames(upset_data) <- upset_data[['convergent_clone_id']]
+    upset_data <- upset_data %>% select(-convergent_clone_id)
+    
+    # Filter to use only expanded clones
+    isExpanded <- function(df, min_size=2, mode=c("any")) {
+        if (mode=="any") {
+            selected <- apply(df, 1, function(x) {
+                max(x)>= min_size
+            })        
+        } else {
+            stop("Expecting mode=any")
+        }
+        df[selected,,drop=F]
+    }
+    upset_data <- isExpanded(upset_data)
+    
+    # Count number of clones, not clone size
+    upset_data[upset_data>0] <- 1
+    
+    # Filter to use only clones that are in more than one sample
+    upset_data <- upset_data[rowSums(upset_data)>1,, drop=F]
+    # Rm empty samples
+    upset_data <- upset_data[,colSums(upset_data)>0,drop=F]
+    
+    upset_data$rowSums <- rowSums(upset_data)
+    upset_data <- upset_data %>%
+        arrange(desc(rowSums)) %>%
+        select(-rowSums)
+    
+    if (nrow(upset_data) == 0 ) { return (NULL) }
+    
+    # make_comb_mat supporst number of sets >= 31
+    upset_data <- upset_data[,1:min(31, ncol(upset_data)),drop=F]
+    upset_data <- upset_data[rowSums(upset_data)>1,, drop=F]
+    
+    
+    upset_m <- make_comb_mat(upset_data)
+    upset_plot <- UpSet(upset_m)
+    # upset_plot <- eeplot(upset_plot, 
+    #        outdir=params$outdir, 
+    #        file=knitr::opts_current$get('label'),
+    #        caption=caption)
+    upset_plot
+}

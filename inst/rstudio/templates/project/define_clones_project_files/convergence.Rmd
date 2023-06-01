@@ -83,25 +83,19 @@ convergent_clone_sizes <- countClones(
             db %>% filter(isHeavyChain(locus)) %>% select(-clone_id), # Keep heavy chains only
             groups="sample_id",
             clone = "convergent_clone_id")
+upset_plot <- plotConvergenceUpSet(convergent_clone_sizes)
+if (is.null(upset_plot)) {
+    cat("There aren't any convergent and expanded clones.")
+}
 ```
 
 
-```{r upsetplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
-caption <- paste0("Unique convergent_clone_id and clone_id overlap.")
-upset_data <- convergent_clone_sizes %>%
-  ungroup() %>%
-  select(sample_id, convergent_clone_id, seq_count) %>%
-  pivot_wider(names_from=sample_id, values_from = seq_count,values_fill=0) %>%
-  data.frame()
-rownames(upset_data) <- upset_data[['convergent_clone_id']]
-upset_data <- upset_data %>% select(-convergent_clone_id)
-upset_data[upset_data>0] <- 1
-upset_m <- make_comb_mat(upset_data)
-upset_plot <- UpSet(upset_m)
-# upset_plot <- eeplot(upset_plot, 
-#        outdir=params$outdir, 
-#        file=knitr::opts_current$get('label'),
-#        caption=caption)
+```{r upsetplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=!is.null(upset_plot)}
+caption <- paste0("Unique convergent_clone_id and clone_id overlap. Subset to expanded clones (size>1 in at least one sample). Show most shared top 31. (Note: 31 is the maximum set size in the R package ComplexHeatmap.")
+upset_plot <- eeplot(upset_plot, 
+       outdir=params$outdir, 
+       file=knitr::opts_current$get('label'),
+       caption=caption)
 upset_plot
-# caption <- upset_plot$enchantr$html_caption
+caption <- upset_plot$enchantr$html_caption
 ```
