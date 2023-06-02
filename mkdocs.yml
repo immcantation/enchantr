@@ -28,6 +28,7 @@ nav:
       - topics/chimera_analysis_project.md
       - topics/collapse_duplicates_project.md
       - topics/contamination_project.md      
+      - topics/single_cell_qc_project.md      
       - topics/find_threshold_project.md
       - topics/define_clones_project.md
       - topics/dowser_lineage_project.md      
@@ -46,6 +47,5 @@ nav:
       - topics/plotSequencesPerCell.md
       - topics/removeDoublets.md
       - topics/removeSingleCellDuplicates.md
-      - topics/single_cell_qc_project.md
       - topics/singlecell_sharing_matrix.md
       - topics/validate_input_project.md

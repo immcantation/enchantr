@@ -505,7 +505,7 @@ plotConvergenceUpSet <- function(convergent_clone_sizes) {
     
     if (nrow(upset_data) == 0 ) { return (NULL) }
     
-    # make_comb_mat supporst number of sets >= 31
+    # make_comb_mat supporst number of sets <= 31
     upset_data <- upset_data[,1:min(31, ncol(upset_data)),drop=F]
     upset_data <- upset_data[rowSums(upset_data)>1,, drop=F]
     

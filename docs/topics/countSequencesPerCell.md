@@ -50,22 +50,31 @@ Examples
 -------------------
 
 ```R
+data(Example10x, package="alakazam")
 db <- Example10x
-
-```
-
-**Error in eval(expr, envir, enclos)**: object 'Example10x' not found
-```R
 db[['sample_id']] <- 'example_sample'
-
-```
-
-**Error in db[["sample_id"]] <- "example_sample"**: object 'db' not found
-```R
 countSequencesPerCell(db[1:10,])
 ```
 
-**Error in group_by(., sample_id, cell_id, locus)**: object 'db' not found
+
+```
+# A tibble: 10 × 6
+   sample_id    cell_id locus cell_num_sequences cell_num_isotypes cell_isotypes
+   <chr>        <chr>   <chr>              <int>             <int> <chr>        
+ 1 example_sam… AAAGCA… IGH                    1                 1 IGHD         
+ 2 example_sam… ATTGGT… IGH                    1                 1 IGHM         
+ 3 example_sam… CATGGC… IGH                    1                 1 IGHM         
+ 4 example_sam… GAACAT… IGH                    1                 1 IGHD         
+ 5 example_sam… GACGTG… IGH                    1                 1 IGHM         
+ 6 example_sam… GCTGGG… IGH                    1                 1 IGHM         
+ 7 example_sam… GGTATT… IGH                    1                 1 IGHM         
+ 8 example_sam… TCTCTA… IGH                    1                 1 IGHM         
+ 9 example_sam… TTAGTT… IGH                    1                 1 IGHA1        
+10 example_sam… TTTCCT… IGH                    1                 1 IGHM         
+
+```
+
+
 
 See also
 -------------------
