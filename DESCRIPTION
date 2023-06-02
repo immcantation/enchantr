@@ -4,6 +4,8 @@ Version: 0.1.2
 Date: 2023-06-02
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
+             person("Gisela", "Gabernet", role=c("aut"),
+                    email="gisela.gabernet@yale.edu"),                    
              person("Steven", "Kleinstein", role=c("aut", "cph"),
                     email="steven.kleinstein@yale.edu"))
 Title: enchantr

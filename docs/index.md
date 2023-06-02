@@ -36,6 +36,7 @@ or use the [issue tracker](https://bitbucket.org/kleinstein/enchantr/issues?stat
 # Authors
 
 [Susanna Marquez](mailto:susanna.marquez@yale.edu) (aut, cre)  
+[Gisela Gabernet](mailto:gisela.gabernet@yale.edu) (aut)  
 [Steven Kleinstein](mailto:steven.kleinstein@yale.edu) (aut, cph)
 
 
