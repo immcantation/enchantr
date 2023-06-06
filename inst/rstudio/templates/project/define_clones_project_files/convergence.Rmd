@@ -92,10 +92,11 @@ if (is.null(upset_plot)) {
 
 ```{r upsetplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=!is.null(upset_plot)}
 caption <- paste0("Unique convergent_clone_id and clone_id overlap. Subset to expanded clones (size>1 in at least one sample). Show most shared top 31. (Note: 31 is the maximum set size in the R package ComplexHeatmap.")
-upset_plot <- eeplot(upset_plot, 
+us <- grid.grabExpr(draw(upset_plot)) 
+upset_plot <- eeplot(us, 
        outdir=params$outdir, 
        file=knitr::opts_current$get('label'),
        caption=caption)
-upset_plot
+grid.draw(us)
 caption <- upset_plot$enchantr$html_caption
 ```
