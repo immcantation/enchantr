@@ -22,7 +22,7 @@ installDep <- function(pkg, devel_mode, immcantation=immcantation_packages,
     pkg_version <- gsub(".*\\([^0-9.]*(.*)\\)$", "\\1", pkg)
     pkg_logic <- gsub("(.*)( *)\\(([><=]*)[^0-9.]*(.*)\\)$", "\\3", pkg)
     if (pkg_version == pkg_name ) { 
-        pkg_version <- "0.0.0"
+        pkg_version <- NULL
         pkg_logic <- ">="
     }
     
@@ -39,12 +39,18 @@ installDep <- function(pkg, devel_mode, immcantation=immcantation_packages,
     installed_pkg <-  installed_packages[installed_packages[,"Package"]==pkg_name,,drop=F]
     
     if (nrow(installed_pkg) > 0 ) {
-        if (!is_immcantation | !devel_mode) {
-            # Check version of installed package
-            installed_version <- numeric_version(installed_pkg[,"Version"])
-            is_installed <- eval(parse(text=paste0("numeric_version('",installed_version,"') ",
-                                                   pkg_logic,
-                                                   " numeric_version('",pkg_version,"')")))
+        # Check version of installed package
+        tmp_pkg_version <- pkg_version
+        if (is.null(pkg_version)) {
+            tmp_pkg_version <- "0.0.0"
+        }
+        installed_version <- numeric_version(installed_pkg[,"Version"])
+        is_installed <- eval(parse(text=paste0("numeric_version('",installed_version,"') ",
+                                               pkg_logic,
+                                               " numeric_version('",tmp_pkg_version,"')")))
+    }
+    
+    if (!is_immcantation | !devel_mode) {
             if (is_installed) {
                 message(pkg, " is available.")
             } else {
@@ -62,7 +68,6 @@ installDep <- function(pkg, devel_mode, immcantation=immcantation_packages,
             message(paste0(pkg,": installing most recent version from Bitbucket @master.")) 
             install_bitbucket(paste0("kleinstein/", pkg_name, "@master"), upgrade = "never")
         }
-    }
 }
 
 # Parse this package version in DESCRIPTION
