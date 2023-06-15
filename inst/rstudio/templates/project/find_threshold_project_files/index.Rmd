@@ -270,23 +270,25 @@ if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
    }
 }
 
-if (!is.null(dtnplot)) {
-    dtnplot <- dtnplot +
-        facet_wrap(wrap_formula, scales = "free_y", ncol=2, labeller = "label_both") +
-        expand_limits(x = 0, y =0) +
-        theme_enchantr() +
-        theme(legend.position = "bottom")
-
-    dtnplot <- eeplot(dtnplot, 
-        outdir=params$outdir, 
-        file=knitr::opts_current$get('dtnplot'),
-        caption=caption
-        )
-    ggplotly(dtnplot + theme(panel.spacing=unit(2, 'lines'), legend.position="none"))
-    caption <- dtnplot$enchantr$html_caption
-} else {
+if (is.null(dtnplot)) {
     cat("All distance values are NA.")
 }
+```
+
+```{r showdtnplot, eval=!is.null(dtnplot), fig.cap=caption}
+dtnplot <- dtnplot +
+    facet_wrap(wrap_formula, scales = "free_y", ncol=2, labeller = "label_both") +
+    expand_limits(x = 0, y =0) +
+    theme_enchantr() +
+    theme(legend.position = "bottom")
+
+dtnplot <- eeplot(dtnplot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('dtnplot'),
+                  caption=caption
+)
+ggplotly(dtnplot + theme(panel.spacing=unit(2, 'lines'), legend.position="none"))
+caption <- dtnplot$enchantr$html_caption
 ```
 
 ## Find threshold
