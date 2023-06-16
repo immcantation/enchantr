@@ -379,7 +379,7 @@ print_table_caption(tag="multi_tissue", text=tab_caption)
 Find your [clone sizes table here](tables/clone_sizes_table.tsv). Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure to compare clone size between samples. See [Clonal abundance](#clonal_abundance)
 
 
-```{r clonesize, fig.width=8, fig.height=max(4,0.7*length(unique(db[['sample_id']]))), fig.cap=caption, eval=any(isHeavyChain(db$locus))}
+```{r clonesize, fig.width=8, fig.height=min(16,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption, eval=any(isHeavyChain(db$locus))}
 caption <- "Clone size distribution. Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_plot <- ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
