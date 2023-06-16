@@ -396,7 +396,7 @@ caption <- clone_size_plot$enchantr$html_caption
 
 ## Subset to clone size > 1
 
-```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=max(4,0.7*length(unique(db[['sample_id']]))), fig.cap=caption}
+```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(16,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
 caption <- "Clone size distribution, excluding singletons (subset to clone size > 1). Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_atleast2 <- ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
