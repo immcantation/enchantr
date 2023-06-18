@@ -28,6 +28,10 @@ params:
       label: "`singlecell`"
       input: text
       value: "single_cell"          
+   subsample:
+      label: "`subsample`"
+      input: numeric
+      value: 0
    outname:
       label: "`outname`"
       input: text
@@ -139,6 +143,10 @@ bulk_heavy <- is_heavy & !db[[params$singlecell]]
 sc_heavy <- is_heavy & db[[params$singlecell]]
 bulk_dtn <- data.frame()
 sc_dtn <- data.frame()
+subsample <- params[['subsample']]
+if (subsample %in% c(NA, 0, NULL)) {
+    subsample <- NULL
+}
 ```
 
 Number of sequences loaded: `r input_size`.
@@ -185,7 +193,8 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
                                sequenceColumn="junction", 
                                vCallColumn="v_call", jCallColumn="j_call",
                                model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
-                               nproc=params$nproc)
+                               nproc=params$nproc,
+                               subsample = subsample)
     
     bulk_dtn <- distToNearest(bulk_dtn, 
                                fields=NULL,
@@ -193,7 +202,8 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
                                sequenceColumn="junction", 
                                vCallColumn="v_call", jCallColumn="j_call",
                                model="ham", first=FALSE, VJthenLen=TRUE, normalize="len",
-                               nproc=params$nproc)
+                               nproc=params$nproc,
+                               subsample = subsample)
         
 } 
 ```
@@ -211,7 +221,8 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
                           nproc=params$nproc,
                           cellIdColumn = "cell_id",
                           locusColumn = "locus",
-                          onlyHeavy = TRUE)
+                          onlyHeavy = TRUE,
+                          subsample = subsample)
     sc_dtn <- distToNearest(sc_dtn, 
                           fields=NULL,
                           cross=params$crossby,
@@ -221,7 +232,8 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
                           nproc=params$nproc,
                           cellIdColumn = "cell_id",
                           locusColumn = "locus",
-                          onlyHeavy = TRUE)    
+                          onlyHeavy = TRUE,
+                          subsample = subsample)    
 } 
 ```
 
@@ -233,6 +245,9 @@ caption <- paste0("Distribution of the distance to the nearest sequence within "
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
             "cross ",paste(params$crossby, collapse=","),
             " distances are available, they are shown in an inverse y-axis.")
+if (!is.null(subsample)) {
+    caption <- paste0(caption," Subsampling requested: ", subsample, ".")
+}
 
 wrap_formula <- as.formula(paste0(
                         c(
@@ -322,13 +337,18 @@ threshold <- findThresholdDb(db,
                             edge = 0.9, subsample=NULL, 
                             cutoff = "user", spc = 0.995,
                             nproc=params$nproc, 
-                            fields=params$cloneby)
+                            fields=params$cloneby,
+                            subsample=subsample)
 
 threshold_summary <- gmmSummary(threshold) %>%
     mutate(mean_threshold=mean(threshold, na.rm=TRUE))
 mean_threshold <- round(threshold_summary$mean_threshold[1],2)
 
 tab_caption <- paste0("Summary of threshold values. Mean threshold is: ", mean_threshold)
+if (!is.null(subsample)) {
+    tab_caption <- paste0(tab_caption," Subsampling requested: ", subsample, ".")
+}
+
 tab <- eetable(threshold_summary, 
                outdir=params$outdir, 
                file="threshold_summary",
