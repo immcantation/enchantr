@@ -3,7 +3,7 @@ title: "Immcantation - enchantR"
 subtitle: "Input validation"
 author: ""
 date: "Updated: `r date()`"
-knit: "bookdown::render_book"
+knit: enchantr::render_book
 site: bookdown::bookdown_site
 documentclass: book
 bibliography: "references.bib"

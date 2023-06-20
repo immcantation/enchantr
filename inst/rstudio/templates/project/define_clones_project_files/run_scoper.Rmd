@@ -1,8 +1,3 @@
----
-output: html_document
-editor_options: 
-  chunk_output_type: console
----
 Clonal assignment performed with `scoper::hierarchicalClones`, version `r v <- packageVersion("scoper"); v` within `r paste(params$cloneby, collapse=", ")`.
 
 To know more details about the method, visit the documentation website [https://scoper.readthedocs.io/en/](https://scoper.readthedocs.io/en/`r v`/topics/hierarchicalClones/)

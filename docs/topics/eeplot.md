@@ -42,31 +42,29 @@ Examples
 -------------------
 
 ```R
-diamonds_plot <- ggplot(ggplot2::diamonds, aes(carat)) + geom_histogram() +
+library(ggplot2)
+diamonds_plot <- ggplot(diamonds, aes(carat)) + geom_histogram() +
 labs(title = "Title of the plot",
 subtitle = "Subtitle of the plot",
 caption = "This is the caption")
-
-```
-
-**Error in ggplot(ggplot2::diamonds, aes(carat))**: could not find function "ggplot"
-```R
 p <- eeplot(diamonds_plot, outdir=tempdir(), file="diamonds-plot")
-
-```
-
-**Error in eeplot(diamonds_plot, outdir = tempdir(), file = "diamonds-plot")**: object 'diamonds_plot' not found
-```R
 p
 
 ```
 
-**Error in eval(expr, envir, enclos)**: object 'p' not found
+*`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.*![3](eeplot-3.png)
+
 ```R
 p$enchantr$html_caption
 ```
 
-**Error in eval(expr, envir, enclos)**: object 'p' not found
+
+```
+[1] " <a href='ggplots/diamonds-plot.RData'>ggplot file: diamonds-plot.RData</a>"
+
+```
+
+
 
 
 
