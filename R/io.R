@@ -8,7 +8,7 @@
 #' @param col_select  Columns to select from the repertoire. Will be passed to airr::read_rearrangement
 #' 
 #' @export
-readInput  <- function(input, pattern="pass.tsv", col_select=NULL) {
+readInput <- function(input, pattern="pass.tsv", col_select=NULL) {
     # input is a directory
     if (dir.exists(input)) {
         input_files <- list.files(input, pattern = pattern, full.names = T)
@@ -16,28 +16,41 @@ readInput  <- function(input, pattern="pass.tsv", col_select=NULL) {
         input_files <- strsplit(input, ",")[[1]]
     }
     
+    # named vector or list giving the type for fields that are not defined 
+    # in the AIRR schema. The field name is the name, the value the type, 
+    # denoted by one of "c" (character), "l" (logical), "i" (integer),
+    # "d" (double), or "n" (numeric).
+    aux_types <- c(
+        "v_germline_length"="i",
+        "d_germline_length"="i",
+        "j_germline_length"="i"
+    )
     # input is now one or more files
-    # could be repertoires or file of files 
+    # could be repertoires or file of files (fof)
     # (one column with paths to repertoires)
     bind_rows(lapply(input_files, function(in_file) {
-        if (!file.exists(in_file)) {
+        # Check if file (local or url) exists
+        input_header <- data.frame()
+        try ( input_header <- read.delim(in_file, nrows=1, header=F, sep="\t")) 
+        if (!file.exists(in_file) & nrow(input_header) == 0 ) {
             stop(paste0("File ", basename(in_file), " doesn't exist."))
         } 
-        # check if fof, reading first line
-        # if >1 column -> repertoire; if 1 column, fof
+        # check if it is a fof by reading the first line
+        # if >1 column -> repertoire; if 1 column -> fof
         input_repertoires <- in_file
-        input_header <- read.delim(in_file, nrows=1, header=F, sep="\t")
         if (ncol(input_header) == 1 ) {
             input_repertoires <- read.delim(in_file, header=F, sep="\t")[[1]]
         } 
         bind_rows(lapply(input_repertoires, function(repertoire) {
-            if (!file.exists(repertoire)) {
+            repertoire_header <- data.frame()
+            try ( repertoire_header <- read.delim(repertoire, nrows=1, header=F, sep="\t"))             
+            if (!file.exists(repertoire) && nrow(repertoire_header)==0 ) {
                 stop(paste0("File ", basename(repertoire), " doesn't exist."))
             } 
             if (!is.null(col_select)) {
-                bind_cols(read_rearrangement(repertoire) %>% select(any_of(col_select)),data.frame("input_file"=basename(repertoire)))
+                bind_cols(read_rearrangement(repertoire, aux_types=aux_types) %>% select(any_of(col_select)),data.frame("input_file"=basename(repertoire)))
             } else {
-                bind_cols(read_rearrangement(repertoire),data.frame("input_file"=basename(repertoire)))
+                bind_cols(read_rearrangement(repertoire, aux_types=aux_types),data.frame("input_file"=basename(repertoire)))
             }
 
         }))

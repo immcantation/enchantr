@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires files"
       input: file
-      value: "input.tsv"
+      value: "https://yale.box.com/v/example-bcr-sc-airr"
    imgt_db:
       label: "`imgt_db`: Path to IMGT reference  database."
       input: file
@@ -150,7 +150,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 ```{r}
 # Read repertoire
-db <- readInput(params[['input']], pattern = "pass.tsv", col_select = NULL)
+db <- readInput(params[['input']], col_select = NULL)
 db[[ params$singlecell ]] <- as.logical(db[[ params$singlecell ]] )
 input_size <- nrow(db)
 input_sizes <- db %>%
