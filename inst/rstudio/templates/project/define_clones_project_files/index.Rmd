@@ -15,11 +15,15 @@ params:
    input: 
       label: "`input`: Path to repertoires files"
       input: file
-      value: "https://yale.box.com/v/example-bcr-sc-airr"
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
    imgt_db:
       label: "`imgt_db`: Path to IMGT reference  database."
       input: file
-      value: !r NULL
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+   species:
+      label: "`species`"
+      input: text
+      value: "human"        
    force:
       label: "`force`: if clone_id alreday exists, overwrite (force=TRUE) or skip clone assignment and render the report (force=FALSE)."
       input: logical        
@@ -27,11 +31,11 @@ params:
    cloneby:
       label: "`cloneby`"
       input: text
-      value: "sample_id"    
+      value: "subject_id"    
    singlecell:
       label: "`singlecell`"
       input: text
-      value: "single_cell"          
+      value: NULL          
    threshold:
       label: "`threshold`"
       input: numeric
@@ -43,7 +47,7 @@ params:
    outputby:
       label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
       input: text
-      value: "id"
+      value: "sample_id"
    model:
       label: "`model`"
       input: text
@@ -133,6 +137,8 @@ if (!dir.exists(params[['outdir']])) {
 file.copy(params$logo, 
           file.path(params$outdir,"assets", "logo.png"),
           recursive = T, overwrite=T)
+
+singlecell <- params$singlecell
 ```
 
 
@@ -151,7 +157,24 @@ save(params, file=file.path(params$outdir,"params.RData"))
 ```{r}
 # Read repertoire
 db <- readInput(params[['input']], col_select = NULL)
-db[[ params$singlecell ]] <- as.logical(db[[ params$singlecell ]] )
+
+# Check fo single cell label
+if (!is.null(singlecell)) {
+    if (singlecell %in% colnames(db)) {
+         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
+    } else {
+        stop("`",singlecell, "` is not a valid field in `db`.")
+    }
+} else {
+   singlecell <- "single_cell"
+   db[[singlecell]] <- F
+   if ("cell_id" %in% colnames(db)) {
+       message("Setting `singlecell` using `cell_id`.") 
+       db[[singlecell]][!db[['cell_id']] %in% c(NA, '')] <- T
+   }
+
+}
+
 input_size <- nrow(db)
 input_sizes <- db %>%
     group_by(!!!rlang::syms(unique(c("input_file")))) %>%
@@ -160,7 +183,7 @@ input_sizes <- db %>%
 if (!"locus" %in% colnames(db)) {
     db[['locus']] <- getLocus(db[['v_call']])
 }
-heavy_chains <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
+heavy_chains <- isHeavyChain(db[['locus']])
 
 if ("clone_id" %in% colnames(db)) {
     if (params$force) {
@@ -182,7 +205,7 @@ if ("clone_id" %in% colnames(db)) {
 
 Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r sum(heavy_chains, na.rm=T)`.
 
-```{r inputsamplesumary, results='asis'}
+```{r inputsamplesumary, results='asis', eval="tissue" %in% colnames(db)}
 input_samples_summary <- db %>%
    group_by(sample_id, subject_id, tissue) %>%
    summarize(size = n()) %>%
@@ -190,7 +213,7 @@ input_samples_summary <- db %>%
 
 eetable(input_samples_summary)$table
 ```
-```{r echo=FALSE, results='asis'}
+```{r echo=FALSE, results='asis', eval="tissue" %in% colnames(db)}
 print_table_caption(tag="input_samples_summary", text="Input samples summary.")
 ```
 
@@ -332,7 +355,7 @@ print_table_caption(tag="num_clones_table_nosingle", text=tab_caption)
 
 ## Expanded clones within `r paste(params$cloneby,collapse=", ")`
 
-```{r, results='asis', eval=any(isHeavyChain(db$locus))}
+```{r, results='asis', eval=any(isHeavyChain(db$locus)) & "tissue" %in% colnames(db) }
 any_tissues <- db %>%
    filter(isHeavyChain(locus)) %>% # Keep heavy chains only
    group_by(!!!rlang::syms(c("clone_id", params$cloneby))) %>%
@@ -347,13 +370,13 @@ any_tissues <- db %>%
 tab_caption <- paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " . Subsetting to clones of size > 1 in the cloning group (not the sample).")
 eetable(any_tissues, caption=tab_caption)$table
 ```
-```{r echo=FALSE, results='asis', eval=any(isHeavyChain(db$locus))}
+```{r echo=FALSE, results='asis', eval=any(isHeavyChain(db$locus))  & "tissue" %in% colnames(db) }
 print_table_caption(tag="any_tissues", text=tab_caption)
 ```
 
 ## Clones spanning multiple tissues
 
-```{r, results='asis', eval=any(isHeavyChain(db$locus))}
+```{r, results='asis', eval=any(isHeavyChain(db$locus))  & "tissue" %in% colnames(db) }
 multi_tissue <- db %>%
     filter(isHeavyChain(locus)) %>% # Keep heavy chains only
     group_by(!!!rlang::syms(c(params$cloneby, "clone_id"))) %>%
@@ -370,7 +393,7 @@ multi_tissue <- multi_tissue %>%
 tab_caption <- "Summary of clones spanning more than one tissue."
 eetable(multi_tissue, caption=tab_caption)$table
 ```
-```{r echo=FALSE, results='asis',eval=any(isHeavyChain(db$locus))}
+```{r echo=FALSE, results='asis',eval=any(isHeavyChain(db$locus))  & "tissue" %in% colnames(db) }
 print_table_caption(tag="multi_tissue", text=tab_caption)
 ```
 

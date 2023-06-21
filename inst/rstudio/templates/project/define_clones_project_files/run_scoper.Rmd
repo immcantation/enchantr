@@ -5,11 +5,11 @@ To know more details about the method, visit the documentation website [https://
 ```{r, warning=TRUE}
 if (sum(heavy_chains)>0) {
     if (params$model == "hierarchical") {
-        if (all(db[[ params$singlecell ]] == T )) {
+        if (all(db[[ singlecell ]] == T )) {
             cell_id <- 'cell_id'
         } else {
             cell_id <- NULL
-            if (all(c(T,F) %in% db[[ params$singlecell ]])) {
+            if (all(c(T,F) %in% db[[ singlecell ]])) {
                 warning("Mix of single and bulk data. Setting cell_id=`NULL`.")
             }
         }
@@ -71,69 +71,93 @@ this region are unreliable for B cell receptor alignments.
 Documentation for `dowser::createGermlines` is available here: [https://dowser.readthedocs.io/en/latest/topics/createGermlines](https://dowser.readthedocs.io/en/latest/topics/createGermlines/).
 
 ```{r}
-if ( length(unique(db[['species']])) > 1 ) {
-    message("Message: multiple species found.")
-} 
 pre_germ_size <- nrow(db)
+species <- params[['species']]
 db[['tmp_nrow']] <- 1:nrow(db)
-db <- bind_rows(lapply(split(db,db[['species']]),
-                       function(db_sp) { 
-                           species <- db_sp[['species']][1]
-                           references <- dowser::readIMGT(file.path(params[['imgt_db']], species, "vdj"),
-                                                          quiet=TRUE)
-                           
-                           
-                           # tmp fix (add unique sequence id ) for
-                           # Error in dowser::createGermlines(db_sp, references, locus = "locus",  :
-                           #   Sequence IDs are not unique!
-                           dup_ids <- db_sp %>%
-                               ungroup() %>%
-                               group_by(!!!rlang::syms(c(params$cloneby))) %>%
-                               mutate(dup=duplicated(sequence_id)) %>%
-                               pull(dup) %>% any()
-                           
-                           if (dup_ids) {
-                               db_sp <- db_sp %>%
-                                   mutate(sequence_id = paste(sample_id, sequence_id, sep = '_'))
-                           }
-                           
-                           is_na_clone <- is.na(db_sp[["clone_id"]])
-                           not_na_clone_db <- data.frame()
-                           na_clone_db <- data.frame()
-                           if (any(is_na_clone)) {
-                               na_clone_db <- db_sp[is_na_clone,,drop=F]
-                           }
-                           
-                           if (any(!is_na_clone)) {
-                               not_na_clone_db <- dowser::createGermlines(
-                                   db_sp[!is_na_clone,,drop=FALSE],
-                                   references,
-                                   locus = "locus",
-                                   nproc = params$nproc,
-                                   seq = "sequence_alignment",
-                                   v_call = "v_call",
-                                   d_call = "d_call",
-                                   j_call = "j_call",
-                                   amino_acid = FALSE,
-                                   id = "sequence_id",
-                                   clone = "clone_id",
-                                   v_germ_start = "v_germline_start",
-                                   v_germ_end = "v_germline_end",
-                                   v_germ_length = "v_germline_length",
-                                   d_germ_start = "d_germline_start",
-                                   d_germ_end = "d_germline_end",
-                                   d_germ_length = "d_germline_length",
-                                   j_germ_start = "j_germline_start",
-                                   j_germ_end = "j_germline_end",
-                                   j_germ_length = "j_germline_length",
-                                   np1_length = "np1_length",
-                                   np2_length = "np2_length",
-                                   na.rm = TRUE,
-                                   fields = params$cloneby
-                               )
-                           }
-                           bind_rows(not_na_clone_db, na_clone_db)
-                       })) %>%
+
+# download and unzip if needed
+imgt_db <- prepareIMGT(params$imgt_db)
+
+references <- dowser::readIMGT(file.path(imgt_db,
+                                species, "vdj"),
+                               quiet=TRUE)
+
+# tmp fix (add unique sequence id ) for
+# Error in dowser::createGermlines(db_sp, references, locus = "locus",  :
+#   Sequence IDs are not unique!
+dup_ids <- db %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(c(params$cloneby))) %>%
+    mutate(dup=duplicated(sequence_id)) %>%
+    pull(dup) %>% any()
+
+if (dup_ids) {
+    db <- db %>%
+        mutate(sequence_id = paste(sample_id, sequence_id, sep = '_'))
+}
+
+is_na_clone <- is.na(db[["clone_id"]])
+not_na_clone_db <- data.frame()
+na_clone_db <- data.frame()
+if (any(is_na_clone)) {
+    na_clone_db <- dowser::createGermlines(
+        db[is_na_clone,,drop=FALSE],
+        references,
+        locus = "locus",
+        nproc = params$nproc,
+        seq = "sequence_alignment",
+        v_call = "v_call",
+        d_call = "d_call",
+        j_call = "j_call",
+        amino_acid = FALSE,
+        id = "sequence_id",
+        clone = "tmp_nrow",
+        v_germ_start = "v_germline_start",
+        v_germ_end = "v_germline_end",
+        v_germ_length = "v_germline_length",
+        d_germ_start = "d_germline_start",
+        d_germ_end = "d_germline_end",
+        d_germ_length = "d_germline_length",
+        j_germ_start = "j_germline_start",
+        j_germ_end = "j_germline_end",
+        j_germ_length = "j_germline_length",
+        np1_length = "np1_length",
+        np2_length = "np2_length",
+        na.rm = TRUE,
+        fields = params$cloneby
+    )    
+}
+
+if (any(!is_na_clone)) {
+    not_na_clone_db <- dowser::createGermlines(
+        db[!is_na_clone,,drop=FALSE],
+        references,
+        locus = "locus",
+        nproc = params$nproc,
+        seq = "sequence_alignment",
+        v_call = "v_call",
+        d_call = "d_call",
+        j_call = "j_call",
+        amino_acid = FALSE,
+        id = "sequence_id",
+        clone = "clone_id",
+        v_germ_start = "v_germline_start",
+        v_germ_end = "v_germline_end",
+        v_germ_length = "v_germline_length",
+        d_germ_start = "d_germline_start",
+        d_germ_end = "d_germline_end",
+        d_germ_length = "d_germline_length",
+        j_germ_start = "j_germline_start",
+        j_germ_end = "j_germline_end",
+        j_germ_length = "j_germline_length",
+        np1_length = "np1_length",
+        np2_length = "np2_length",
+        na.rm = TRUE,
+        fields = params$cloneby
+    )
+}
+
+db <- bind_rows(not_na_clone_db, na_clone_db) %>%
     arrange(tmp_nrow) %>%
     select(-tmp_nrow)
 ```

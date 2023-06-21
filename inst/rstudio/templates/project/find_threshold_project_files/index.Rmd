@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "input.tsv"
+      value: "https://yale.box.com/shared/static/4k1k6ycgcje0z9a54ohb84w7ejjhva04.tsv"
    cloneby:
       label: "`cloneby`"
       input: text

@@ -3,10 +3,10 @@
 # annotate
 a@abundance <- a@abundance %>%
    left_join( db %>% 
-                 select(!!!rlang::syms(unique(c("sample_id", 
+                 select(any_of(c(unique(c("sample_id", 
                                                 "subject_id", 
                                                 "tissue", 
-                                                params$cloneby))
+                                                params$cloneby)))
                                        )
                   ) %>%
                  distinct(),
@@ -55,7 +55,7 @@ caption <- abundanceSample$enchantr$html_caption
 
 ## Abundance plot by tissue
 
-```{r abundanceTissue, eval=TRUE, fig.width=getPrettyWidth(length(unique(db[['tissue']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['tissue']])), ncols=3), fig.cap=caption}
+```{r abundanceTissue, eval= "tissue" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['tissue']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['tissue']])), ncols=3), fig.cap=caption}
 abundanceTissue <- p + facet_wrap(~ tissue, ncol=3)
 abundanceTissue <- eeplot(abundanceTissue, 
                      outdir=params$outdir, 
