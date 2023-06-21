@@ -24,6 +24,26 @@ params:
       label: "`crossby`"
       input: text
       value: "sample_id"
+   findthreshold_method:
+      label: "`findthreshold_method`"
+      input: text
+      value: "gmm"
+   findthreshold_model:
+      label: "`findthreshold_model`"
+      input: text
+      value: "gamma-norm"
+   findthreshold_edge:
+      label: "`findthreshold_edge`"
+      input: numeric
+      value: 0.9
+   findthreshold_cutoff:
+      label: "`findthreshold_cutoff`"
+      input: text
+      value: "user"
+   findthreshold_spc:
+      label: "`findthreshold_spc`"
+      input: numeric
+      value: 0.995
    singlecell:
       label: "`singlecell`"
       input: text
@@ -79,6 +99,8 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       eval.after="fig.cap",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+options(rlang_backtrace_on_error_report = "full")
+
 
 # Libraries
 suppressPackageStartupMessages(library("enchantr"))
@@ -188,6 +210,8 @@ db$dist_nearest <- NA
 ```{r distToNearest_bulk, eval=(any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) }
 if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
     message("Using ",sum(bulk_heavy), " bulk heavy chain sequences.")
+
+    # Add distances to nearest neighbor within a "cloneby" group
     bulk_dtn <- distToNearest(db[bulk_heavy,] , 
                                fields=params$cloneby,
                                sequenceColumn="junction", 
@@ -211,8 +235,11 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
 ```{r distToNearest_single, eval=(any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) }
 if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
     message("Using ",sum(sc_heavy), " sc heavy chain sequences.")
+
     # Create unique cell_id
     # db[['cell_id']] <- paste0(db[['sample_id']],db[['cell_id']])
+
+    # Add distances to nearest neighbor within a "cloneby" group
     sc_dtn <- distToNearest(db[sc_heavy,] , 
                           fields=params$cloneby,
                           sequenceColumn="junction", 
@@ -223,6 +250,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
                           locusColumn = "locus",
                           onlyHeavy = TRUE,
                           subsample = subsample)
+    # Add distances to nearest neighbor across a "crossby" group
     sc_dtn <- distToNearest(sc_dtn, 
                           fields=NULL,
                           cross=params$crossby,
@@ -277,7 +305,7 @@ if ("cross_dist_nearest" %in% c(colnames(bulk_dtn),colnames(sc_dtn))) {
         geom_histogram(
             aes(x=cross_dist_nearest, y=-(..count..), fill=sample_id), 
             binwidth=0.01, position="identity") +
-            scale_y_continuous(labels = abs) +
+            #scale_y_continuous(labels = abs) +
             ylab("count")
    } else {
       cat("All `cross_dist_nearest` values are NA.")
@@ -332,10 +360,11 @@ if ("cross_dist_nearest" %in% colnames(db)) {
 threshold <- findThresholdDb(db, 
                             distanceColumn="dist_nearest", 
                             crossDistanceColumn=cross_dist_nearest,
-                            method="gmm", 
-                            model="gamma-norm",
-                            edge = 0.9, subsample=NULL, 
-                            cutoff = "user", spc = 0.995,
+                            method=params$findthreshold_method, 
+                            model=params$findthreshold_model,
+                            edge=params$findthreshold_edge, 
+                            cutoff = params$findthreshold_cutoff, 
+                            spc = params$findthreshold_spc,
                             nproc=params$nproc, 
                             fields=params$cloneby,
                             subsample=subsample)
