@@ -72,7 +72,6 @@ Documentation for `dowser::createGermlines` is available here: [https://dowser.r
 
 ```{r}
 pre_germ_size <- nrow(db)
-species <- params[['species']]
 db[['tmp_nrow']] <- 1:nrow(db)
 
 # download and unzip if needed

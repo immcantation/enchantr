@@ -158,6 +158,19 @@ save(params, file=file.path(params$outdir,"params.RData"))
 # Read repertoire
 db <- readInput(params[['input']], col_select = NULL)
 
+if (params$species =="auto") {
+    if ("species" %in% colnames(db)) {
+        species <- unique(db[['species']])
+        if (length(species)>1) {
+            stop("Multiple species detected. Only one allowed.")
+        } 
+    } else  {
+        stop("Can't detect species. The column `species` does not exist in `db`.")
+    }
+} else {
+    species <- params$species
+}
+
 # Check fo single cell label
 if (!is.null(singlecell)) {
     if (singlecell %in% colnames(db)) {
