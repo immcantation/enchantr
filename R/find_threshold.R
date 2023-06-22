@@ -137,7 +137,8 @@ findThresholdDb <- function(db, distanceColumn="dist_nearest",
 #' @export
 gmmSummary <- function(gmm) {
     l <- lapply(gmm, function(thisGmm) {
-        fields <- thisGmm[['fields']]
+        fields <- as.data.frame(thisGmm[['fields']], nrows=1)
+        colnames(fields) <- paste0("fields", c("",1:(ncol(fields))))[1:ncol(fields)]
         gmmFit <- thisGmm[['GmmThreshold']]
         if (!is.logical(gmmFit)) {
             slots <- slotNames(getClass("GmmThreshold"))[slotNames(getClass("GmmThreshold")) != "x"]
