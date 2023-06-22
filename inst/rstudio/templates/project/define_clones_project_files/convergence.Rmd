@@ -64,7 +64,7 @@ convergence_overlap <- plotDbOverlap(db %>%
                                      geom_text_size=3) 
 ```
 
-```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
+```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(50,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
 caption <- paste0("Number of identical clone_id and convergent_clone_id. The percent represents the number of shared clones over the number of clones in the smaller set.")
 overlapconvergenceplot <- convergence_overlap$p
 overlapconvergenceplot <- eeplot(overlapconvergenceplot, 
