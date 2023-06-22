@@ -186,7 +186,7 @@ input_summary_table$table
 print_table_caption(tag="input_summary", text="Input data summary.")
 ```
 
-# Distance to nearest
+# Distance to nearest neighbor sequence
 
 
 Clonal relationships can be inferred from sequencing data. Hierarchical clustering is a widely used method for identify clonally related sequences. This method requires a measure of distance between pairs of sequences and a choice of linkage to define the distance between groups of sequences. Since the result will be a tree, a threshold to cut the hierarchy into discrete clonal groups is also needed.
@@ -318,7 +318,7 @@ if (is.null(dtnplot)) {
 }
 ```
 
-```{r showdtnplot, eval=!is.null(dtnplot), fig.cap=caption}
+```{r showdtnplot, eval=!is.null(dtnplot), fig.width=8, fig.height=max(4, nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/2), fig.cap=caption}
 dtnplot <- dtnplot +
     facet_wrap(wrap_formula, scales = "free_y", ncol=2, labeller = "label_both") +
     expand_limits(x = 0, y =0) +
