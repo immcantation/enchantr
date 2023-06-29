@@ -1,6 +1,6 @@
 # enchantR reports
 
-The 'enchantr' package provides template parametrized reports to analize AIRR-seq
+The 'enchantr' package provides template parametrized reports to analyze AIRR-seq
 data with the Immcantation framework. The different reports can be used from the 
 command line, to be incorporated into complex workflows, or can be used 
 from RStudio to create project templates.
