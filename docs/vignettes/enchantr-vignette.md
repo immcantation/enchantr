@@ -1,10 +1,7 @@
 # enchantR reports
 
 The 'enchantr' package provides template parametrized reports to analyze AIRR-seq
-data with the Immcantation framework. The different reports can be used from the 
-command line, to be incorporated into complex workflows, or can be used 
-from RStudio to create project templates.
-
+data with the [Immcantation](https://immcantation.readthedocs.io/en/stable/) framework. The different reports can be used from the command line, from RStudio to create project templates or incorporated into complex workflows.
 
 ## Quick start
 
@@ -18,7 +15,3 @@ Rscript -e "enchantr:::enchantr_report('report_name', \
 ### RStudio
 
 Go to `File > New Project... > New Directory...` and select an Immcantation project.
-
-
-
-

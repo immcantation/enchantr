@@ -36,7 +36,13 @@ or use the [issue tracker](https://bitbucket.org/kleinstein/enchantr/issues?stat
 # Authors
 
 [Susanna Marquez](mailto:susanna.marquez@yale.edu) (aut, cre)  
+[Edel Aron](mailto:edel.aron@yale.edu) (aut)  
 [Gisela Gabernet](mailto:gisela.gabernet@yale.edu) (aut)  
+[Kenneth Hoehn](mailto:kenneth.hoehn@yale.edu) (aut)  
+[Cole Jensen](mailto:cole.jensen@yale.edu) (aut)  
+[Edward Lee](mailto:edward.lee@yale.edu) (aut)  
+[Noah Yann Lee](mailto:noah.yann.lee@yale.edu) (aut)  
+[Hailong Meng](mailto:hailong.meng@yale.edu) (aut)  
 [Steven Kleinstein](mailto:steven.kleinstein@yale.edu) (aut, cph)
 
 

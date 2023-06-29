@@ -13,7 +13,7 @@ Reports
 Details
 -------------------
 
-For additional details regarding the use of the `enchantr` package see the 
+For additional details regarding the use of the `enchantr` package see the
 vignettes:
 `browseVignettes("enchantr")`
 
@@ -29,7 +29,7 @@ Reports
 + [find_threshold_project](find_threshold_project.md):      Create an Find threshold project
 + [define_clones_project](define_clones_project.md):       Create an Immcantation Define clones project
 + [dowser_lineage_project](dowser_lineage_project.md):      Create an Immcantation Dowser project
-+ [single_cell_qc_project](single_cell_qc_project.md):      Create an Immcantation sc QC project            
++ [single_cell_qc_project](single_cell_qc_project.md):      Create an Immcantation sc QC project
 
 
 

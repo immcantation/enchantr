@@ -27,7 +27,7 @@ db
 
 fields
 :   Columns in `db`, in addition to `sample_id`,
-that should be used to group sequences to be 
+that should be used to group sequences to be
 analyzed independently.
 
 cell_id
@@ -40,7 +40,7 @@ sequence_id
 :   column in `db` containing sequence identifiers
 
 mode
-:   Use `sequences` to remove duplicated sequences and 
+:   Use `sequences` to remove duplicated sequences and
 `cells` to remove cells with duplicated sequences.
 
 
