@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr single cell qc report"
+description: "enchantr Single Cell QC Report"
 output: enchantr::immcantation
 params:
    input: 
@@ -56,7 +56,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r global-options, include = FALSE, cache = FALSE}
+```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(
   fig.width = 7, fig.height = 4, fig.path = "figures/",
   echo = params$echo, cache = params$cache,
@@ -67,13 +67,13 @@ knitr::opts_chunk$set(
 )
 
 # Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
-suppressPackageStartupMessages(library("dplyr"))
-suppressPackageStartupMessages(library("DT"))
-suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("shazam"))
-suppressPackageStartupMessages(library("tidyr"))
 
 if (!dir.exists(params[["outdir"]])) {
   dir.create(params[["outdir"]], recursive = TRUE)
@@ -86,18 +86,18 @@ file.copy(params$logo,
 
 # Input parameters
 
-```{r input-parameters, results = "asis"}
+```{r input-parameters, results="asis"}
 printParams(params)
 ```
 
-```{r echo=FALSE, results = "asis"}
+```{r echo=FALSE, results="asis"}
 print_table_caption(tag = "input", text = "Input parameters.")
 save(params, file = file.path(params$outdir, "params.RData"))
 ```
 
 # Read repertoires
 
-```{r, results = "asis"}
+```{r, results="asis"}
 # Check input file
 if (!file.exists(params$input)) {
   stop(paste0("File ", basename(params$input), " doesn't exist."))
@@ -129,24 +129,24 @@ caption_text <- paste0("Summary of input data. Number of reads per sample and lo
 eetable(input_summary, caption = caption_text)$table
 ```
 
-```{r echo=FALSE, results = "asis"}
+```{r echo=FALSE, results="asis"}
 print_table_caption(tag = "input_summary", text = caption_text)
 ```
 
 # Distribution of the number of sequences per cell and locus
 
-```{r, results = "asis"}
+```{r, results="asis"}
 seqs_per_cell <- countSequencesPerCell(db)
-tab <- eetable(seqs_per_cell %>% filter(cell_num_sequences > 1),
+tab <- eetable(seqs_per_cell %>% dplyr::filter(cell_num_sequences > 1),
                caption = "Cells with more than one sequence")
 tab$table
 ```
 
-```{r echo=FALSE, results = "asis"}
+```{r echo=FALSE, results="asis"}
 print_table_caption(tag = "seqs_per_cell", text = tab$caption)
 ```
 
-```{r p-seqs-per-cell, fig.width = 5, fig.height = length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap = p_seqs_per_cell$enchantr$html_caption}
+```{r p-seqs-per-cell, fig.width=5, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell)
 p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,
                           knitr::opts_current$get("label"))
@@ -157,7 +157,7 @@ p_seqs_per_cell
 
 Since most of the analyses are based on heavy chains, we remove cells with only light chains.
 
-```{r findLightOnlyCells, results = "asis"}
+```{r findLightOnlyCells, results="asis"}
 db <- findLightOnlyCells(db, sample_id = "sample_id", cell_id = "cell_id",
                          locus = "locus", fields = NULL)
 light_only_size <- sum(db[["light_only_cell"]])
@@ -174,7 +174,7 @@ light_only <- db %>%
                             values_from = num_cells)
 
 # Remove the cells with only light chains
-db <- db %>% filter(!light_only_cell)
+db <- db %>% dplyr::filter(!light_only_cell)
 db_with_heavy_size <- nrow(db)
 
 tab <- eetable(light_only,
@@ -183,7 +183,7 @@ tab <- eetable(light_only,
 tab$table
 ```
 
-```{r echo=FALSE, results = "asis"}
+```{r echo=FALSE, results="asis"}
 print_table_caption(tag = "light_only", text = tab$caption)
 ```
 
@@ -204,7 +204,7 @@ db_no_doublets_size <- nrow(db)
 Sequences in different samples that share the same cell_id and nucleotide sequence
 can indicate contamination.
 
-```{r sc_duplicates, results = "asis"}
+```{r sc-duplicates, results="asis"}
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
                                  seq = "sequence_alignment")
 
@@ -215,7 +215,7 @@ if (nrow(dups[["dups"]]) == 0) {
 
 ## stacked bar
 
-```{r p_sc_duplicates, fig.cap = caption, results = "asis"}
+```{r p-sc-duplicates, fig.cap=caption, results="asis"}
 caption <- NULL
 
 if (nrow(dups[["dups"]]) > 0) {
@@ -326,7 +326,7 @@ if (!is.null(params$log)) {
 }
 ```
 
-```{r dbpass, results = "asis"}
+```{r dbpass, results="asis"}
 # Save data, sequences that pass, while making cell_id and sequence id unique
 sample_ids <- unique(db[["sample_id"]])
 db <- db[pass, ] %>%
@@ -385,5 +385,5 @@ for (i in 1:nrow(output_groups)) {
 }
 ```
 
-```{r, child = c('versions.Rmd')}
+```{r, child=c("versions.Rmd")}
 ```
