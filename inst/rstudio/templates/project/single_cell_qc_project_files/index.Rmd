@@ -57,16 +57,13 @@ editor_options:
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
-knitr::opts_chunk$set(
-  fig.width = 7, fig.height = 4, fig.path = "figures/",
-  echo = params$echo, cache = params$cache,
-  warning = FALSE, message = FALSE,
-  eval.after = "fig.cap",
-  out_dir = params$outdir,
-  eval.opts = c("eval", "echo", "fig.height", "fig.width")
-)
+knitr::opts_chunk$set(fig.width = 7, fig.height = 4, fig.path = "figures/",
+                      echo = params$echo, cache = params$cache,
+                      warning = FALSE, message = FALSE,
+                      eval.after = "fig.cap", out_dir = params$outdir,
+                      eval.opts = c("eval", "echo", "fig.height", "fig.width"))
 
-# Libraries
+# libraries
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("DT"))
 suppressPackageStartupMessages(library("dplyr"))
@@ -122,9 +119,9 @@ input_summary <- db %>%
                    summarize(n = n()) %>%
                    pivot_wider(id_cols = sample_id,
                                values_from = n, names_from = locus)
-caption_text <- paste0("Summary of input data. Number of reads per sample and locus. ",
-                       nrow(input_summary), " repertoires loaded, with ",
-                       input_size, " sequences.")
+caption_text <- paste0("Summary of input data. Number of reads per sample and 
+                       locus. ", nrow(input_summary), " repertoires loaded, 
+                       with ", input_size, " sequences.")
 
 eetable(input_summary, caption = caption_text)$table
 ```
@@ -229,7 +226,8 @@ if (nrow(dups[["dups"]]) > 0) {
 
   eetable(
     dups_summary %>% mutate(duplication_percent = round(duplication_percent, 2)),
-    caption = paste0("Summary of duplicated sequences: sequences that have the same cell_id and sequence across samples."))$table %>% 
+    caption = paste0("Summary of duplicated sequences: sequences that have the 
+                     same cell_id and sequence across samples."))$table %>% 
     formatStyle("duplication_percent", target = "cell",
                 backgroundColor = 
                   styleInterval(0:100,
@@ -257,7 +255,7 @@ if (nrow(dups[["dups"]]) > 0) {
 
 ## overlap matrix
 
-```{r overlap-summary, eval = TRUE}
+```{r overlap-summary, eval=TRUE}
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
@@ -280,7 +278,7 @@ if (nrow(dup_count) > 0) {
 }
 ```
 
-```{r p-overlap-matrix, eval = TRUE,  fig.cap=caption}
+```{r p-overlap-matrix, eval=TRUE, fig.cap=caption}
 # plot duplicated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
