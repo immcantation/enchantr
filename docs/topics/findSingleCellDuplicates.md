@@ -26,7 +26,7 @@ db
 
 fields
 :   Columns in `db`, in addition to `sample_id`,
-that should be used to group sequences to be 
+that should be used to group sequences to be
 analyzed independently.
 
 cell_id
@@ -44,10 +44,10 @@ sequence_id
 Value
 -------------------
 
-A list with fields: 
+A list with fields:
 
 + `dups`:    a data.frame with the column `sc_duplicate`
-with values TRUE/FALSE to indicate whether the 
+with values TRUE/FALSE to indicate whether the
 the row corresponds to a duplicated entry.
 + `fields`:  a data.frame showing the input fields used
 + `cell_id`: column in `db` containing cell identifiers

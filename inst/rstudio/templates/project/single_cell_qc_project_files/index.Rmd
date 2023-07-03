@@ -1,6 +1,6 @@
 --- 
 title: "Immcantation - enchantR"
-subtitle: "Single cell qc"
+subtitle: "Single Cell Quality Control"
 author: ""
 date: "Updated: `r date()`"
 knit: enchantr::render_book
@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr single cell qc report"
+description: "enchantr Single Cell QC Report"
 output: enchantr::immcantation
 params:
    input: 
@@ -57,14 +57,13 @@ editor_options:
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
-knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
-                      echo=params$echo,cache=params$cache,
-                      warning=FALSE, message=FALSE,
-                      eval.after="fig.cap",
-                      out_dir=params$outdir,
-                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+knitr::opts_chunk$set(fig.width = 7, fig.height = 4, fig.path = "figures/",
+                      echo = params$echo, cache = params$cache,
+                      warning = FALSE, message = FALSE,
+                      eval.after = "fig.cap", out_dir = params$outdir,
+                      eval.opts = c("eval", "echo", "fig.height", "fig.width"))
 
-# Libraries
+# libraries
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("DT"))
 suppressPackageStartupMessages(library("dplyr"))
@@ -73,80 +72,81 @@ suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 
-if (!dir.exists(params[['outdir']])) {
-    dir.create(params[['outdir']], recursive = T)
+if (!dir.exists(params[["outdir"]])) {
+  dir.create(params[["outdir"]], recursive = TRUE)
 }
 
-file.copy(params$logo, 
-          file.path(params$outdir,"assets", "logo.png"),
-          recursive = T, overwrite=T)
+file.copy(params$logo,
+          file.path(params$outdir, "assets", "logo.png"),
+          recursive = TRUE, overwrite = TRUE)
 ```
 
 # Input parameters
 
-
-```{r input-parameters, results='asis'}
+```{r input-parameters, results="asis"}
 printParams(params)
 ```
-```{r echo=FALSE, results='asis'}
-print_table_caption(tag="input", text="Input parameters.")
-save(params, file=file.path(params$outdir,"params.RData"))
+
+```{r echo=FALSE, results="asis"}
+print_table_caption(tag = "input", text = "Input parameters.")
+save(params, file = file.path(params$outdir, "params.RData"))
 ```
 
 # Read repertoires
 
-
-```{r, results='asis'}
+```{r, results="asis"}
 # Check input file
 if (!file.exists(params$input)) {
-    stop(paste0("File ", basename(params$input), " doesn't exist."))
+  stop(paste0("File ", basename(params$input), " doesn't exist."))
 }
 
-db_files <- read.delim(params[['input']], header=F)[[1]]
+db_files <- read.delim(params[["input"]], header = FALSE)[[1]]
 
 # Read db file
-db <- bind_rows(sapply(db_files, read_rearrangement, simplify = F, USE.NAMES = T), .id="input_file")
+db <- bind_rows(sapply(db_files, read_rearrangement,
+                       simplify = FALSE, USE.NAMES = TRUE),
+                .id = "input_file")
 
 input_sizes <- db %>%
-    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
-    summarize(input_size=n())
+                 group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+                 summarize(input_size = n())
 input_size <- nrow(db)
 
 input_summary <- db %>%
-    group_by(!!!rlang::syms(unique(c("sample_id", params$outputby, "locus")))) %>%
-    summarize(n=n()) %>%
-    pivot_wider(id_cols = sample_id, values_from = n, names_from = locus)
-caption_text <- paste0("Summary of input data. Number of reads per sample and locus. ",
-    nrow(input_summary), " repertoires loaded, with ",input_size," sequences.")
-eetable(
-    input_summary,
-    caption=caption_text
-)$table
+                   group_by(!!!rlang::syms(unique(c("sample_id",
+                                                    params$outputby,
+                                                    "locus")))) %>%
+                   summarize(n = n()) %>%
+                   pivot_wider(id_cols = sample_id,
+                               values_from = n, names_from = locus)
+caption_text <- paste0("Summary of input data. Number of reads per sample and 
+                       locus. ", nrow(input_summary), " repertoires loaded, 
+                       with ", input_size, " sequences.")
+
+eetable(input_summary, caption = caption_text)$table
 ```
-```{r echo=FALSE, results='asis'}
-print_table_caption(tag="input_summary", text=caption_text)
+
+```{r echo=FALSE, results="asis"}
+print_table_caption(tag = "input_summary", text = caption_text)
 ```
 
 # Distribution of the number of sequences per cell and locus
 
-```{r, results='asis'}
+```{r, results="asis"}
 seqs_per_cell <- countSequencesPerCell(db)
-tab <- eetable(
-    seqs_per_cell %>% filter(cell_num_sequences > 1),
-    caption="Cells with more than one sequence"
-)
+tab <- eetable(seqs_per_cell %>% dplyr::filter(cell_num_sequences > 1),
+               caption = "Cells with more than one sequence")
 tab$table
 ```
-```{r echo=FALSE, results='asis'}
-print_table_caption(tag="seqs_per_cell", text=tab$caption)
+
+```{r echo=FALSE, results="asis"}
+print_table_caption(tag = "seqs_per_cell", text = tab$caption)
 ```
 
 ```{r p-seqs-per-cell, fig.width=5, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell)
-p_seqs_per_cell <- eeplot(
-    p_seqs_per_cell, 
-    params$outdir, 
-    knitr::opts_current$get('label'))
+p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,
+                          knitr::opts_current$get("label"))
 p_seqs_per_cell
 ```
 
@@ -154,32 +154,34 @@ p_seqs_per_cell
 
 Since most of the analyses are based on heavy chains, we remove cells with only light chains.
 
-```{r findLightOnlyCells, results='asis'}
-db <- findLightOnlyCells(db, sample_id = "sample_id", 
-                    cell_id="cell_id", locus="locus", 
-                    fields=NULL)
-light_only_size <- sum(db[['light_only_cell']])
+```{r findLightOnlyCells, results="asis"}
+db <- findLightOnlyCells(db, sample_id = "sample_id", cell_id = "cell_id",
+                         locus = "locus", fields = NULL)
+light_only_size <- sum(db[["light_only_cell"]])
 
 light_only <- db %>%
-        rowwise() %>%
-        mutate(light_only_cell= if(light_only_cell == TRUE) {"light_only"} else {"has_heavy"}) %>%
-        select(sample_id, cell_id, light_only_cell) %>%
-        distinct() %>%
-        group_by(sample_id, light_only_cell) %>%
-        summarize(num_cells=n(), .groups = "drop") %>%
-        pivot_wider(names_from=light_only_cell, values_from = num_cells)
-# Remove
-db <- db %>%
-    filter(!light_only_cell)
+                rowwise() %>%
+                mutate(light_only_cell = if (light_only_cell == TRUE) {"light_only"}
+                       else {"has_heavy"}) %>%
+                select(sample_id, cell_id, light_only_cell) %>%
+                distinct() %>%
+                group_by(sample_id, light_only_cell) %>%
+                summarize(num_cells = n(), .groups = "drop") %>%
+                pivot_wider(names_from = light_only_cell,
+                            values_from = num_cells)
+
+# Remove the cells with only light chains
+db <- db %>% dplyr::filter(!light_only_cell)
 db_with_heavy_size <- nrow(db)
 
 tab <- eetable(light_only,
-    caption=paste0("Cells with only light chains account for ", light_only_size, " sequences removed.")
-)
+               caption = paste0("Cells with only light chains account for ",
+                                light_only_size, " sequences removed."))
 tab$table
 ```
-```{r echo=FALSE, results='asis'}
-print_table_caption(tag="light_only", text=tab$caption)
+
+```{r echo=FALSE, results="asis"}
+print_table_caption(tag = "light_only", text = tab$caption)
 ```
 
 # Remove cells with multiple heavy chains
@@ -187,70 +189,73 @@ print_table_caption(tag="light_only", text=tab$caption)
 When calling clones (B cells that descend from a common naive B cell ancestor) from single cell data, SCOPer will throw an error message such as “xxx cell(s) with multiple heavy chains found. One heavy chain per cell is expected” if any cells in the data contain multiple heavy chains and then stop running. A simple solution is just to remove cells with multiple heavy chains from the single cell data.
 
 ```{r removeDoublets}
-db <- removeDoublets(db, cell_id="cell_id", 
-                     locus="locus", 
-                     sequence_id='sequence_id', 
-                     fields='sample_id')
+db <- removeDoublets(db, cell_id = "cell_id", locus = "locus",
+                     sequence_id = "sequence_id", fields = "sample_id")
 db_no_doublets_size <- nrow(db)
 ```
 
-`r db_with_heavy_size-db_no_doublets_size` sequences have been removed, because found in cells with multiple heavy chains.
+`r db_with_heavy_size-db_no_doublets_size` sequences have been removed, because they were found in cells with multiple heavy chains.
 
 # cell_id + sequence_alignment overlap
 
 Sequences in different samples that share the same cell_id and nucleotide sequence
 can indicate contamination.
 
-```{r sc_duplicates, results='asis'}
-dups <- findSingleCellDuplicates(db, fields="sample_id", 
-                                 cell_id="cell_id", 
-                                 seq="sequence_alignment")
-if (nrow(dups[['dups']]) == 0 ) {
-    cat("No suspicious overlaps detected.\n\n")
+```{r sc-duplicates, results="asis"}
+dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
+                                 seq = "sequence_alignment")
+
+if (nrow(dups[["dups"]]) == 0) {
+  cat("No suspicious overlaps detected.\n\n")
 }
 ```
 
 ## stacked bar
 
-```{r p_sc_duplicates, fig.cap=caption, results='asis'}
+```{r p-sc-duplicates, fig.cap=caption, results="asis"}
 caption <- NULL
-if (nrow(dups[['dups']]) > 0 ) {
-   dups_summary <- dups[['dups']] %>%
-      group_by(sample_id) %>%
-      summarize(duplicates=sum(sc_duplicate, na.rm = TRUE),
-                not_duplicates=sum(!sc_duplicate, na.rm = TRUE)) %>%
-      rowwise() %>%
-      mutate(duplication_percent = 100*duplicates/sum(duplicates+not_duplicates))
 
+if (nrow(dups[["dups"]]) > 0) {
+  dups_summary <- dups[["dups"]] %>%
+                    group_by(sample_id) %>%
+                    summarize(duplicates = sum(sc_duplicate, na.rm = TRUE),
+                              not_duplicates = sum(!sc_duplicate, na.rm = TRUE)) %>%
+                    rowwise() %>%
+                    mutate(duplication_percent = 100 * duplicates /
+                             sum(duplicates + not_duplicates))
 
-   eetable(dups_summary %>% mutate(duplication_percent=round(duplication_percent, 2)),
-       caption=paste0("Summay of duplicated sequences: sequences that have the same cell_id and sequence across samples.")
-   )$table  %>% formatStyle(
-           'duplication_percent',
-           target = 'cell',
-           backgroundColor = styleInterval(0:100, 
-                                       round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
-                                       {paste0("rgb(255,", ., ",", ., ")")})
-       )
-   
-   if (sum(dups[['dups']][['sc_duplicate']])>0) {
-       p_sc_duplicates <- ggplot(dups[['dups']], aes(x=sample_id, fill=sc_duplicate)) +
-           geom_bar() + coord_flip() +
-           labs(title = "Number of sequences that share\ncell_id and sequence with other samples.",
-           subtitle = "",
-           caption = "")
-       caption <- p_sc_duplicates$enchantr$html_caption
-       p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir, knitr::opts_current$get('label'))
-       p_sc_duplicates
-   }
+  eetable(
+    dups_summary %>% mutate(duplication_percent = round(duplication_percent, 2)),
+    caption = paste0("Summary of duplicated sequences: sequences that have the 
+                     same cell_id and sequence across samples."))$table %>% 
+    formatStyle("duplication_percent", target = "cell",
+                backgroundColor = 
+                  styleInterval(0:100,
+                                round(seq(255, 40,
+                                          length.out = length(0:100) + 1), 0) %>%
+        {paste0("rgb(255,", ., ",", ., ")")})
+  )
+
+  if (sum(dups[["dups"]][["sc_duplicate"]]) > 0) {
+    p_sc_duplicates <- ggplot(dups[["dups"]],
+                              aes(x = sample_id, fill = sc_duplicate)) +
+                         geom_bar() +
+                         coord_flip() +
+                         labs(title = "Number of sequences that share\ncell_id
+                              and sequence with other samples.",
+                              subtitle = "", caption = "")
+    caption <- p_sc_duplicates$enchantr$html_caption
+    
+    p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir,
+                              knitr::opts_current$get("label"))
+    p_sc_duplicates
+  }
 }
 ```
 
 ## overlap matrix
 
-
 ```{r overlap-summary, eval=TRUE}
-
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
@@ -271,17 +276,17 @@ if (nrow(dup_count) > 0) {
 }
 ```
 
-```{r p-overlap-matrix, eval=TRUE,  fig.cap=caption}
+```{r p-overlap-matrix, eval=TRUE, fig.cap=caption}
 # plot duplicated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
-   p_overlap_matrix <- plotOverlapSingleCell(dup_count)
-   p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir, knitr::opts_current$get('label'))
-   caption <- p_overlap_matrix$enchantr$html_caption
-   p_overlap_matrix
+  p_overlap_matrix <- plotOverlapSingleCell(dup_count)
+  p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir,
+                             knitr::opts_current$get("label"))
+  caption <- p_overlap_matrix$enchantr$html_caption
+  p_overlap_matrix
 }
 ```
-
 
 # Make cell_id and sequence_id unique
 
@@ -297,73 +302,84 @@ samples) to `sequence_id` and `cell_id`.
 # Final repertoires 
 
 ```{r outsetup}
-#pass <- qc_results$log$scqc_pass
-if (sum(dups[['dups']][['sc_duplicate']]>0)) {
-    pass <- dups[['dups']][['sc_duplicate']] == FALSE
+# pass <- qc_results$log$scqc_pass
+if (sum(dups[["dups"]][["sc_duplicate"]] > 0)) {
+  pass <- dups[["dups"]][["sc_duplicate"]] == FALSE
 } else {
-    pass <- rep(T, nrow(db))
+  pass <- rep(T, nrow(db))
 }
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_scqc-pass.tsv")
+  output_fn <- paste0(params$outname, "_scqc-pass.tsv")
 } else {
-    output_fn <- sub(".tsv$", "_scqc-pass.tsv", basename(params$input))
+  output_fn <- sub(".tsv$", "_scqc-pass.tsv", basename(params$input))
 }
 
 if (!is.null(params$log)) {
-    log_fn <- paste0(params$log,".txt")
+  log_fn <- paste0(params$log, ".txt")
 } else {
-    log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
+  log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 ```
 
-```{r dbpass, results='asis'}
+```{r dbpass, results="asis"}
 # Save data, sequences that pass, while making cell_id and sequence id unique
 sample_ids <- unique(db[["sample_id"]])
-db <- db[pass,] %>%
-    mutate(cell_id = paste(cell_id,match(sample_id,sample_ids),sep="-"),
-           sequence_id = paste(sequence_id,match(sample_id,sample_ids),sep="-"))
+db <- db[pass, ] %>%
+        mutate(cell_id = paste(cell_id, match(sample_id, sample_ids),
+                               sep = "-"),
+               sequence_id = paste(sequence_id, match(sample_id, sample_ids),
+                                   sep = "-"))
 
 output_groups <- db %>%
-    ungroup() %>%
-    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
-    group_by(!!!rlang::syms(params$outputby)) %>%
-    summarize(output_size=n(),
-              input_file=unique(input_file),
-              num_input_files=length(unique(input_file))) %>%
-    left_join(input_sizes)
-   
+                   ungroup() %>%
+                   select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
+                   group_by(!!!rlang::syms(params$outputby)) %>%
+                   summarize(output_size = n(),
+                             input_file = unique(input_file),
+                             num_input_files = length(unique(input_file))) %>%
+                   left_join(input_sizes)
+
 if (any(output_groups[["num_input_files"]] > 1)) {
-   stop("Unhandled.")
+  stop("Unhandled.")
 }
 
 output_files <- c()
 output_sizes <- c()
-dir.create(file.path(params$outdir,"repertoires")) 
-for (i in 1:nrow(output_groups))  {
-    group_db <- right_join(db,
-                           output_groups[i,,drop=F],
-                           by=c(params$outputby,"input_file")) %>%
-       select(-input_file,-num_input_files,-input_size, -output_size)
-    
-    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
-    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
-    output_files <- c(output_files, group_fn)
-    output_sizes <- c(output_sizes, nrow(group_db))
-    write_rearrangement(group_db, file=group_fn)
-    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
+dir.create(file.path(params$outdir, "repertoires"))
+for (i in 1:nrow(output_groups)) {
+  group_db <- right_join(db, output_groups[i, , drop = F],
+                         by = c(params$outputby, "input_file")) %>%
+                select(-input_file, -num_input_files, -input_size, -output_size)
+
+  group_db_label <- gsub("^id_", "",
+                         makeLabel(group_db, fields = params$outputby))
+  group_fn <- file.path(params$outdir, "repertoires",
+                        paste0(group_db_label, "_", output_fn))
+  
+  output_files <- c(output_files, group_fn)
+  output_sizes <- c(output_sizes, nrow(group_db))
+  
+  write_rearrangement(group_db, file = group_fn)
+  cat("- [", group_db_label, 
+      "](", file.path("repertoires", basename(group_fn)), ")\n", sep = "")
 }
 ```
 
 ```{r log}
-cat("START> SingleCellQC", file=log_fn, append=F)
+cat("START> SingleCellQC", file = log_fn, append = FALSE)
+
 for (i in 1:nrow(output_groups)) {
-    cat(paste0("\nFILE",i,"> ",output_groups[['input_file']][i]), file=log_fn, append=T)
-    cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
-    cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
-    cat(paste0("\nFAIL",i,"> ",output_groups[['input_size']][i]-output_sizes[i]), file=log_fn, append=T)    
+  cat(paste0("\nFILE", i, "> ", output_groups[["input_file"]][i]),
+      file = log_fn, append = T)
+  cat(paste0("\nOUTPUT", i, "> ", basename(output_files[i])),
+      file = log_fn, append = T)
+  cat(paste0("\nPASS", i, "> ", output_sizes[i]),
+      file = log_fn, append = T)
+  cat(paste0("\nFAIL", i, "> ", output_groups[["input_size"]][i] - output_sizes[i]),
+      file = log_fn, append = T)
 }
 ```
 
-```{r, child=c('versions.Rmd')}
+```{r, child=c("versions.Rmd")}
 ```

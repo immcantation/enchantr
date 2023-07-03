@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "https://yale.box.com/shared/static/4k1k6ycgcje0z9a54ohb84w7ejjhva04.tsv"
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
    cloneby:
       label: "`cloneby`"
       input: text
@@ -47,7 +47,7 @@ params:
    singlecell:
       label: "`singlecell`"
       input: text
-      value: "single_cell"          
+      value: NULL          
    subsample:
       label: "`subsample`"
       input: numeric
@@ -153,16 +153,34 @@ eetable(input_sizes)$table
 ```{r}
 input_size <- nrow(db)
 is_heavy <- isHeavyChain(db[['locus']])
+singlecell <- params$singlecell
 
-na_single <- is.na(db[[params$singlecell]])
+# Check for single cell label
+if (!is.null(singlecell)) {
+    if (singlecell %in% colnames(db)) {
+         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
+    } else {
+        stop("`",singlecell, "` is not a valid field in `db`.")
+    }
+} else {
+   singlecell <- "single_cell"
+   db[[singlecell]] <- F
+   if ("cell_id" %in% colnames(db)) {
+       message("Setting `singlecell` using `cell_id`.") 
+       db[[singlecell]][!db[['cell_id']] %in% c(NA, '')] <- T
+   }
+
+}
+
+na_single <- is.na(db[[singlecell]])
 if (sum(na_single)>0) {
     warning(sum(na_single), " sequences are missing single cell information. Using single_cell=F")
-    db[[params$singlecell]][na_single] <- FALSE
+    db[[singlecell]][na_single] <- FALSE
 }
-db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
 
-bulk_heavy <- is_heavy & !db[[params$singlecell]]
-sc_heavy <- is_heavy & db[[params$singlecell]]
+
+bulk_heavy <- is_heavy & !db[[singlecell]]
+sc_heavy <- is_heavy & db[[singlecell]]
 bulk_dtn <- data.frame()
 sc_dtn <- data.frame()
 subsample <- params[['subsample']]
@@ -207,8 +225,8 @@ cat("0 heavy chain sequences present. `distToNearest` requires heavy chain data.
 db$dist_nearest <- NA
 ```
 
-```{r distToNearest_bulk, eval=(any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) }
-if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
+```{r distToNearest_bulk, eval=(any(db[[singlecell]] == F) && sum(bulk_heavy)>0) }
+if (any(db[[singlecell]] == F) && sum(bulk_heavy)>0) {
     message("Using ",sum(bulk_heavy), " bulk heavy chain sequences.")
 
     # Add distances to nearest neighbor within a "cloneby" group
@@ -232,8 +250,8 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
 } 
 ```
 
-```{r distToNearest_single, eval=(any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) }
-if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
+```{r distToNearest_single, eval=(any(db[[singlecell]] == T) && sum(sc_heavy)>0) }
+if (any(db[[singlecell]] == T) && sum(sc_heavy)>0) {
     message("Using ",sum(sc_heavy), " sc heavy chain sequences.")
 
     # Create unique cell_id
@@ -267,7 +285,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r dtnplot, fig.width=8, fig.height=max(4, nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/2), fig.cap=caption}
+```{r dtnplot, fig.width=8, fig.height=max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/2), fig.cap=caption}
 
 caption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
@@ -279,7 +297,7 @@ if (!is.null(subsample)) {
 
 wrap_formula <- as.formula(paste0(
                         c(
-                            params$singlecell,
+                            singlecell,
                             "~",
                             paste(unique(c("sample_id", params$clone_by)), collapse = "+")
                         ),collapse="")
@@ -318,7 +336,7 @@ if (is.null(dtnplot)) {
 }
 ```
 
-```{r showdtnplot, eval=!is.null(dtnplot), fig.width=8, fig.height=min(50, max(4, nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/1.5)), fig.cap=caption}
+```{r showdtnplot, eval=!is.null(dtnplot), fig.width=8, fig.height=min(50, max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/1.5)), fig.cap=caption}
 dtnplot <- dtnplot +
     facet_wrap(wrap_formula, scales = "free_y", ncol=2, labeller = "label_both") +
     expand_limits(x = 0, y =0) +

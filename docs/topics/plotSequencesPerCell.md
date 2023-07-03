@@ -4,7 +4,7 @@ plotSequencesPerCell*
 Description
 --------------------
 
-`plotSequencesPerCell` plots a histogram of the distribution of the 
+`plotSequencesPerCell` plots a histogram of the distribution of the
 number of sequences per cell for each sample and locus.
 
 
