@@ -260,7 +260,7 @@ if (nrow(dup_count) > 0) {
       filter(sc_duplicate_group != name)
    eetable(
       overlap_summary,
-      caption=paste0("Summay of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
+      caption=paste0("Summary of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
    )$table   %>% formatStyle(
       'overlap_percent',
       target = 'cell',
