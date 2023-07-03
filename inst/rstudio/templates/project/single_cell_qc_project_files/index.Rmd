@@ -1,7 +1,7 @@
 --- 
 title: "Immcantation - enchantR"
 subtitle: "Single Cell Quality Control"
-author: ""
+author: "Authors: Susanna Marquez, Edel Aron"
 date: "Updated: `r date()`"
 knit: enchantr::render_book
 site: bookdown::bookdown_site
@@ -47,7 +47,7 @@ params:
    echo: 
       label: '`echo`: Show code in the report.'
       input: checkbox
-      value: FALSE
+      value: TRUE
    cache:
       label: '`cache`: Use cached results'
       input: checkbox
@@ -130,7 +130,9 @@ eetable(input_summary, caption = caption_text)$table
 print_table_caption(tag = "input_summary", text = caption_text)
 ```
 
-# Distribution of the number of sequences per cell and locus
+# Sequence distribution
+
+Distribution of the number of sequences per cell and locus
 
 ```{r, results="asis"}
 seqs_per_cell <- countSequencesPerCell(db)
@@ -143,14 +145,18 @@ tab$table
 print_table_caption(tag = "seqs_per_cell", text = tab$caption)
 ```
 
-```{r p-seqs-per-cell, fig.width=5, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
+```{r p-seqs-per-cell, fig.width=7, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell)
 p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,
                           knitr::opts_current$get("label"))
 p_seqs_per_cell
 ```
 
-# Remove cells without heavy chains
+# Filtration
+
+## Keep only productive cells
+
+## Remove cells without heavy chains
 
 Since most of the analyses are based on heavy chains, we remove cells with only light chains.
 
@@ -184,9 +190,11 @@ tab$table
 print_table_caption(tag = "light_only", text = tab$caption)
 ```
 
-# Remove cells with multiple heavy chains
+## Remove cells with multiple heavy chains
 
-When calling clones (B cells that descend from a common naive B cell ancestor) from single cell data, SCOPer will throw an error message such as “xxx cell(s) with multiple heavy chains found. One heavy chain per cell is expected” if any cells in the data contain multiple heavy chains and then stop running. A simple solution is just to remove cells with multiple heavy chains from the single cell data.
+When calling clones (B cells that descend from a common naive B cell ancestor) from single cell data, SCOPer will throw an error message such as “xxx cell(s) with multiple heavy chains found. One heavy chain per cell is expected” if any cells in the data contain multiple heavy chains and then stop running.
+
+A simple solution is just to remove cells with multiple heavy chains from the single cell data:
 
 ```{r removeDoublets}
 db <- removeDoublets(db, cell_id = "cell_id", locus = "locus",
@@ -194,12 +202,11 @@ db <- removeDoublets(db, cell_id = "cell_id", locus = "locus",
 db_no_doublets_size <- nrow(db)
 ```
 
-`r db_with_heavy_size-db_no_doublets_size` sequences have been removed, because they were found in cells with multiple heavy chains.
+`r db_with_heavy_size-db_no_doublets_size` sequences have been removed because they were found in cells with multiple heavy chains.
 
-# cell_id + sequence_alignment overlap
+# Check for contamination
 
-Sequences in different samples that share the same cell_id and nucleotide sequence
-can indicate contamination.
+Sequences in different samples that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) can indicate contamination.
 
 ```{r sc-duplicates, results="asis"}
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
@@ -210,7 +217,7 @@ if (nrow(dups[["dups"]]) == 0) {
 }
 ```
 
-## stacked bar
+## Stacked bar plot
 
 ```{r p-sc-duplicates, fig.cap=caption, results="asis"}
 caption <- NULL
@@ -253,7 +260,7 @@ if (nrow(dups[["dups"]]) > 0) {
 }
 ```
 
-## overlap matrix
+## Overlaps matrix
 
 ```{r overlap-summary, eval=TRUE}
 # find the number of cells having same seq and cell barcode
