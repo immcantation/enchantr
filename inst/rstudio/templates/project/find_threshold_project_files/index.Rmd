@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr single cell qc report"
+description: "enchantr find threshold report"
 output: enchantr::immcantation
 params:
    input: 
@@ -147,6 +147,7 @@ selected_columns <- unique(c("sample_id", "sequence_id",
 db <- readInput(params[['input']], col_select=selected_columns)
 input_sizes <- db %>%
     count(input_file)
+input_sizes <- input_sizes %>% rename("sequences" = "n")
 eetable(input_sizes)$table
 ```
 
@@ -357,7 +358,7 @@ caption <- dtnplot$enchantr$html_caption
 `findThreshold` uses the distribution of distances calculated in the previous step to determine an appropriate threshold for the dataset. 
 
 
-### Theshold(s) summary table
+### Threshold(s) summary table
 
 ```{r, eval=all(is.na(db[['dist_nearest']]))}
 # This chunk runs when all dist_nearest values are NA
@@ -391,7 +392,7 @@ threshold_summary <- gmmSummary(threshold) %>%
     mutate(mean_threshold=mean(threshold, na.rm=TRUE))
 mean_threshold <- round(threshold_summary$mean_threshold[1],2)
 
-tab_caption <- paste0("Summary of threshold values. Mean threshold is: ", mean_threshold)
+tab_caption <- paste0("Summary of threshold values, p-value from Hartigans’ dip statistic (HDS) test with <0.05 indicating significant bimodality. Mean threshold is: ", mean_threshold)
 if (!is.null(subsample)) {
     tab_caption <- paste0(tab_caption," Subsampling requested: ", subsample, ".")
 }
@@ -415,7 +416,7 @@ tmp <- lapply(threshold, function(thr) {
     if (!is.null(attributes(thr$GmmThreshold))) {
         this_thr <- round(attributes(thr$GmmThreshold)$threshold,2)
     }
-    cat ("\n\n### ",paste(c(thr[['fields']], ": ", this_thr),collapse=" "),"\n\n")
+    cat ("\n\n### ",paste(c(params$crossby, " ", thr[['fields']], ", estimated threshold:", this_thr),collapse=" "),"\n\n")
     fn <- paste(c(thr[['fields']],"dtnthrplot"),collapse="_")
     dtnthrcaption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=",")," (",

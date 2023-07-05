@@ -157,6 +157,8 @@ gmmSummary <- function(gmm) {
         c(fields, fit)
     })
     df <- bind_rows(l)
+    # modify df for easier summary viewing
     df$threshold <- as.numeric(unlist(df$threshold))
+    df <- subset(df, select = -c(a1, a2, b1, b2, c1, c2) )
     df
 }

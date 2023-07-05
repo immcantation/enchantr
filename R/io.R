@@ -157,7 +157,8 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
                         # class = 'table-bordered table-condensed',
                         class = 'stripe hover order-column row-border compact',
                         options = list(
-                            scrollX = TRUE)#,
+                            scrollX = TRUE,
+                            pageLength = 5)#,
                         # caption = htmltools::tags$caption(
                         #     style = 'caption-side: top; text-align: left;',
                         #     caption
