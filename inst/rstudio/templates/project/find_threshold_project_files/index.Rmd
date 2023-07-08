@@ -159,9 +159,9 @@ singlecell <- params$singlecell
 # Check for single cell label
 if (!is.null(singlecell)) {
     if (singlecell %in% colnames(db)) {
-         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
+         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )
     } else {
-        stop("`",singlecell, "` is not a valid field in `db`.")
+        stop("`", singlecell, "` is not a valid field in `db`.")
     }
 } else {
    singlecell <- "single_cell"
@@ -345,7 +345,7 @@ dtnplot <- dtnplot +
     theme(legend.position = "bottom")
 
 dtnplot <- eeplot(dtnplot, 
-                  outdir=params$outdir, 
+                  outdir=params$outdir,
                   file=knitr::opts_current$get('dtnplot'),
                   caption=caption
 )
