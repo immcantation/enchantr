@@ -102,7 +102,7 @@ findThresholdDb <- function(db,
                 cross_distances <- NULL
             }
             threshold <- NULL
-            threshold <- R.utils::withTimeout(
+            threshold <- withTimeout(
                 findThreshold(db_group[[distanceColumn]],
                     cross = cross_distances,
                     method = method,

@@ -29,7 +29,7 @@ or use the [issue tracker](https://bitbucket.org/kleinstein/enchantr/issues?stat
 # Dependencies
 
 **Depends:** FALSE  
-**Imports:** airr, alakazam, bookdown, ComplexHeatmap, data.table, doParallel, dowser, dplyr, DT, foreach, ggraph, ggplot2, gridExtra, igraph, knitr, plotly, RColorBrewer, reshape2, rmarkdown, scales, scoper, shazam, stringi, stringr, tidyr  
+**Imports:** airr, alakazam, bookdown, ComplexHeatmap, data.table, doParallel, dowser, dplyr, DT, foreach, ggraph, ggplot2, gridExtra, igraph, knitr, plotly, RColorBrewer, reshape2, rmarkdown, scales, scoper, shazam, stringi, stringr, tidyr , R.utils
 **Suggests:** optparse, testthat
 
 

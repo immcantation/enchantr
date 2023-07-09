@@ -111,6 +111,7 @@ suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("plotly"))
+suppressPackageStartupMessages(library("R.utils"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
