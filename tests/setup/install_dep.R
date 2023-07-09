@@ -3,7 +3,7 @@
 # Install dependencies from CRAN or Bitbucket as needed.
 
 ####
-# Add here Biocondutor dependencies that 
+# Add here Bioconductor dependencies that 
 # are not installed in the immcantation/test container
 bioconductor_deps <- c("ComplexHeatmap")
 ####
@@ -14,7 +14,7 @@ library(versions)
 immcantation_packages <- c("alakazam", "shazam", "tigger", "scoper", "dowser", "enchantr")
 
 # Function to install dependencies
-installDep <- function(pkg, devel_mode, immcantation=immcantation_packages, 
+installDep <- function(pkg, devel_mode, immcantation=immcantation_packages,
                        repos="http://lib.stat.cmu.edu/R/CRAN/") {
     
     # Required version 

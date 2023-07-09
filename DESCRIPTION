@@ -47,6 +47,7 @@ Imports:
     knitr,
     plotly,
     RColorBrewer,
+    R.utils,
     reshape2,
     rmarkdown,
     scales,
