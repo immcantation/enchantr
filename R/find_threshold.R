@@ -84,7 +84,7 @@ findThresholdDb <- function(db,
             "distanceColumn", "crossDistanceColumn",
             "findThreshold",
             "method", "edge", "subsample", "cutoff", "spc",
-            "plotGmmThreshold"
+            "plotGmmThreshold", "withTimeout"
         )
         parallel::clusterExport(cluster, export_functions, envir = environment())
     }
