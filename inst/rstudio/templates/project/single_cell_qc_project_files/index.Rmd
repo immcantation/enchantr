@@ -100,12 +100,8 @@ if (!file.exists(params$input)) {
   stop(paste0("File ", basename(params$input), " doesn't exist."))
 }
 
-db_files <- read.delim(params[["input"]], header = FALSE)[[1]]
-
-# Read db file
-db <- bind_rows(sapply(db_files, read_rearrangement,
-                       simplify = FALSE, USE.NAMES = TRUE),
-                .id = "input_file")
+# Read repertoire(s)
+db <- readInput(params[['input']], col_select = NULL)
 
 input_sizes <- db %>%
                  group_by(!!!rlang::syms(unique(c("input_file")))) %>%
