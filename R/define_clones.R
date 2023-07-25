@@ -118,7 +118,7 @@ plotDbOverlap <- function(db, group="sample",
     
     db <- db %>% ungroup()
     
-    check <- alakazam:::checkColumns(db, columns)
+    check <- alakazam::checkColumns(db, columns)
     if (check != TRUE) { stop(check) }
     
     db$GROUPS <- db %>%
@@ -159,9 +159,9 @@ plotDbOverlap <- function(db, group="sample",
                 # Order by group_by vector
                 # All elements in group_by must be found in group_table
                 group_table <- group_table[match(plot_order, group_table$GROUP_NAME),]
-            } else if (alakazam:::checkColumns(db, plot_order)) {
+            } else if (alakazam::checkColumns(db, plot_order)) {
                 # Order by column names
-                # Check for valid columns with alakazam:::checkColumns
+                # Check for valid columns with alakazam::checkColumns
                 ORDER <- bind_rows(lapply(seq_along(1:NUM_GROUPS), function(g) {
                     this_group <- group_table[g,]
                     g_id <- as.vector(unlist(this_group["GROUPS"]))

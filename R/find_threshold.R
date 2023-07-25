@@ -42,7 +42,7 @@ findThresholdDb <- function(db,
     columns <- c(distanceColumn, fields)
     columns <- columns[!is.null(columns)]
 
-    check <- alakazam:::checkColumns(db, columns)
+    check <- alakazam::checkColumns(db, columns)
     if (check != TRUE) {
         stop(check)
     }

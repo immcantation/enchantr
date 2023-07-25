@@ -134,7 +134,7 @@ findLightOnlyCells <- function(db,
 removeDoublets <- function(db, cell_id = "cell_id", locus = "locus",
                            sequence_id = "sequence_id", fields = NULL) {
     
-    check <- alakazam:::checkColumns(db, columns=c(cell_id, locus, sequence_id, fields))
+    check <- alakazam::checkColumns(db, columns=c(cell_id, locus, sequence_id, fields))
     if (check != TRUE) { stop(check) }
     
     db_h <- db[isHeavyChain(db[[locus]]),, drop = FALSE] #IGH, TRB, TRD
@@ -268,7 +268,7 @@ findSingleCellDuplicates <- function(db, fields,
     if (is.null(fields)) { stop("`groups` must be valid column name(s)")}
     columns <- c(fields,cell_id, seq, sequence_id)
     columns <- columns[!is.null(columns)]
-    check <- alakazam:::checkColumns(db, columns)
+    check <- alakazam::checkColumns(db, columns)
     if (check != TRUE) { stop(check) }
 
     # Check that sequence_id are unique, because I will use this id
@@ -405,7 +405,7 @@ removeSingleCellDuplicates <- function(db, fields,
 
     mode <- match.arg(mode)
 
-    check <- alakazam:::checkColumns(db, columns=c(fields, cell_id, seq, sequence_id))
+    check <- alakazam::checkColumns(db, columns=c(fields, cell_id, seq, sequence_id))
     if (check != TRUE) { stop(check) }
     
     # Check that sequence_id are unique, because I will use this id
@@ -585,7 +585,7 @@ singlecell_sharing_matrix <- function(db,
     if (is.null(groups)) { stop("`groups` must be a valid column name")}
     columns <- c(groups,cell, seq, order_by)
     columns <- columns[!is.null(columns)]
-    check <- alakazam:::checkColumns(db, columns)
+    check <- alakazam::checkColumns(db, columns)
     if (check != TRUE) { stop(check) }
 
     # Identify groups
