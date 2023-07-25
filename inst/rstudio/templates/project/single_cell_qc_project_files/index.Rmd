@@ -1,7 +1,7 @@
 --- 
 title: "Immcantation - enchantR"
 subtitle: "Single Cell Quality Control"
-author: "Authors: Susanna Marquez, Edel Aron"
+author: "`r params$author`"
 date: "Updated: `r date()`"
 knit: enchantr::render_book
 site: bookdown::bookdown_site
@@ -9,9 +9,11 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr Single Cell QC Report"
+description: "enchantR Single Cell QC Report"
 output: enchantr::immcantation
 params:
+   author:
+       value: "Authors: Susanna Marquez, Edel Aron"
    input: 
       label: "`input`: Path to repertoires file"
       input: file
@@ -71,6 +73,7 @@ suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("plotly"))
 
 if (!dir.exists(params[["outdir"]])) {
   dir.create(params[["outdir"]], recursive = TRUE)
@@ -83,11 +86,11 @@ file.copy(params$logo,
 
 # Input parameters
 
-```{r input-parameters, results="asis"}
+```{r input-parameters, results="asis", echo=FALSE}
 printParams(params)
 ```
 
-```{r echo=FALSE, results="asis"}
+```{r echo=FALSE, results="asis", echo=FALSE}
 print_table_caption(tag = "input", text = "Input parameters.")
 save(params, file = file.path(params$outdir, "params.RData"))
 ```
@@ -95,17 +98,22 @@ save(params, file = file.path(params$outdir, "params.RData"))
 # Read repertoires
 
 ```{r, results="asis"}
-# Check input file
-if (!file.exists(params$input)) {
-  stop(paste0("File ", basename(params$input), " doesn't exist."))
-}
-
 # Read repertoire(s)
 db <- readInput(params[['input']], col_select = NULL)
 
 input_sizes <- db %>%
                  group_by(!!!rlang::syms(unique(c("input_file")))) %>%
                  summarize(input_size = n())
+
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+                 group_by(!!!rlang::syms(unique(params$outputby))) %>%
+                 summarize(input_size = n(),
+                            input_file = paste(unique(input_file), collapse=","),
+                            num_input_files = length(unique(input_file))
+                           )
+
 input_size <- nrow(db)
 
 input_summary <- db %>%
@@ -115,7 +123,7 @@ input_summary <- db %>%
                    summarize(n = n()) %>%
                    pivot_wider(id_cols = sample_id,
                                values_from = n, names_from = locus)
-caption_text <- paste0("Summary of input data. Number of reads per sample and 
+caption_text <- paste0("Summary of input data. Number of sequences per sample and 
                        locus. ", nrow(input_summary), " repertoires loaded, 
                        with ", input_size, " sequences.")
 
@@ -132,6 +140,17 @@ Distribution of the number of sequences per cell and locus
 
 ```{r, results="asis"}
 seqs_per_cell <- countSequencesPerCell(db)
+```
+
+```{r p-seqs-per-cell, fig.width=7, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
+p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell) +
+    theme_enchantr()
+p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,
+                          knitr::opts_current$get("label"))
+ggplotly(p_seqs_per_cell)
+```
+
+```{r, results="asis"}
 tab <- eetable(seqs_per_cell %>% dplyr::filter(cell_num_sequences > 1),
                caption = "Cells with more than one sequence")
 tab$table
@@ -139,13 +158,6 @@ tab$table
 
 ```{r echo=FALSE, results="asis"}
 print_table_caption(tag = "seqs_per_cell", text = tab$caption)
-```
-
-```{r p-seqs-per-cell, fig.width=7, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
-p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell)
-p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,
-                          knitr::opts_current$get("label"))
-p_seqs_per_cell
 ```
 
 # Filtration
@@ -207,53 +219,57 @@ Sequences in different samples that share the same `cell_id` and nucleotide sequ
 ```{r sc-duplicates, results="asis"}
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
                                  seq = "sequence_alignment")
+```
 
+```{r sc-duplicates-zero, results="asis", eval=(nrow(dups[["dups"]]) == 0), echo=FALSE}
 if (nrow(dups[["dups"]]) == 0) {
   cat("No suspicious overlaps detected.\n\n")
 }
 ```
 
-## Stacked bar plot
 
-```{r p-sc-duplicates, fig.cap=caption, results="asis"}
-caption <- NULL
+```{r sc-duplicates-summary, results="asis", eval=(nrow(dups[["dups"]]) > 0)}
+dups_summary <- dups[["dups"]] %>%
+    group_by(sample_id) %>%
+    summarize(duplicates = sum(sc_duplicate, na.rm = TRUE),
+              not_duplicates = sum(!sc_duplicate, na.rm = TRUE)) %>%
+    rowwise() %>%
+    mutate(duplication_percent = 100 * duplicates /
+               sum(duplicates + not_duplicates))
 
-if (nrow(dups[["dups"]]) > 0) {
-  dups_summary <- dups[["dups"]] %>%
-                    group_by(sample_id) %>%
-                    summarize(duplicates = sum(sc_duplicate, na.rm = TRUE),
-                              not_duplicates = sum(!sc_duplicate, na.rm = TRUE)) %>%
-                    rowwise() %>%
-                    mutate(duplication_percent = 100 * duplicates /
-                             sum(duplicates + not_duplicates))
-
-  eetable(
+tab_dups_summary <- eetable(
     dups_summary %>% mutate(duplication_percent = round(duplication_percent, 2)),
     caption = paste0("Summary of duplicated sequences: sequences that have the 
-                     same cell_id and sequence across samples."))$table %>% 
+                     same cell_id and sequence across samples. The percent represents 
+                     the number of duplicated sequences over the total of sequences in the sample."))
+
+tab_dups_summary$table %>% 
     formatStyle("duplication_percent", target = "cell",
                 backgroundColor = 
-                  styleInterval(0:100,
-                                round(seq(255, 40,
-                                          length.out = length(0:100) + 1), 0) %>%
-        {paste0("rgb(255,", ., ",", ., ")")})
-  )
+                    styleInterval(0:100,
+                                  round(seq(255, 40,
+                                            length.out = length(0:100) + 1), 0) %>%
+                                      {paste0("rgb(255,", ., ",", ., ")")})
+    )
+```
+```{r echo=FALSE, results="asis", eval=(nrow(dups[["dups"]]) > 0)}
+print_table_caption(tag = "dups_summary", text = tab_dups_summary$caption)
+```
 
-  if (sum(dups[["dups"]][["sc_duplicate"]]) > 0) {
-    p_sc_duplicates <- ggplot(dups[["dups"]],
-                              aes(x = sample_id, fill = sc_duplicate)) +
-                         geom_bar() +
-                         coord_flip() +
-                         labs(title = "Number of sequences that share\ncell_id
-                              and sequence with other samples.",
-                              subtitle = "", caption = "")
-    caption <- p_sc_duplicates$enchantr$html_caption
-    
-    p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir,
-                              knitr::opts_current$get("label"))
-    p_sc_duplicates
-  }
-}
+## Stacked bar plot
+
+```{r p-sc-duplicates, fig.cap=p_sc_duplicates$enchantr$html_caption, results="asis", eval=(nrow(dups[["dups"]]) > 0)}
+caption <- "Number of sequences that share cell_id and sequence with other samples."
+p_sc_duplicates <- ggplot(dups[["dups"]],
+                          aes(x = sample_id, fill = sc_duplicate)) +
+    geom_bar() +
+    coord_flip() +
+    theme_enchantr()
+
+p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir,
+                          knitr::opts_current$get("label"),
+                          caption=caption)
+ggplotly(p_sc_duplicates) %>% layout(barmode="stack")
 ```
 
 ## Overlaps matrix
@@ -263,31 +279,40 @@ if (nrow(dups[["dups"]]) > 0) {
 dup_count <- singleCellSharingCounts(dups)
 
 if (nrow(dup_count) > 0) {
-   overlap_summary <- dup_count %>%
-      filter(overlap_percent > 0 ) %>%
-      filter(sc_duplicate_group != name)
-   eetable(
-      overlap_summary,
-      caption=paste0("Summary of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
-   )$table   %>% formatStyle(
-      'overlap_percent',
-      target = 'cell',
-      backgroundColor = styleInterval(0:100, 
-                                      round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
-                                         {paste0("rgb(255,", ., ",", ., ")")})
-   )
+    overlap_summary <- dup_count %>%
+        filter(overlap_percent > 0 ) %>%
+        filter(sc_duplicate_group != name)
+    
+    overlap_summary_tab <- eetable(
+        overlap_summary,
+        caption=paste0("Summary of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
+    )
+    
+    overlap_summary_tab$table %>% 
+        formatStyle(
+            'overlap_percent',
+            target = 'cell',
+            backgroundColor = styleInterval(0:100, 
+                                            round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
+                                                {paste0("rgb(255,", ., ",", ., ")")})
+        )
 }
+```
+```{r echo=FALSE, results="asis"}
+print_table_caption(tag = "overlap_summary", text = overlap_summary_tab$caption)
 ```
 
 ```{r p-overlap-matrix, eval=TRUE, fig.cap=caption}
 # plot duplicated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
-  p_overlap_matrix <- plotOverlapSingleCell(dup_count)
+  p_overlap_matrix <- plotOverlapSingleCell(dup_count) +
+      theme_enchantr()
   p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir,
-                             knitr::opts_current$get("label"))
+                             knitr::opts_current$get("label"),
+                             caption="Duplicated cells.")
   caption <- p_overlap_matrix$enchantr$html_caption
-  p_overlap_matrix
+  ggplotly(p_overlap_matrix)
 }
 ```
 
@@ -304,7 +329,8 @@ samples) to `sequence_id` and `cell_id`.
 
 # Final repertoires 
 
-```{r outsetup}
+
+```{r outsetup, echo=FALSE}
 # pass <- qc_results$log$scqc_pass
 if (sum(dups[["dups"]][["sc_duplicate"]]) > 0) {
   pass <- dups[["dups"]][["sc_duplicate"]] == FALSE
@@ -325,10 +351,13 @@ if (!is.null(params$log)) {
 }
 ```
 
-```{r dbpass, results="asis"}
+```{r dbpass, results="asis", echo=FALSE}
 # Save data, sequences that pass, while making cell_id and sequence id unique
+db <- db[pass, , drop=FALSE]
+
+# Global unique cell_id
 sample_ids <- unique(db[["sample_id"]])
-db <- db[pass, , drop=FALSE] %>%
+db <- db %>%
         mutate(cell_id = paste(cell_id, match(sample_id, sample_ids),
                                sep = "-"),
                sequence_id = paste(sequence_id, match(sample_id, sample_ids),
@@ -339,10 +368,26 @@ output_groups <- db %>%
                    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
                    group_by(!!!rlang::syms(params$outputby)) %>%
                    summarize(output_size = n(),
-                             input_file = unique(input_file),
+                             input_file = paste(unique(input_file), collapse=","),
                              num_input_files = length(unique(input_file))) %>%
-                   left_join(input_sizes)
+                   right_join(input_sizes_byoutput) %>%
+                   select(sample_id, input_size, output_size, everything())
+output_groups[is.na(output_groups)] <- 0
 
+output_summary_tab <- eetable(
+    output_groups,
+    caption=paste0("Output summary.")
+)
+output_summary_tab$table
+```
+```{r output_summary, results="asis", echo=FALSE}
+print_table_caption(tag = "output_summary_tab", text = output_summary_tab$caption)
+```
+
+Find your final repertoires here, saved by `r paste(params$outputby, collapse=", ")`.
+
+
+```{r dbpass-save, results="asis", echo=FALSE}
 if (any(output_groups[["num_input_files"]] > 1)) {
   stop("Unhandled.")
 }
@@ -351,25 +396,30 @@ output_files <- c()
 output_sizes <- c()
 dir.create(file.path(params$outdir, "repertoires"))
 for (i in 1:nrow(output_groups)) {
-  group_db <- right_join(db, output_groups[i, , drop = F],
-                         by = c(params$outputby, "input_file")) %>%
-                select(-input_file, -num_input_files, -input_size, -output_size)
-
-  group_db_label <- gsub("^id_", "",
-                         makeLabel(group_db, fields = params$outputby))
-  group_fn <- file.path(params$outdir, "repertoires",
-                        paste0(group_db_label, "_", output_fn))
-  
-  output_files <- c(output_files, group_fn)
-  output_sizes <- c(output_sizes, nrow(group_db))
-  
-  write_rearrangement(group_db, file = group_fn)
-  cat("- [", group_db_label, 
-      "](", file.path("repertoires", basename(group_fn)), ")\n", sep = "")
+    this_group <- output_groups[i, , drop = F]
+    group_fn <- ""
+    
+    if (this_group[['output_size']]>0) {
+        group_db <- right_join(db, this_group,
+                               by = c(params$outputby, "input_file")) %>%
+            select(-input_file, -num_input_files, -input_size, -output_size)
+        
+        group_db_label <- gsub("^id_", "",
+                               makeLabel(group_db, fields = params$outputby))
+        group_fn <- file.path(params$outdir, "repertoires",
+                              paste0(group_db_label, "_", output_fn))
+        
+        write_rearrangement(group_db, file = group_fn)
+        cat("- [", group_db_label, 
+            "](", file.path("repertoires", basename(group_fn)), ")\n", sep = "")
+    }
+    
+    output_files <- c(output_files, group_fn)
+    output_sizes <- c(output_sizes, nrow(group_db))
 }
 ```
 
-```{r log}
+```{r log, echo=FALSE}
 cat("START> SingleCellQC", file = log_fn, append = FALSE)
 
 for (i in 1:nrow(output_groups)) {
