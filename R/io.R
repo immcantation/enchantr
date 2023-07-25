@@ -158,7 +158,13 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
                         class = 'stripe hover order-column row-border compact',
                         options = list(
                             scrollX = TRUE,
-                            pageLength = 5)#,
+                            pageLength = 5,
+                            #https://stackoverflow.com/questions/44101055/changing-font-size-in-r-datatables-dt
+                            initComplete = JS(
+                                "function(settings, json) {",
+                                "$(this.api().table().header()).css({'font-size': '50% !important'});",
+                                "}")
+                            )#,
                         # caption = htmltools::tags$caption(
                         #     style = 'caption-side: top; text-align: left;',
                         #     caption
@@ -166,7 +172,7 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
     )   
     # https://stackoverflow.com/questions/70868546/r-markdown-printing-datatable-from-inside-the-function
     # https://stackoverflow.com/questions/30509866/for-loop-over-dygraph-does-not-work-in-r
-    # doesn't work, prints whit space
+    # doesn't work, prints white space
     # print(htmltools::tagList(list(dt)))
     list(
         "table"=dt,
