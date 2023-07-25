@@ -28,6 +28,7 @@ test_that("sc duplicates", {
         'sequence_alignment' = c("AA","AA","CC", "CC", "AA","TT","CC","GG", "AM", "CC", "GGG")
     ) 
     db$sequence_id <- paste0("seq_",as.character(1:nrow(db)))
+    db$locus <- "IGH"
     dup_seqs <- c(
         "seq_1", "seq_5",# Duplicated in samples s1 and s2
         "seq_2", "seq_9" # In s1 (AA) and s2 (AM, degenerate). Not "seq_6", because difference sequence.
@@ -45,7 +46,7 @@ test_that("sc duplicates", {
                              cell_id="cell_id", 
                              seq="sequence_alignment",
                              sequence_id="sequence_id")
-    expect_equal(sort(dups$dups %>% filter(sc_duplicate) %>% pull(sequence_id)),
+    expect_equal(sort(dups$dups %>% filter(sc_duplicate) %>% dplyr::pull(sequence_id)),
                  sort(dup_seqs))
     
     

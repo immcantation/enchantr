@@ -332,7 +332,7 @@ if (!is.null(params$log)) {
 ```{r dbpass, results="asis"}
 # Save data, sequences that pass, while making cell_id and sequence id unique
 sample_ids <- unique(db[["sample_id"]])
-db <- db[pass, ] %>%
+db <- db[pass, , drop=FALSE] %>%
         mutate(cell_id = paste(cell_id, match(sample_id, sample_ids),
                                sep = "-"),
                sequence_id = paste(sequence_id, match(sample_id, sample_ids),

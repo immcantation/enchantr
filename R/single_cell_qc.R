@@ -133,9 +133,13 @@ findLightOnlyCells <- function(db,
 #' @export
 removeDoublets <- function(db, cell_id = "cell_id", locus = "locus",
                            sequence_id = "sequence_id", fields = NULL) {
+    
+    check <- alakazam:::checkColumns(db, columns=c(cell_id, locus, sequence_id, fields))
+    if (check != TRUE) { stop(check) }
+    
     db_h <- db[isHeavyChain(db[[locus]]),, drop = FALSE] #IGH, TRB, TRD
     if (nrow(db_h) == 0) {
-      message("db contains light chain sequences only.")
+      message("`db` does not contain heavy chain sequences. Doublets check can't be performed.")
       return(db)
     }
     groups <- c(locus, fields)
@@ -401,6 +405,9 @@ removeSingleCellDuplicates <- function(db, fields,
 
     mode <- match.arg(mode)
 
+    check <- alakazam:::checkColumns(db, columns=c(fields, cell_id, seq, sequence_id))
+    if (check != TRUE) { stop(check) }
+    
     # Check that sequence_id are unique, because I will use this id
     # later to remove the duplicated sequences
     if (any(duplicated(db[[sequence_id]]))) {
