@@ -310,7 +310,7 @@ samples) to `sequence_id` and `cell_id`.
 
 ```{r outsetup}
 # pass <- qc_results$log$scqc_pass
-if (sum(dups[["dups"]][["sc_duplicate"]] > 0)) {
+if (sum(dups[["dups"]][["sc_duplicate"]]) > 0) {
   pass <- dups[["dups"]][["sc_duplicate"]] == FALSE
 } else {
   pass <- rep(T, nrow(db))
