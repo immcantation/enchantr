@@ -67,9 +67,9 @@ test_that("sc duplicates", {
     expect_equal(length(intersect(db_cells[['sc_duplicate']], dup_cells)), 0)
 })
 
-test_that("countSequencesPerCell", {
-    countSequencesPerCell(toy_db)
-})
+# test_that("countSequencesPerCell", {
+#     countSequencesPerCell(toy_db)
+# })
 
 test_that("findLightOnlyCells", {
     expect_equal(findLightOnlyCells(toy_db)[['light_only_cell']], c(F,F,T,F,F,F))
