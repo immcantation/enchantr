@@ -45,18 +45,21 @@ Imports:
     ggplot2,
     gridExtra,
     igraph,
+    iterators,
     knitr,
     plotly,
     RColorBrewer,
     R.utils,
     reshape2,
+    rlang,
     rmarkdown,
     scales,
     scoper (>= 1.2.1),
     shazam (> 1.1.0),
     stringi,
     stringr,
-    tidyr
+    tidyr,
+    xfun
 Suggests:
     optparse,
     testthat
