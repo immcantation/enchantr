@@ -400,7 +400,7 @@ if (!is.null(subsample)) {
 
 tab <- eetable(threshold_summary, 
                outdir=params$outdir, 
-               file="threshold_summary",
+               file=paste(params$outname, "threshold_summary", sep="_"),
                caption=tab_caption)  
 tab$table %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
@@ -445,7 +445,7 @@ tmp <- lapply(threshold, function(thr) {
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_threshold-pass.tsv")
+    output_fn <- paste(params$outname,"threshold-pass.tsv", sep="_")
 } else {
     output_fn <- sub(".tsv$", "_threshold-pass.tsv", basename(params$input))
 }
@@ -453,15 +453,12 @@ if (!is.null(params$outname)) {
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("_threshold-pass.tsv$", "_command_log.txt", basename(output_fn))
+    log_fn <- sub("threshold-pass.tsv$", "command_log.txt", basename(output_fn))
 }
 
 # write_rearrangement(db , file=output_fn)
-write.table(threshold_summary, 
-            sub("_threshold-pass.tsv$", "_threshold-summary.tsv" ,output_fn),
-            quote=FALSE,sep="\t", row.names=FALSE)
 cat(threshold_summary[['mean_threshold']][1], 
-    file=sub("_threshold-pass.tsv$", "_threshold-mean.tsv" ,output_fn),
+    file=file.path(params$outdir,"tables",sub("threshold-pass.tsv$", "threshold-mean.tsv" ,output_fn)),
     append=F
 )
 ```
