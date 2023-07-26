@@ -227,7 +227,6 @@ if (nrow(dups[["dups"]]) == 0) {
 }
 ```
 
-
 ```{r sc-duplicates-summary, results="asis", eval=(nrow(dups[["dups"]]) > 0)}
 dups_summary <- dups[["dups"]] %>%
     group_by(sample_id) %>%
@@ -272,9 +271,10 @@ p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir,
 ggplotly(p_sc_duplicates) %>% layout(barmode="stack")
 ```
 
-## Overlaps matrix
+## Cell overlaps matrix
 
-```{r overlap-summary, eval=TRUE}
+
+```{r overlap-summary}
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
@@ -285,7 +285,7 @@ if (nrow(dup_count) > 0) {
     
     overlap_summary_tab <- eetable(
         overlap_summary,
-        caption=paste0("Summary of duplicated cells: cells that have sequences with the same cells_id and sequence in multiple samples.")
+        caption=paste0("Summary of duplicated cells: cells that have sequences with a combination of cell_id and sequence found in multiple samples.")
     )
     
     overlap_summary_tab$table %>% 
@@ -298,11 +298,11 @@ if (nrow(dup_count) > 0) {
         )
 }
 ```
-```{r echo=FALSE, results="asis"}
+```{r echo=FALSE, results="asis", eval=(nrow(dup_count) > 0) }
 print_table_caption(tag = "overlap_summary", text = overlap_summary_tab$caption)
 ```
 
-```{r p-overlap-matrix, eval=TRUE, fig.cap=caption}
+```{r p-overlap-matrix, eval=TRUE, fig.cap=caption, eval=(nrow(dup_count) > 0) }
 # plot duplicated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
