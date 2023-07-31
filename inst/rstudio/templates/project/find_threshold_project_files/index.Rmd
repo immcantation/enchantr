@@ -400,7 +400,7 @@ if (!is.null(subsample)) {
 
 tab <- eetable(threshold_summary, 
                outdir=params$outdir, 
-               file=paste(params$outname, "threshold_summary", sep="_"),
+               file=paste(params$outname, "threshold-summary", sep="_"),
                caption=tab_caption)  
 tab$table %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
