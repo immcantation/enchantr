@@ -63,7 +63,11 @@ params:
    skip_convergence:
        label: "`skip_convergence`"
        input: logical
-       value: !r FALSE       
+       value: !r FALSE
+   convergence_vgene:
+       label: "`convergence_vgene`"
+       input: text
+       value: NULL
    nboot:
        label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
        input: numeric
@@ -131,12 +135,12 @@ suppressPackageStartupMessages(library("ComplexHeatmap"))
 suppressPackageStartupMessages(library("plotly"))
 
 if (!dir.exists(params[['outdir']])) {
-    dir.create(params[['outdir']], recursive = T)
+    dir.create(params[['outdir']], recursive=T)
 }
 
-file.copy(params$logo, 
+file.copy(params$logo,
           file.path(params$outdir,"assets", "logo.png"),
-          recursive = T, overwrite=T)
+          recursive=T, overwrite=T)
 
 singlecell <- params$singlecell
 ```
@@ -163,7 +167,7 @@ if (params$species =="auto") {
         species <- unique(db[['species']])
         if (length(species)>1) {
             stop("Multiple species detected. Only one allowed.")
-        } 
+        }
     } else  {
         stop("Can't detect species. The column `species` does not exist in `db`.")
     }
@@ -212,7 +216,7 @@ if ("clone_id" %in% colnames(db)) {
     if ("clone_size_freq" %in% colnames(db)) {    
         warning("Overwritting clone_size_freq.")    
         db$clone_size_freq <- NULL
-    }    
+    }
 }
 ```
 

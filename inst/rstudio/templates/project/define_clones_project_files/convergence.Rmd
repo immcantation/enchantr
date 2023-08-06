@@ -4,6 +4,10 @@ Run clonal detection combining all samples to identify overlapping "clones". The
 `convergent_clone_id` will be created.
 
 ```{r, warning=TRUE}
+if (!is.null(params$convergence_vgene)) {
+    db <- db %>% filter(v_call %in% params$convergence_vgene)
+}
+
 if (sum(heavy_chains)>0) {
     if (params$model == "hierarchical") {
         if (all(db[[ singlecell ]] == T )) {
@@ -14,24 +18,24 @@ if (sum(heavy_chains)>0) {
                 warning("Mix of single and bulk data. Setting cell_id=`NULL`.")
             }
         }
-        db <- hierarchicalClones(db, 
-                                 0.2, 
+        db <- hierarchicalClones(db,
+                                 0.2,
                                  method="aa",
-                                 linkage=params$linkage, 
+                                 linkage=params$linkage,
                                  normalize="len",
-                                 junction="junction", 
-                                 v_call="v_call", j_call="j_call", 
-                                 clone="convergent_clone_id", 
+                                 junction="junction",
+                                 v_call="v_call", j_call="j_call",
+                                 clone="convergent_clone_id",
                                  fields=NULL,
-                                 cell_id=cell_id, 
-                                 locus="locus", 
-                                 only_heavy=TRUE, 
+                                 cell_id=cell_id,
+                                 locus="locus",
+                                 only_heavy=TRUE,
                                  split_light=TRUE,
-                                 first=FALSE, 
-                                 cdr3=FALSE, mod3=FALSE, 
+                                 first=FALSE,
+                                 cdr3=FALSE, mod3=FALSE,
                                  max_n=0, nproc=params$nproc,
                                  verbose=FALSE, log=NULL,
-                                 summarize_clones=FALSE) 
+                                 summarize_clones=FALSE)
     } else {
         stop("Unsuported model requested. Supported models: hierarchical")
     }
