@@ -5,7 +5,7 @@ Run clonal detection combining all samples to identify overlapping "clones". The
 
 ```{r, warning=TRUE}
 if (!is.null(params$convergence_vgene)) {
-    db <- db %>% filter(v_call %in% params$convergence_vgene)
+    db <- db %>% filter(grepl(paste(params$convergence_vgene, collapse="|"), v_call))
 }
 
 if (sum(heavy_chains)>0) {
