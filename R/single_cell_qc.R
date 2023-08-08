@@ -263,9 +263,13 @@ removeDoublets <- function(db, cell_id = "cell_id", locus = "locus",
 findSingleCellDuplicates <- function(db, fields,
                                      cell_id = "cell_id",
                                      seq="sequence_alignment",
-                                     sequence_id="sequence_id") {
+                                     sequence_id="sequence_id",
+                                     mode=c("sequences", "cells")) {
+    
+    mode <- match.arg(mode)
+    
     # Check for valid columns
-    if (is.null(fields)) { stop("`groups` must be valid column name(s)")}
+    if (is.null(fields)) { stop("`fields` must be valid column name(s)")}
     columns <- c(fields,cell_id, seq, sequence_id)
     columns <- columns[!is.null(columns)]
     check <- alakazam::checkColumns(db, columns)
@@ -298,7 +302,7 @@ findSingleCellDuplicates <- function(db, fields,
 
     # Identify cells present in more than one group
     # that have same length sequences (to be able to compare them later
-    # with .isDuplicate (uses pairwiseDist))
+    # with .isDuplicateSeq (uses pairwiseDist))
     db_shared <- db %>%
                    mutate(seq_len = nchar(!!rlang::sym(seq))) %>%
                    select(!!!rlang::syms(c(columns, "group_idx", "seq_len"))) %>%
@@ -310,7 +314,7 @@ findSingleCellDuplicates <- function(db, fields,
 
     # Helper function to label as duplicate T/F those sequences
     # that have a 0 distance sequence in other group
-    .isDuplicate <- function(x, seq, sequence_id) {
+    .isDuplicateSeq <- function(x, seq, sequence_id) {
         sequences <- x[[seq]]
         g <- x[["group_idx"]]
         # is_duplicate defaults to FALSE
@@ -341,7 +345,7 @@ findSingleCellDuplicates <- function(db, fields,
                     pivot_wider(id_cols = !!rlang::sym(sequence_id),
                                 names_from = "group_idx", values_from = n)
 
-        dup_mat[["is_duplicate"]] <- as.logical(rowSums(dup_mat[, -1], na.rm = T) > 0)
+        dup_mat[["is_duplicate_seq"]] <- as.logical(rowSums(dup_mat[, -1], na.rm = T) > 0)
         x %>% left_join(dup_mat, by = sequence_id )
     }
 
@@ -353,22 +357,43 @@ findSingleCellDuplicates <- function(db, fields,
     if (nrow(db_shared) > 0 ) {
         db_shared <- db_shared %>%
             group_by(!!!rlang::syms(c(cell_id, "seq_len"))) %>%
-            do(.isDuplicate(., seq, sequence_id)) %>%
+            do(.isDuplicateSeq(., seq, sequence_id)) %>%
             ungroup() %>%
             select(-group_idx, -seq_len)
-
-        duplicated_seq_id <- db_shared %>%
-            filter(is_duplicate) %>%
-            pull(!!rlang::sym(sequence_id))
-
-        db_shared[["is_duplicate"]] <- NULL
     }
 
-    if (length(duplicated_seq_id)>0) {
-        db[["sc_duplicate"]][db[[sequence_id]] %in% duplicated_seq_id] <- T
-        dups <- db %>%
-            left_join(db_shared, by = c(fields, sequence_id, seq, cell_id)) %>%
-            rename(sc_duplicate_group = group_idx)
+    if ( sum(db_shared[["is_duplicate_seq"]],na.rm = T)>0 ) {
+        
+        if (mode == "sequences") {
+            duplicated_seq_id <- db_shared %>%
+                filter(is_duplicate_seq) %>%
+                pull(!!rlang::sym(sequence_id))
+            
+            db[["sc_duplicate"]][db[[sequence_id]] %in% duplicated_seq_id] <- T
+            
+            dups <- db %>%
+                left_join(db_shared %>% select(-is_duplicate_seq), 
+                          by = c(fields, sequence_id, seq, cell_id)) %>%
+                rename(
+                    sc_duplicate_group = group_idx
+                )
+        } else if (mode == "cells") {
+            duplicated_cells <- db_shared %>%
+                filter(is_duplicate_seq) %>%
+                select(!any_of(c(seq, sequence_id, "is_duplicate_seq"))) %>%
+                mutate(sc_duplicate = TRUE) %>%
+                distinct()
+            dups <- db %>%
+                select(-sc_duplicate) %>%
+                left_join(duplicated_cells, 
+                          by = c(fields, cell_id)) %>%
+                rename(
+                    sc_duplicate_group = group_idx
+                )
+            dups <- dups %>%
+                mutate(sc_duplicate = replace_na(sc_duplicate, F))
+        }
+
     }
 
     list(

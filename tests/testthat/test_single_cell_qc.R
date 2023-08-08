@@ -37,34 +37,33 @@ test_that("sc duplicates", {
     
     # seq10 is in a cell with another sequence that is found in other samples,
     # therefore seq10 will be removed using the 'cells' mode in removeSingleCellDuplicates
-    dup_cells <- data.frame(
-        c("seq1", "seq2", "seq5", "seq9", "seq10")
-    )
+    dup_cells <- c("seq1", "seq2", "seq5", "seq9", "seq10")
     
     dups <- findSingleCellDuplicates(db, 
                              fields="sample_id", 
                              cell_id="cell_id", 
                              seq="sequence_alignment",
-                             sequence_id="sequence_id")
+                             sequence_id="sequence_id",
+                             mode="sequences")
     expect_equal(sort(dups$dups %>% filter(sc_duplicate) %>% dplyr::pull(sequence_id)),
                  sort(dup_seqs))
     
     
-    db_seqs <- removeSingleCellDuplicates(db, 
+    db_dedup_seqs <- removeSingleCellDuplicates(db, 
                                      fields="sample_id", 
-                                     cell="cell_id", 
+                                     cell_id="cell_id", 
                                      seq="sequence_alignment",
                                      sequence_id="sequence_id",
                                      mode="sequences")
-    expect_equal(length(intersect(db_seqs[['sc_duplicate']], dup_seqs)), 0)
+    expect_equal(length(intersect(db_dedup_seqs[['sequence_id']], dup_seqs)), 0)
     
-    db_cells <- removeSingleCellDuplicates(db, 
+    db_dedup_cells <- removeSingleCellDuplicates(db, 
                                      fields="sample_id", 
                                      cell="cell_id", 
                                      seq="sequence_alignment",
                                      sequence_id="sequence_id",
                                      mode="cells")
-    expect_equal(length(intersect(db_cells[['sc_duplicate']], dup_cells)), 0)
+    expect_equal(length(intersect(db_dedup_cells[['cell_id']], dup_cells)), 0)
 })
 
 # test_that("countSequencesPerCell", {
@@ -90,3 +89,4 @@ test_that("removeDoublets", {
     expected <- c("seq1")
     expect_equal(removeDoublets(toy_db_dup_cellid)[['sequence_id']], expected)
 })
+
