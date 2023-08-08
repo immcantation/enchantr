@@ -217,29 +217,48 @@ db_no_doublets_size <- nrow(db)
 Sequences in different samples that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) can indicate contamination.
 
 ```{r sc-duplicates, results="asis"}
+# Find duplicated sequences
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
-                                 seq = "sequence_alignment")
+                                 seq = "sequence_alignment", mode="sequences")
+dups_found <- sum(dups$dups$sc_duplicate, na.rm = T) > 0 
 ```
 
-```{r sc-duplicates-zero, results="asis", eval=(nrow(dups[["dups"]]) == 0), echo=FALSE}
+```{r sc-duplicates-zero, results="asis", eval=!dups_found, echo=FALSE}
 if (nrow(dups[["dups"]]) == 0) {
   cat("No suspicious overlaps detected.\n\n")
 }
 ```
 
-```{r sc-duplicates-summary, results="asis", eval=(nrow(dups[["dups"]]) > 0)}
+```{r sc-duplicates-summary, results="asis", eval=dups_found}
+dups$dups <- dups$dups %>%
+    group_by(sample_id, cell_id) %>%
+    mutate(sc_duplicate_cell = if_else(any(sc_duplicate), T, F))
+
+num_cells_with_dups <- dups$dups %>%
+    filter(sc_duplicate_cell) %>%
+    select(sample_id, cell_id) %>%
+    distinct() %>%
+    nrow()
+
+cat(
+    sum(dups$dups$sc_duplicate), " duplicated sequences detected. Removing ",
+    sum(dups$dups$sc_duplicate_cell), " sequences belonging to ",
+    num_cells_with_dups , " suspicious cells "
+)
 dups_summary <- dups[["dups"]] %>%
     group_by(sample_id) %>%
-    summarize(duplicates = sum(sc_duplicate, na.rm = TRUE),
-              not_duplicates = sum(!sc_duplicate, na.rm = TRUE)) %>%
+    summarize(duplicates = sum(sc_duplicate_cell, na.rm = TRUE),
+              not_duplicates = sum(!sc_duplicate_cell, na.rm = TRUE)
+              ) %>%
     rowwise() %>%
     mutate(duplication_percent = 100 * duplicates /
                sum(duplicates + not_duplicates))
 
 tab_dups_summary <- eetable(
     dups_summary %>% mutate(duplication_percent = round(duplication_percent, 2)),
-    caption = paste0("Summary of duplicated sequences: sequences that have the 
-                     same cell_id and sequence across samples. The percent represents 
+    caption = paste0("Summary of duplicated sequences: sequences belonging to cells with
+                     suspicious sequences (sequences that have the 
+                     same cell_id and sequence across samples). The percent represents 
                      the number of duplicated sequences over the total of sequences in the sample."))
 
 tab_dups_summary$table %>% 
@@ -251,16 +270,16 @@ tab_dups_summary$table %>%
                                       {paste0("rgb(255,", ., ",", ., ")")})
     )
 ```
-```{r echo=FALSE, results="asis", eval=(nrow(dups[["dups"]]) > 0)}
+```{r echo=FALSE, results="asis", eval=dups_found}
 print_table_caption(tag = "dups_summary", text = tab_dups_summary$caption)
 ```
 
 ## Stacked bar plot
 
-```{r p-sc-duplicates, fig.cap=p_sc_duplicates$enchantr$html_caption, results="asis", eval=(nrow(dups[["dups"]]) > 0)}
+```{r p-sc-duplicates, fig.cap=p_sc_duplicates$enchantr$html_caption, results="asis", eval=dups_found}
 caption <- "Number of sequences that share cell_id and sequence with other samples."
 p_sc_duplicates <- ggplot(dups[["dups"]],
-                          aes(x = sample_id, fill = sc_duplicate)) +
+                          aes(x = sample_id, fill = sc_duplicate_cell)) +
     geom_bar() +
     coord_flip() +
     theme_enchantr()
@@ -298,11 +317,11 @@ if (nrow(dup_count) > 0) {
         )
 }
 ```
-```{r echo=FALSE, results="asis", eval=(nrow(dup_count) > 0) }
+```{r echo=FALSE, results="asis", eval=dups_found }
 print_table_caption(tag = "overlap_summary", text = overlap_summary_tab$caption)
 ```
 
-```{r p-overlap-matrix, eval=TRUE, fig.cap=caption, eval=(nrow(dup_count) > 0) }
+```{r p-overlap-matrix, eval=TRUE, fig.cap=caption, eval=dups_found }
 # plot duplicated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
@@ -331,9 +350,10 @@ samples) to `sequence_id` and `cell_id`.
 
 
 ```{r outsetup, echo=FALSE}
+# Remove cells (all sequences in cells) with duplicated sequences
 # pass <- qc_results$log$scqc_pass
-if (sum(dups[["dups"]][["sc_duplicate"]]) > 0) {
-  pass <- dups[["dups"]][["sc_duplicate"]] == FALSE
+if (dups_found) {
+  pass <- dups[["dups"]][["sc_duplicate_cell"]] == FALSE
 } else {
   pass <- rep(T, nrow(db))
 }
