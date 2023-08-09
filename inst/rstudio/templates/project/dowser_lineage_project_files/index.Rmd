@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "input.tsv"
+      value: "input.tsv" # this has been tested and build using the example data Hailong sent. It will break if that is not used in it's current state. It was also an RDS file, but the current pipeline wants a tsv so the code runs current wants a tsv. If you want to check with his data, change the read_rearrangment call to readRDS. 
    build:
        label: "`build`"
        input: text
@@ -31,11 +31,11 @@ params:
    traits:
        label: "`traits`"
        input: text
-       value: "c_call"            
+       value: "day"            
    tips:
        label: "`tips`"
        input: text
-       value: "c_call"       
+       value: "day"       
    outname:
       label: "`outname`"
       input: text
@@ -44,6 +44,30 @@ params:
       label: "`nproc`"
       input: numeric
       value: 1
+   num_fields:
+      label: "`num_fields`"
+      input: text
+      value: "duplicate_count, consensus_count"
+   chain:
+      label: "`chain`"
+      input: text
+      value: "H"
+   cell:
+      label: "`cell`"
+      input: text
+      value: "cell_id_unique"
+   heavy:
+      label: "`heavy`"
+      input: text
+      value: "IGH"
+   collapse:
+      label: "`collapse`"
+      input: logical
+      value: TRUE
+   columns:
+      label: "`columns`"
+      input: text
+      value: ""
    log:
       label: "`log`"
       input: text
@@ -118,13 +142,14 @@ save(params, file=file.path(params$outdir,"params.RData"))
 # Read repertoires
 
 
-```{r}
+```{r read-repertoires}
 # Read repertoire
 db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
     # Check input file
     if (!file.exists(x)) {
         stop(paste0("File ", basename(x), " doesn't exist."))
     }
+  # update later for new data
     read_rearrangement(x)}
 ))
 input_size <- nrow(db)
@@ -132,9 +157,9 @@ input_size <- nrow(db)
 
 # Formatting clones
 
-```{r}
+```{r formatClones}
 h <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
-if (sum(h)>0) {
+if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus']] != params[['heavy']],]))) {
     heavy <- unique(db[['locus']][h])
     if (length(heavy)>1) {
         stop("multiple heavy chain locus found.")
@@ -168,51 +193,99 @@ if (sum(h)>0) {
     db <- db %>%
         mutate(across(all_of(c(traits)), miss)) 
     
-    num_fields <- intersect(c("duplicate_count", "consensus_count"),colnames(db))
-    if (length(num_fields) == 0 ) { num_fields <- NULL }
-    
-    try (
-        clones <- formatClones(db,
-                               traits=traits ,
-                               num_fields=num_fields,
-                               chain="H",
-                               locus='locus',
-                               heavy=heavy[[1]],
-                               minseq=params$minseq, nproc=params$nproc) 
-    )
-    if (nrow(clones)>0) {
-        trees <- getTrees(clones, 
-                          build=params$build, 
-                          exec=params$exec,
-                          nproc=params$nproc)
-        
-        if ( params$tips %in% colnames(db) ) {
-            tips <- params$tips
-        } else {
-            tips <- NULL
+    num_fields <- params[['num_fields']]
+    if (!is.null(num_fields)) {
+      validNumFields <- function(num_fields, db) {
+        num_fields_split <- strsplit(num_fields, ", ")[[1]]
+        num_fields_exists <- sapply(num_fields_split, function(x) {
+          x %in% colnames(db)}
+        )
+        if (any(!num_fields_exists)) {
+          message("Ignoring non-existing num_fields: ",paste(num_fields_split[!num_fields_exists], collapse = ", "))
         }
-        plots <- plotTrees(trees, tips=tips, tipsize=2)
-        for (i in 1:length(plots)) {
-            cat(paste0("## Tree ",i,"\n\n"))
-            print(plots[[i]])
-            cat("\n\n")
+        num_fields <- num_fields_split[num_fields_exists]
+        if (length(num_fields) == 0) {
+            num_fields <- NULL
+            return (num_fields)
         }
-
-        # Saving all trees in a PDF
-        treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
-
-        # Converting trees to graphs
-        graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
-        names(graphs) <- trees$clone_id
-
-        # Saving all trees in graphML format
-        lapply(names(graphs), function(x) igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]], format="graphml"))
-
-    } else {
-        cat("All clones have less than minseq = ",params$minseq," sequences.")
+        num_fields
+      }
+      num_fields <- validNumFields(num_fields, db)
     }
     
+    columns <- params[['columns']]
+    if(is.null(columns)){
+      columns <- NULL
+    } else {
+      validColumns <- function(columns, db){
+        columns_split <- strsplit(columns, ", ")[[1]]
+        columns_exists <- sapply(columns_split, function(x) {
+          x %in% colnames(db)}
+        )
+        if (any(!columns_exists)) {
+          message("Ignoring non-existing num_fields: ",paste(columns_split[!columns_exists], collapse = ", "))
+        }
+        columns <- columns_split[columns_exists]
+        if (length(columns) == 0) {
+            columns <- NULL
+            return (columns)
+        }
+        columns
+      }
+      columns <- validNumFields(columns, db)
+    }
+
+    try (
+        clones <- formatClones(db,
+                               traits=traits,
+                               num_fields=num_fields,
+                               chain=params$chain,
+                               locus='locus',
+                               heavy=params$heavy,
+                               cell=params$cell,
+                               minseq=params$minseq, 
+                               nproc=params$nproc,
+                               collapse=params$collapse,
+                               columns=columns) 
+    )
+}  else {
+      cat("All clones have less than minseq = ",params$minseq," sequences.")
+  }
+```
+
+```{r getTrees}
+if (nrow(clones)>0) {
+    trees <- getTrees(clones, 
+                      build=params$build, 
+                      exec=params$exec,
+                      nproc=params$nproc)
+    
+    if ( params$tips %in% colnames(db) ) {
+        tips <- params$tips
+    } else {
+        tips <- NULL
+    }
 }
+```
+
+```{r plotTrees}
+      plots <- plotTrees(trees, tips=tips, tipsize=2)
+      for (i in 1:length(plots)) {
+          cat(paste0("## Tree ",i,"\n\n"))
+          print(plots[[i]])
+          cat("\n\n")
+      }
+
+      # Saving all trees in a PDF
+      treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
+
+      # Converting trees to graphs
+      graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
+      names(graphs) <- trees$clone_id
+
+      # Saving all trees in graphML format
+      lapply(names(graphs), function(x) igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]], format="graphml"))
+print(plots[[1]])
 ```
 
 
