@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "input.tsv"
+      value: "https://yale.box.com/shared/static/tx1mg3u13nsz04sa9u7p3j1fg3he1f0v.tsv"
    build:
        label: "`build`"
        input: text
@@ -31,19 +31,43 @@ params:
    traits:
        label: "`traits`"
        input: text
-       value: "c_call"            
+       value: "day"            
    tips:
        label: "`tips`"
        input: text
-       value: "c_call"       
+       value: "day"       
    outname:
       label: "`outname`"
       input: text
-      value: "define-clones"
+      value: "dowser"
    nproc:
       label: "`nproc`"
       input: numeric
       value: 1
+   num_fields:
+      label: "`num_fields`"
+      input: text
+      value: "duplicate_count, consensus_count"
+   chain:
+      label: "`chain`"
+      input: text
+      value: "H"
+   cell:
+      label: "`cell`"
+      input: text
+      value: "cell_id_unique"
+   heavy:
+      label: "`heavy`"
+      input: text
+      value: "IGH"
+   collapse:
+      label: "`collapse`"
+      input: logical
+      value: TRUE
+   columns:
+      label: "`columns`"
+      input: text
+      value: ""
    log:
       label: "`log`"
       input: text
@@ -101,8 +125,7 @@ if (!dir.exists(params[['outdir']])) {
 }
 
 file.copy(params$logo, 
-          file.path(params$outdir,"assets", "logo.png"),
-          recursive = T, overwrite=T)
+          file.path(params$outdir,"assets", "logo.png"))
 ```
 
 # Input parameters
@@ -118,23 +141,17 @@ save(params, file=file.path(params$outdir,"params.RData"))
 # Read repertoires
 
 
-```{r}
+```{r read-repertoires}
 # Read repertoire
-db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
-    # Check input file
-    if (!file.exists(x)) {
-        stop(paste0("File ", basename(x), " doesn't exist."))
-    }
-    read_rearrangement(x)}
-))
+db <- readInput(params[['input']])
 input_size <- nrow(db)
 ```
 
 # Formatting clones
 
-```{r}
+```{r formatClones}
 h <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
-if (sum(h)>0) {
+if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus']] != params[['heavy']],]))) {
     heavy <- unique(db[['locus']][h])
     if (length(heavy)>1) {
         stop("multiple heavy chain locus found.")
@@ -155,52 +172,72 @@ if (sum(h)>0) {
     db <- db %>%
         mutate(across(all_of(c(traits)), miss)) 
     
-    num_fields <- intersect(c("duplicate_count", "consensus_count"),colnames(db))
+    num_fields <- params[['num_fields']]
     # check that num_fields exist and have data
     num_fields <- validateFields(num_fields, db, na_action="null")
 
     if (length(num_fields) == 0 ) { num_fields <- NULL }
     
+    columns <- params[['columns']]
+    columns <- validateFields(columns, db, na_action="null")
+
+    # Initialize empty clones
+    clones <- data.frame()
     try (
         clones <- formatClones(db,
-                               traits=traits ,
+                               traits=traits,
                                num_fields=num_fields,
-                               chain="H",
+                               chain=params$chain,
                                locus='locus',
-                               heavy=heavy[[1]],
-                               minseq=params$minseq, nproc=params$nproc) 
+                               heavy=params$heavy,
+                               cell=params$cell,
+                               minseq=params$minseq, 
+                               nproc=params$nproc,
+                               collapse=params$collapse,
+                               columns=columns) 
     )
-    if (nrow(clones)>0) {
-        trees <- getTrees(clones, 
-                          build=params$build, 
-                          exec=params$exec,
-                          nproc=params$nproc)
-        
-        tips <- validateFields(params$tips, db, na_action="null")
-        plots <- plotTrees(trees, tips=tips, tipsize=2)
-        for (i in 1:length(plots)) {
-            cat(paste0("## Tree ",i,"\n\n"))
-            print(plots[[i]])
-            cat("\n\n")
-        }
-
-        # Saving all trees in a PDF
-        treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
-
-        # Converting trees to graphs
-        graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
-        names(graphs) <- trees$clone_id
-
-        # Saving all trees in graphML format
-        lapply(names(graphs), function(x) igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]], format="graphml"))
-
-    } else {
-        cat("All clones have less than minseq = ",params$minseq," sequences.")
-    }
-    
 }
 ```
 
+```{r getTrees}
+# Initialize empty trees
+trees <- list()
+if (nrow(clones)>0) {
+    trees <- getTrees(clones, 
+                      build=params$build, 
+                      exec=params$exec,
+                      nproc=params$nproc)
+    
+    if ( params$tips %in% colnames(db) ) {
+        tips <- params$tips
+    } else {
+        tips <- NULL
+    }
+}  else {
+    cat("All clones have less than minseq = ",params$minseq," sequences.")
+}
+```
+
+```{r plotTrees, eval=(length(trees)>0)}
+if (length(trees)>0) {
+    plots <- plotTrees(trees, tips=tips, tipsize=2)
+    for (i in 1:length(plots)) {
+        cat(paste0("## Tree ",i,"\n\n"))
+        print(plots[[i]])
+        cat("\n\n")
+    }
+    
+    # Saving all trees in a PDF
+    treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
+    
+    # Converting trees to graphs
+    graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
+    names(graphs) <- trees$clone_id
+    
+    # Saving all trees in graphML format
+    lapply(names(graphs), function(x) igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]], format="graphml"))
+}
+```
 
 # Versions
 
