@@ -1,6 +1,5 @@
-# Software versions
+# Session Info
 
 ```{r}
 sessionInfo()
 ```
-

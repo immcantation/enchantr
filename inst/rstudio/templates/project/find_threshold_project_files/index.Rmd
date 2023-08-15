@@ -9,13 +9,13 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr single cell qc report"
+description: "enchantr find threshold report"
 output: enchantr::immcantation
 params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "https://yale.box.com/shared/static/4k1k6ycgcje0z9a54ohb84w7ejjhva04.tsv"
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
    cloneby:
       label: "`cloneby`"
       input: text
@@ -47,7 +47,7 @@ params:
    singlecell:
       label: "`singlecell`"
       input: text
-      value: "single_cell"          
+      value: NULL          
    subsample:
       label: "`subsample`"
       input: numeric
@@ -111,6 +111,7 @@ suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("plotly"))
+suppressPackageStartupMessages(library("R.utils"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
@@ -134,7 +135,7 @@ print_table_caption(tag="input", text="Input parameters.")
 save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
-## Input repertoires
+## Data Sources
 
 ```{r}
 # Read repertoires, 
@@ -147,22 +148,41 @@ selected_columns <- unique(c("sample_id", "sequence_id",
 db <- readInput(params[['input']], col_select=selected_columns)
 input_sizes <- db %>%
     count(input_file)
+input_sizes <- input_sizes %>% rename("sequences" = "n")
 eetable(input_sizes)$table
 ```
 
 ```{r}
 input_size <- nrow(db)
 is_heavy <- isHeavyChain(db[['locus']])
+singlecell <- params$singlecell
 
-na_single <- is.na(db[[params$singlecell]])
+# Check for single cell label
+if (!is.null(singlecell)) {
+    if (singlecell %in% colnames(db)) {
+         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )
+    } else {
+        stop("`", singlecell, "` is not a valid field in `db`.")
+    }
+} else {
+   singlecell <- "single_cell"
+   db[[singlecell]] <- F
+   if ("cell_id" %in% colnames(db)) {
+       message("Setting `singlecell` using `cell_id`.") 
+       db[[singlecell]][!db[['cell_id']] %in% c(NA, '')] <- T
+   }
+
+}
+
+na_single <- is.na(db[[singlecell]])
 if (sum(na_single)>0) {
     warning(sum(na_single), " sequences are missing single cell information. Using single_cell=F")
-    db[[params$singlecell]][na_single] <- FALSE
+    db[[singlecell]][na_single] <- FALSE
 }
-db[[params$singlecell]] <- as.logical(db[[params$singlecell]])
 
-bulk_heavy <- is_heavy & !db[[params$singlecell]]
-sc_heavy <- is_heavy & db[[params$singlecell]]
+
+bulk_heavy <- is_heavy & !db[[singlecell]]
+sc_heavy <- is_heavy & db[[singlecell]]
 bulk_dtn <- data.frame()
 sc_dtn <- data.frame()
 subsample <- params[['subsample']]
@@ -186,29 +206,19 @@ input_summary_table$table
 print_table_caption(tag="input_summary", text="Input data summary.")
 ```
 
-# Distance to nearest neighbor sequence
+# Calculate Threshold for Clonal Relationships
 
+The `shazam` package provides methods to find an appropriate distance threshold to determine clonal relationships for each dataset (`distToNearest` and `findThreshold`) by generating a distribution of distances between each sequence and its closest non-identical neighbor. Typically, the distance-to-nearest distribution for a repertoire is bimodal. The first mode (on the left) represents sequences that have at least one clonal relative in the dataset, while the second mode (on the right) is representative of the sequences that do not have any clonal relatives in the data. A reasonable threshold will separate these two modes of the distribution. The distance may be selected manually, or `findThreshold` can be used to automatically select a threshold.
 
-Clonal relationships can be inferred from sequencing data. Hierarchical clustering is a widely used method for identify clonally related sequences. This method requires a measure of distance between pairs of sequences and a choice of linkage to define the distance between groups of sequences. Since the result will be a tree, a threshold to cut the hierarchy into discrete clonal groups is also needed.
-
-`shazam` provides methods to calculate the distance between sequences and find an appropriate distance threshold for each dataset (`distToNearest` and `findThreshold`). The threshold can be determined by analyzing the distance to the nearest distribution. This is the set of distances between each sequence and its closest non-identical neighbour.
-
-`distToNearest` first splits sequences into groups that share the same V and J gene assignments and that have the same junction (or equivalently CDR3) length. This is based on the assumption that members of a clone will share all of these properties. `distToNearest` performs this grouping step, then counts the number of mismatches in the junction region between all pairs of sequences in each group and returns the smallest non-zero value for each sequence. At the end of this step, a new column (`dist_nearest`) which contains the distances to the closest non-identical sequence in each group will be added to db.
-
-Typically, the distance-to-nearest distribution for a repertoire is bimodal. The first mode (on the left) represents sequences that have at least one clonal relative in the dataset, while the second mode (on the right) is representative of the sequences that do not have any clonal relatives in the data (sometimes called "singletons"). A reasonable threshold will separate these two modes of the distribution. In this case, it is easy to manually determine a threshold as a value intermediate between the two modes. However, `findThreshold` can be used to automatically find the threshold.
-
-Specifying the `cross` argument to `distToNearest` forces distance calculations to be performed across groups, such that the nearest neighbor of each sequence will always be a sequence in a different group.
-This measurement is particularly useful when the distance-to-nearest distribution is not a clear bimodal. Because the cross distance-to-nearest represents distances to extern groups, they will typically
-be larger than the distances to sequences in the same group, and the distribution of the cross distance-to-nearest values will facilitate the identification of the second mode of the bimodal.
-
+Specifying the `cross` argument to `distToNearest` forces distance calculations to be performed across groups, such that the nearest neighbor of each sequence will always be a sequence in a different group. 
 
 ```{r sum_heavy_0, eval=sum(is_heavy)==0, echo=sum(is_heavy)==0, results='asis'}
 cat("0 heavy chain sequences present. `distToNearest` requires heavy chain data. Setting `dist_neartest` to 'NA'")
 db$dist_nearest <- NA
 ```
 
-```{r distToNearest_bulk, eval=(any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) }
-if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
+```{r distToNearest_bulk, eval=(any(db[[singlecell]] == F) && sum(bulk_heavy)>0) }
+if (any(db[[singlecell]] == F) && sum(bulk_heavy)>0) {
     message("Using ",sum(bulk_heavy), " bulk heavy chain sequences.")
 
     # Add distances to nearest neighbor within a "cloneby" group
@@ -232,8 +242,8 @@ if (any(db[[params$singlecell]] == F) && sum(bulk_heavy)>0) {
 } 
 ```
 
-```{r distToNearest_single, eval=(any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) }
-if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
+```{r distToNearest_single, eval=(any(db[[singlecell]] == T) && sum(sc_heavy)>0) }
+if (any(db[[singlecell]] == T) && sum(sc_heavy)>0) {
     message("Using ",sum(sc_heavy), " sc heavy chain sequences.")
 
     # Create unique cell_id
@@ -267,7 +277,7 @@ if (any(db[[params$singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r dtnplot, fig.width=8, fig.height=max(4, nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/2), fig.cap=caption}
+```{r dtnplot, fig.width=8, fig.height=max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/2), fig.cap=caption}
 
 caption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
@@ -279,7 +289,7 @@ if (!is.null(subsample)) {
 
 wrap_formula <- as.formula(paste0(
                         c(
-                            params$singlecell,
+                            singlecell,
                             "~",
                             paste(unique(c("sample_id", params$clone_by)), collapse = "+")
                         ),collapse="")
@@ -318,7 +328,7 @@ if (is.null(dtnplot)) {
 }
 ```
 
-```{r showdtnplot, eval=!is.null(dtnplot), fig.width=8, fig.height=min(50, max(4, nrow(unique(db[,c("sample_id", params$singlecell)], drop=F))/1.5)), fig.cap=caption}
+```{r showdtnplot, eval=!is.null(dtnplot), fig.width=8, fig.height=min(50, max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/1.5)), fig.cap=caption}
 dtnplot <- dtnplot +
     facet_wrap(wrap_formula, scales = "free_y", ncol=2, labeller = "label_both") +
     expand_limits(x = 0, y =0) +
@@ -326,7 +336,7 @@ dtnplot <- dtnplot +
     theme(legend.position = "bottom")
 
 dtnplot <- eeplot(dtnplot, 
-                  outdir=params$outdir, 
+                  outdir=params$outdir,
                   file=knitr::opts_current$get('dtnplot'),
                   caption=caption
 )
@@ -339,7 +349,7 @@ caption <- dtnplot$enchantr$html_caption
 `findThreshold` uses the distribution of distances calculated in the previous step to determine an appropriate threshold for the dataset. 
 
 
-### Theshold(s) summary table
+### Threshold(s) summary table
 
 ```{r, eval=all(is.na(db[['dist_nearest']]))}
 # This chunk runs when all dist_nearest values are NA
@@ -373,14 +383,14 @@ threshold_summary <- gmmSummary(threshold) %>%
     mutate(mean_threshold=mean(threshold, na.rm=TRUE))
 mean_threshold <- round(threshold_summary$mean_threshold[1],2)
 
-tab_caption <- paste0("Summary of threshold values. Mean threshold is: ", mean_threshold)
+tab_caption <- paste0("Summary of threshold values, p-value from Hartigans’ dip statistic (HDS) test with <0.05 indicating significant bimodality. Mean threshold is: ", mean_threshold)
 if (!is.null(subsample)) {
     tab_caption <- paste0(tab_caption," Subsampling requested: ", subsample, ".")
 }
 
 tab <- eetable(threshold_summary, 
                outdir=params$outdir, 
-               file="threshold_summary",
+               file=paste(params$outname, "threshold-summary", sep="_"),
                caption=tab_caption)  
 tab$table %>%
         DT::formatRound(columns=setdiff(colnames(threshold_summary)[-1],"model"),
@@ -397,7 +407,7 @@ tmp <- lapply(threshold, function(thr) {
     if (!is.null(attributes(thr$GmmThreshold))) {
         this_thr <- round(attributes(thr$GmmThreshold)$threshold,2)
     }
-    cat ("\n\n### ",paste(c(thr[['fields']], ": ", this_thr),collapse=" "),"\n\n")
+    cat ("\n\n### ",paste(c(params$crossby, " ", thr[['fields']], ", estimated threshold:", this_thr),collapse=" "),"\n\n")
     fn <- paste(c(thr[['fields']],"dtnthrplot"),collapse="_")
     dtnthrcaption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=",")," (",
@@ -425,7 +435,7 @@ tmp <- lapply(threshold, function(thr) {
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_threshold-pass.tsv")
+    output_fn <- paste(params$outname,"threshold-pass.tsv", sep="_")
 } else {
     output_fn <- sub(".tsv$", "_threshold-pass.tsv", basename(params$input))
 }
@@ -433,15 +443,12 @@ if (!is.null(params$outname)) {
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("_threshold-pass.tsv$", "_command_log.txt", basename(output_fn))
+    log_fn <- sub("threshold-pass.tsv$", "command_log.txt", basename(output_fn))
 }
 
 # write_rearrangement(db , file=output_fn)
-write.table(threshold_summary, 
-            sub("_threshold-pass.tsv$", "_threshold-summary.tsv" ,output_fn),
-            quote=FALSE,sep="\t", row.names=FALSE)
 cat(threshold_summary[['mean_threshold']][1], 
-    file=sub("_threshold-pass.tsv$", "_threshold-mean.tsv" ,output_fn),
+    file=file.path(params$outdir,"tables",sub("threshold-pass.tsv$", "threshold-mean.tsv" ,output_fn)),
     append=F
 )
 ```

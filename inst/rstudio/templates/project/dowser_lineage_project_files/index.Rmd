@@ -1,4 +1,4 @@
---- 
+---
 title: "Immcantation - enchantR"
 subtitle: "Dowser lineage"
 author: ""
@@ -12,10 +12,10 @@ link-citations: yes
 description: "dowser build lineage trees"
 output: enchantr::immcantation
 params:
-   input: 
+   input:
       label: "`input`: Path to repertoires file"
       input: file
-      value: "input.tsv" # this has been tested and build using the example data Hailong sent. It will break if that is not used in it's current state. It was also an RDS file, but the current pipeline wants a tsv so the code runs current wants a tsv. If you want to check with his data, change the read_rearrangment call to readRDS. 
+      value: "https://yale.box.com/shared/static/tx1mg3u13nsz04sa9u7p3j1fg3he1f0v.tsv"
    build:
        label: "`build`"
        input: text
@@ -31,15 +31,15 @@ params:
    traits:
        label: "`traits`"
        input: text
-       value: "day"            
+       value: "day"
    tips:
        label: "`tips`"
        input: text
-       value: "day"       
+       value: "day"
    outname:
       label: "`outname`"
       input: text
-      value: "define-clones"
+      value: "dowser"
    nproc:
       label: "`nproc`"
       input: numeric
@@ -76,7 +76,7 @@ params:
       label: '`outdir`: Output directory'
       input: text
       value: !r file.path(getwd(),'enchantr')
-   date: 
+   date:
       label: '`date`: Run date'
       input: date
       value: !r format(Sys.time(), "%Y-%m-%d")
@@ -88,7 +88,7 @@ params:
       label: "`logolink`: URL to be added to the logo"
       input: text
       value: "immcantation.org"
-   echo: 
+   echo:
       label: '`echo`: Show code in the report.'
       input: checkbox
       value: TRUE
@@ -96,7 +96,7 @@ params:
       label: '`cache`: Use cached results'
       input: checkbox
       value: FALSE
-editor_options: 
+editor_options:
   chunk_output_type: console
 ---
 
@@ -124,9 +124,8 @@ if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive = T)
 }
 
-file.copy(params$logo, 
-          file.path(params$outdir,"assets", "logo.png"),
-          recursive = T, overwrite=T)
+file.copy(params$logo,
+          file.path(params$outdir,"assets", "logo.png"))
 ```
 
 # Input parameters
@@ -144,14 +143,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 ```{r read-repertoires}
 # Read repertoire
-db <- bind_rows(lapply(strsplit(params[['input']],",")[[1]], function(x) {
-    # Check input file
-    if (!file.exists(x)) {
-        stop(paste0("File ", basename(x), " doesn't exist."))
-    }
-  # update later for new data
-    read_rearrangement(x)}
-))
+db <- readInput(params[['input']])
 input_size <- nrow(db)
 ```
 
@@ -163,78 +155,34 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
     heavy <- unique(db[['locus']][h])
     if (length(heavy)>1) {
         stop("multiple heavy chain locus found.")
-    } 
-    
+    }
+
     clones <- data.frame()
-    
+
     traits <- params[['traits']]
     if (!is.null(traits)) {
-        validTraits <- function(traits, db) {
-            trait_exists <- sapply(traits, function(x) { 
-                x %in% colnames(db)}
-            )
-            if (any(!trait_exists)) {
-                message("Ignoring non-existing traits: ",paste(traits[!trait_exists], collapse = ", "))
-                traits <- traits[trait_exists]
-            }
-            if (length(traits) == 0 ) { 
-                traits <- NULL
-                return (traits)
-            }
-            traits
-        }
-        traits <- validTraits(traits, db)
+        # check that traits exist and have data
+        traits <- validateFields(traits, db, na_action="null")
     }
-    
+
     # Convert NA traits to "missing"
     miss <- function(x) {
         ifelse(is.na(x), "missing",x)
     }
     db <- db %>%
-        mutate(across(all_of(c(traits)), miss)) 
-    
-    num_fields <- params[['num_fields']]
-    if (!is.null(num_fields)) {
-      validNumFields <- function(num_fields, db) {
-        num_fields_split <- strsplit(num_fields, ", ")[[1]]
-        num_fields_exists <- sapply(num_fields_split, function(x) {
-          x %in% colnames(db)}
-        )
-        if (any(!num_fields_exists)) {
-          message("Ignoring non-existing num_fields: ",paste(num_fields_split[!num_fields_exists], collapse = ", "))
-        }
-        num_fields <- num_fields_split[num_fields_exists]
-        if (length(num_fields) == 0) {
-            num_fields <- NULL
-            return (num_fields)
-        }
-        num_fields
-      }
-      num_fields <- validNumFields(num_fields, db)
-    }
-    
-    columns <- params[['columns']]
-    if(is.null(columns)){
-      columns <- NULL
-    } else {
-      validColumns <- function(columns, db){
-        columns_split <- strsplit(columns, ", ")[[1]]
-        columns_exists <- sapply(columns_split, function(x) {
-          x %in% colnames(db)}
-        )
-        if (any(!columns_exists)) {
-          message("Ignoring non-existing num_fields: ",paste(columns_split[!columns_exists], collapse = ", "))
-        }
-        columns <- columns_split[columns_exists]
-        if (length(columns) == 0) {
-            columns <- NULL
-            return (columns)
-        }
-        columns
-      }
-      columns <- validNumFields(columns, db)
-    }
+        mutate(across(all_of(c(traits)), miss))
 
+    num_fields <- params[['num_fields']]
+    # check that num_fields exist and have data
+    num_fields <- validateFields(num_fields, db, na_action="null")
+
+    if (length(num_fields) == 0 ) { num_fields <- NULL }
+
+    columns <- params[['columns']]
+    columns <- validateFields(columns, db, na_action="null")
+
+    # Initialize empty clones
+    clones <- data.frame()
     try (
         clones <- formatClones(db,
                                traits=traits,
@@ -243,51 +191,53 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
                                locus='locus',
                                heavy=params$heavy,
                                cell=params$cell,
-                               minseq=params$minseq, 
+                               minseq=params$minseq,
                                nproc=params$nproc,
                                collapse=params$collapse,
-                               columns=columns) 
+                               columns=columns)
     )
-}  else {
-      cat("All clones have less than minseq = ",params$minseq," sequences.")
-  }
+}
 ```
 
 ```{r getTrees}
+# Initialize empty trees
+trees <- list()
 if (nrow(clones)>0) {
-    trees <- getTrees(clones, 
-                      build=params$build, 
+    trees <- getTrees(clones,
+                      build=params$build,
                       exec=params$exec,
                       nproc=params$nproc)
-    
+
     if ( params$tips %in% colnames(db) ) {
         tips <- params$tips
     } else {
         tips <- NULL
     }
+}  else {
+    cat("All clones have less than minseq = ",params$minseq," sequences.")
 }
 ```
 
-```{r plotTrees}
-      plots <- plotTrees(trees, tips=tips, tipsize=2)
-      for (i in 1:length(plots)) {
-          cat(paste0("## Tree ",i,"\n\n"))
-          print(plots[[i]])
-          cat("\n\n")
-      }
+```{r plotTrees, eval=(length(trees)>0)}
+if (length(trees)>0) {
+    plots <- plotTrees(trees, tips=tips, tipsize=2)
+    for (i in 1:length(plots)) {
+        cat(paste0("## Tree ",i,"\n\n"))
+        print(plots[[i]])
+        cat("\n\n")
+    }
 
-      # Saving all trees in a PDF
-      treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
+    # Saving all trees in a PDF
+    treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
 
-      # Converting trees to graphs
-      graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
-      names(graphs) <- trees$clone_id
+    # Converting trees to graphs
+    graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
+    names(graphs) <- trees$clone_id
 
-      # Saving all trees in graphML format
-      lapply(names(graphs), function(x) igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]], format="graphml"))
-print(plots[[1]])
+    # Saving all trees in graphML format
+    lapply(names(graphs), function(x) igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), graph=graphs[[x]], format="graphml"))
+}
 ```
-
 
 # Versions
 

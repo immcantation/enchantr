@@ -52,7 +52,7 @@ Examples
 ```R
 data(Example10x, package="alakazam")
 db <- Example10x
-db[['sample_id']] <- 'example_sample'
+db[["sample_id"]] <- "example_sample"
 countSequencesPerCell(db[1:10,])
 ```
 

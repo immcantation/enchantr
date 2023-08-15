@@ -157,7 +157,14 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
                         # class = 'table-bordered table-condensed',
                         class = 'stripe hover order-column row-border compact',
                         options = list(
-                            scrollX = TRUE)#,
+                            scrollX = TRUE,
+                            pageLength = 5,
+                            #https://stackoverflow.com/questions/44101055/changing-font-size-in-r-datatables-dt
+                            initComplete = JS(
+                                "function(settings, json) {",
+                                "$(this.api().table().header()).css({'font-size': '50% !important'});",
+                                "}")
+                            )#,
                         # caption = htmltools::tags$caption(
                         #     style = 'caption-side: top; text-align: left;',
                         #     caption
@@ -165,7 +172,7 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
     )   
     # https://stackoverflow.com/questions/70868546/r-markdown-printing-datatable-from-inside-the-function
     # https://stackoverflow.com/questions/30509866/for-loop-over-dygraph-does-not-work-in-r
-    # doesn't work, prints whit space
+    # doesn't work, prints white space
     # print(htmltools::tagList(list(dt)))
     list(
         "table"=dt,
@@ -247,4 +254,46 @@ isHeavyChain <- function(loci) {
     h <- c(ig_h, tr_h)
     # IGH, TRB, TRD
     toupper(loci) %in% h
+}
+
+#   TODO: document
+#' @export
+validateFields <- function(fields, db, na_action=c("null", "stop")) {
+    na_action <- match.arg(na_action)
+    field_exists <- sapply(fields, function(x) { 
+        x %in% colnames(db)}
+    )
+    if (any(!field_exists)) {
+        message("Ignoring non-existing : ",paste(fields[!field_exists], collapse = ", "))
+        fields <- fields[field_exists]
+    }
+    if (length(fields) == 0 ) { 
+        fields <- NULL
+        return (fields)
+    }
+    # Check that all values are not NA
+    has_data <- sapply(fields, function(f) {
+        if (all(is.na(db[[f]]))) { 
+            return (FALSE)
+        } else {
+            return(TRUE)
+        }
+    })
+    if (any(!has_data)) {
+        msg <- paste("The column(s)", paste(fields[!has_data], collapse=" ,"), "are empty.")
+        if (na_action=="stop") {
+            stop(msg)
+        } else {
+            # remove
+            msg <- sub("\\.$"," and have been removed.", msg)
+            message(msg)
+            fields <- fields[has_data]
+        }
+    }
+    if (length(fields) == 0 ) { 
+        fields <- NULL
+        return (fields)
+    }            
+    fields
+    
 }

@@ -1,3 +1,26 @@
+Version 0.1.3: June 22, 2023
+-------------------------------------------------------------------------------
+
+General:
+
++ Find threshold report. Parametrized distance and threshold subsampling.
++ Define clones project. Added example data, available from url. Made `singlecell`
+  optional, with default value `NULL`. `species` can be set to `auto` to auto
+  detect from the field `species`.
+
+Bug fixes:
+
++ The convergence UpSet was not showing in the report because it was missing
+  a grid.draw statement.
+  
++ Updated the logic in the find threshold report to show the distance to 
+  nearest plot only if it is not `NULL`. 
+  
++ Define clones project. Run chucks that require the `tissue` field only if
+  it exists.
+  
++ Updated figures widths and heights.
+
 Version 0.1.2: June 2, 2023
 -------------------------------------------------------------------------------
 

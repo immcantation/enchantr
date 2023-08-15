@@ -29,14 +29,20 @@ or use the [issue tracker](https://bitbucket.org/kleinstein/enchantr/issues?stat
 # Dependencies
 
 **Depends:** FALSE  
-**Imports:** airr, alakazam, bookdown, ComplexHeatmap, data.table, doParallel, dowser, dplyr, DT, foreach, ggraph, ggplot2, gridExtra, igraph, knitr, plotly, RColorBrewer, reshape2, rmarkdown, scales, scoper, shazam, stringi, stringr, tidyr  
+**Imports:** airr, alakazam, bookdown, ComplexHeatmap, data.table, doParallel, dowser, dplyr, DT, foreach, ggraph, ggplot2, gridExtra, igraph, iterators, knitr, plotly, RColorBrewer, R.utils, reshape2, rlang, rmarkdown, scales, scoper, shazam, stringi, stringr, tidyr, xfun  
 **Suggests:** optparse, testthat
 
 
 # Authors
 
 [Susanna Marquez](mailto:susanna.marquez@yale.edu) (aut, cre)  
+[Edel Aron](mailto:edel.aron@yale.edu) (aut)  
 [Gisela Gabernet](mailto:gisela.gabernet@yale.edu) (aut)  
+[Kenneth Hoehn](mailto:kenneth.hoehn@yale.edu) (aut)  
+[Cole Jensen](mailto:cole.jensen@yale.edu) (aut)  
+[Edward Lee](mailto:edward.lee@yale.edu) (aut)  
+[Noah Yann Lee](mailto:noah.yann.lee@yale.edu) (aut)  
+[Hailong Meng](mailto:hailong.meng@yale.edu) (aut)  
 [Steven Kleinstein](mailto:steven.kleinstein@yale.edu) (aut, cph)
 
 

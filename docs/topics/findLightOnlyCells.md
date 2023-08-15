@@ -36,8 +36,8 @@ locus
 
 fields
 :   Columns in `db`, in addition to `sample_id`,
-that should be used to group sequences to be 
-analized independently.
+that should be used to group sequences to be
+analyzed independently.
 
 
 

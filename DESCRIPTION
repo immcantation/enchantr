@@ -1,11 +1,23 @@
 Package: enchantr
 Type: Package
-Version: 0.1.2.999
-Date: 2023-06-22
+Version: 0.1.4.999
+Date: 2023-08-15
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
+             person("Edel", "Aron", role=c("aut"),
+                    email="edel.aron@yale.edu"),
              person("Gisela", "Gabernet", role=c("aut"),
-                    email="gisela.gabernet@yale.edu"),                    
+                    email="gisela.gabernet@yale.edu"),
+             person("Kenneth", "Hoehn", role=c("aut"),
+                    email="kenneth.hoehn@yale.edu"),
+             person("Cole", "Jensen", role=c("aut"),
+                    email="cole.jensen@yale.edu"),
+             person("Edward", "Lee", role=c("aut"),
+                    email="edward.lee@yale.edu"),
+             person("Noah", "Yann Lee", role=c("aut"),
+                    email="noah.yann.lee@yale.edu"),
+             person("Hailong", "Meng", role=c("aut"),
+                    email="hailong.meng@yale.edu"),
              person("Steven", "Kleinstein", role=c("aut", "cph"),
                     email="steven.kleinstein@yale.edu"))
 Title: enchantr
@@ -33,18 +45,25 @@ Imports:
     ggplot2,
     gridExtra,
     igraph,
+    iterators,
     knitr,
     plotly,
     RColorBrewer,
+    R.utils,
     reshape2,
+    rlang,
     rmarkdown,
     scales,
     scoper (>= 1.2.1),
     shazam (> 1.1.0),
     stringi,
     stringr,
-    tidyr
+    tidyr,
+    xfun
 Suggests:
     optparse,
     testthat
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
+URL: https://enchantr.readthedocs.io/en/stable
+BugReports: https://bitbucket.org/kleinstein/enchantr/issues
+Language: en-US

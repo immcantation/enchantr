@@ -159,7 +159,26 @@ if (any(!is_na_clone)) {
 db <- bind_rows(not_na_clone_db, na_clone_db) %>%
     arrange(tmp_nrow) %>%
     select(-tmp_nrow)
+
+any_germ_fail <- pre_germ_size > nrow(db)
 ```
 
 `r nrow(db)` sequences passed the germline reconstruction step
 and `r pre_germ_size - nrow(db)` failed.
+
+
+```{r eval=(any_germ_fail & !is.null(cell_id)) }
+# Remove cells that after createGermlines
+# have only light chains
+db <- findLightOnlyCells(db, 
+                         sample_id = "sample_id", cell_id = cell_id,
+                         locus = "locus", fields = NULL)
+num_light_only <- sum(db[["light_only_cell"]], na.rm = T)
+if (num_light_only > 0) {
+    # Remove the cells
+    db <- db %>% dplyr::filter(!light_only_cell)
+    cat(paste0("Removed ",num_light_only," sequences in light chain only cells."))
+}
+db[["light_only_cell"]] <- NULL
+```
+

@@ -87,7 +87,9 @@ findDuplicates <- function (db, groups="sample_id",
         }
         if (nproc != 0) {
             #cluster <- makeCluster(nproc, type="SOCK")
-            cluster <- parallel::makeCluster(nproc, type= cluster_type)
+            logfile <- tempfile("log", fileext = ".txt")
+            message("Cluster log file: ", logfile)
+            cluster <- parallel::makeCluster(nproc, type= cluster_type, outfile = logfile)
         }
         if (cluster_type == "PSOCK") {
             parallel::clusterExport(cluster,

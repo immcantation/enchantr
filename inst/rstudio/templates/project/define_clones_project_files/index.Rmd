@@ -63,7 +63,11 @@ params:
    skip_convergence:
        label: "`skip_convergence`"
        input: logical
-       value: !r FALSE       
+       value: !r FALSE
+   convergence_vgene:
+       label: "`convergence_vgene`"
+       input: text
+       value: NULL
    nboot:
        label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
        input: numeric
@@ -131,12 +135,12 @@ suppressPackageStartupMessages(library("ComplexHeatmap"))
 suppressPackageStartupMessages(library("plotly"))
 
 if (!dir.exists(params[['outdir']])) {
-    dir.create(params[['outdir']], recursive = T)
+    dir.create(params[['outdir']], recursive=T)
 }
 
-file.copy(params$logo, 
+file.copy(params$logo,
           file.path(params$outdir,"assets", "logo.png"),
-          recursive = T, overwrite=T)
+          recursive=T, overwrite=T)
 
 singlecell <- params$singlecell
 ```
@@ -163,7 +167,7 @@ if (params$species =="auto") {
         species <- unique(db[['species']])
         if (length(species)>1) {
             stop("Multiple species detected. Only one allowed.")
-        } 
+        }
     } else  {
         stop("Can't detect species. The column `species` does not exist in `db`.")
     }
@@ -212,7 +216,7 @@ if ("clone_id" %in% colnames(db)) {
     if ("clone_size_freq" %in% colnames(db)) {    
         warning("Overwritting clone_size_freq.")    
         db$clone_size_freq <- NULL
-    }    
+    }
 }
 ```
 
@@ -415,7 +419,7 @@ print_table_caption(tag="multi_tissue", text=tab_caption)
 Find your [clone sizes table here](tables/clone_sizes_table.tsv). Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure to compare clone size between samples. See [Clonal abundance](#clonal_abundance)
 
 
-```{r clonesize, fig.width=8, fig.height=min(16,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption, eval=any(isHeavyChain(db$locus))}
+```{r clonesize, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption, eval=any(isHeavyChain(db$locus))}
 caption <- "Clone size distribution. Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_plot <- ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
@@ -432,7 +436,7 @@ caption <- clone_size_plot$enchantr$html_caption
 
 ## Subset to clone size > 1
 
-```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(16,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
+```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
 caption <- "Clone size distribution, excluding singletons (subset to clone size > 1). Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_atleast2 <- ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
