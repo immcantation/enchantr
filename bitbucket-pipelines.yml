@@ -17,4 +17,4 @@ pipelines:
         script:
           - sudo dnf install java -y
           - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow && mv nextflow /usr/local/bin/nextflow
-          - nextflow run nf-core/airrflow -r dev -profile test_assembled_immcantation_devel_hs,docker --outdir ./results
+          - nextflow run nf-core/airrflow -r dev -profile test_assembled_immcantation_devel_hs,docker --max_memory 4.GB --outdir ./results
