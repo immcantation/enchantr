@@ -15,6 +15,7 @@ pipelines:
     - step:
         name: Test nf-core/airrflow
         script:
-          - sudo dnf install java -y
+          - sudo dnf install java docker -y
           - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow && mv nextflow /usr/local/bin/nextflow
+          - Rscript -e "devtools::install('.')"
           - nextflow run nf-core/airrflow -r dev -profile test_assembled_immcantation_devel_hs,docker --max_memory 4.GB --outdir ./results
