@@ -176,11 +176,7 @@ if (sum(h)>0) {
                           exec=params$exec,
                           nproc=params$nproc)
         
-        if ( params$tips %in% colnames(db) ) {
-            tips <- params$tips
-        } else {
-            tips <- NULL
-        }
+        tips <- validateFields(params$tips, db, na_action="null")
         plots <- plotTrees(trees, tips=tips, tipsize=2)
         for (i in 1:length(plots)) {
             cat(paste0("## Tree ",i,"\n\n"))
