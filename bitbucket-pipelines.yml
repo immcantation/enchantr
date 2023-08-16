@@ -1,8 +1,8 @@
-image: immcantation/test:devel
 pipelines:
   default:
     - step:
         name: Test
+        image: immcantation/test:devel
         script:
           - sed -i '/test/ d' .Rbuildignore
           - Rscript tests/setup/install_dep.R
@@ -15,7 +15,5 @@ pipelines:
     - step:
         name: Test nf-core/airrflow
         script:
-          - sudo dnf install java docker -y
           - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow && mv nextflow /usr/local/bin/nextflow
-          - Rscript -e "devtools::install('.')"
-          - nextflow run nf-core/airrflow -r dev -profile test_assembled_immcantation_devel_hs,docker --max_memory 4.GB --outdir ./results
+          - nextflow run nf-core/airrflow -r enchantr-0.1.5 -profile test_assembled_immcantation_devel_hs,docker --max_memory 4.GB --outdir ./results
