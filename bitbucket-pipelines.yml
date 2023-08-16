@@ -15,5 +15,6 @@ pipelines:
     - step:
         name: Test nf-core/airrflow
         script:
-          - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow && mv nextflow /usr/local/bin/nextflow
+          - apt-get install openjdk-11-jdk
+          - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow
           - nextflow run nf-core/airrflow -r enchantr-0.1.5 -profile test_assembled_immcantation_devel_hs,docker --max_memory 4.GB --outdir ./results
