@@ -19,6 +19,6 @@ pipelines:
           image: atlassian/default-image:4.20230726
           script:
             - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow
-            - ./nextflow run nf-core/airrflow -r enchantr-0.1.5 -profile test_assembled_immcantation_devel_hs,docker --max_memory 4.GB --outdir ./results
+            - ./nextflow run nf-core/airrflow -r enchantr-0.1.5 -profile test_assembled_immcantation_devel_hs,docker --max_memory 3.GB --outdir ./results
           services:
             - docker
