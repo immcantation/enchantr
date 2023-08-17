@@ -15,7 +15,7 @@ pipelines:
   custom:
     airrflow:
     # Does not work with atlassian/default-image:4.20230726 and docker profile. Docker-in-Docker issue with Nextflow?: In Bitbucket Pipelines, we don't yet support adding volumes other than BITBUCKET_CLONE_DIR
-    # https://confluence.atlassian.com/bbkb/docker-error-authorization-denied-by-plugin-pipelines-command-not-supported-1142238807.html and Nextflow uses tries to add other folders
+    # https://confluence.atlassian.com/bbkb/docker-error-authorization-denied-by-plugin-pipelines-command-not-supported-1142238807.html and Nextflow tries to add other folders
     # Use immcantation/suite:devel and local executor
       - step:
           name: Test nf-core/airrflow
@@ -26,3 +26,5 @@ pipelines:
             - export PYTHONPATH=/usr/local/lib/python3.11/site-packages
             - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow
             - ./nextflow run nf-core/airrflow -r enchantr-0.1.5 -c tests/airrflow/airrflow.config --outdir ./results
+          artifacts: # defining the artifacts to be passed to each future step.
+            - results
