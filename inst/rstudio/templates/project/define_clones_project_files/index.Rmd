@@ -68,6 +68,10 @@ params:
        label: "`convergence_vgene`"
        input: text
        value: NULL
+   convergence_threshold:
+       label: "`convergence_threshold`"
+       input: numeric
+       value: 0.2
    nboot:
        label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
        input: numeric

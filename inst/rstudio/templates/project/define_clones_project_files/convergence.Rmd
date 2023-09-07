@@ -19,7 +19,7 @@ if (sum(heavy_chains)>0) {
             }
         }
         db <- hierarchicalClones(db,
-                                 0.2,
+                                 threshold=params$convergence_treshold,
                                  method="aa",
                                  linkage=params$linkage,
                                  normalize="len",
@@ -82,7 +82,7 @@ caption <- overlapconvergenceplot$enchantr$html_caption
 ## UpSet plot
 
 ```{r, results='asis'}
-# Add clone_size 
+# Add clone_size
 convergent_clone_sizes <- countClones(
             db %>% filter(isHeavyChain(locus)) %>% select(-clone_id), # Keep heavy chains only
             groups="sample_id",
