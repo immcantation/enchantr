@@ -1,3 +1,44 @@
+# Release Notes
+
+Version 0.1.5: September 11, 2023
+-------------------------------------------------------------------------------
+
+General:
+
++ Updated some reports' text to be more concise and clear.
+
++ In the define clones report, added the option to focus the convergence analysis on 
+  a particular V gene by setting `convergence_vgene`. Added the option to specify
+  a threshold for the convergence analysis (`convergence_threshold`). Added a step
+  to remove light chain only cells after `createGermlines`.
+
++ Updated the updated single cell qc report to remove cells with duplicated 
+  sequences, not just the sequences.
+  
++ Added additional parameters to the dowser lineages report: `num_fields`, `chain`, `cell`, 
+  `heavy`, `collapse`, and `columns`. In the same report, added additional 
+  validation steps to check that the fields passed to dowser functions have data.
+  Updated the example input data and the default values of some parameters (
+  `traits`: from `c_call` to `day`, `tips`: from `c_call` to `day`). Fixed the default value
+  of `outname`, from `define-clones` to `dowser`.
+
+Version 0.1.4: July 31, 2023
+-------------------------------------------------------------------------------
+
+General:
+
++ Aesthetic adjusments to figures and tables.
+
++ Added conditional evaluation logic to some chucks that don't need to be
+  evaluated always.
+  
+Bug fixes:
+
++ In find threshold report, updated output path used to save the final tables
+  to use the parameter `outname`. Changed the output file suffix `threshold_summary`
+  to `threshold-summary`.  
+
+
 Version 0.1.3: June 22, 2023
 -------------------------------------------------------------------------------
 

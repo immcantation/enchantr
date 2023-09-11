@@ -1,3 +1,4 @@
+# 
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
 
@@ -26,14 +27,14 @@ For help and questions, please contact the [Immcantation Group](mailto:immcantat
 or use the [issue tracker](https://bitbucket.org/kleinstein/enchantr/issues?status=new&status=open).
 
 
-# Dependencies
+## Dependencies
 
 **Depends:** FALSE  
 **Imports:** airr, alakazam, bookdown, ComplexHeatmap, data.table, doParallel, dowser, dplyr, DT, foreach, ggraph, ggplot2, gridExtra, igraph, iterators, knitr, plotly, RColorBrewer, R.utils, reshape2, rlang, rmarkdown, scales, scoper, shazam, stringi, stringr, tidyr, xfun  
 **Suggests:** optparse, testthat
 
 
-# Authors
+## Authors
 
 [Susanna Marquez](mailto:susanna.marquez@yale.edu) (aut, cre)  
 [Edel Aron](mailto:edel.aron@yale.edu) (aut)  
@@ -46,6 +47,6 @@ or use the [issue tracker](https://bitbucket.org/kleinstein/enchantr/issues?stat
 [Steven Kleinstein](mailto:steven.kleinstein@yale.edu) (aut, cph)
 
 
-# License
+## License
 
 AGPL-3

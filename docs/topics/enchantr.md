@@ -1,4 +1,4 @@
-**enchantr** - *enchantr*
+# enchantr
 
 Description
 --------------------
@@ -30,7 +30,6 @@ Reports
 + [define_clones_project](define_clones_project.md):       Create an Immcantation Define clones project
 + [dowser_lineage_project](dowser_lineage_project.md):      Create an Immcantation Dowser project
 + [single_cell_qc_project](single_cell_qc_project.md):      Create an Immcantation sc QC project
-
 
 
 
