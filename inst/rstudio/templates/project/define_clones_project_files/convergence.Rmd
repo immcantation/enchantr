@@ -19,7 +19,7 @@ if (sum(heavy_chains)>0) {
             }
         }
         db <- hierarchicalClones(db,
-                                 threshold=params$convergence_treshold,
+                                 threshold=params$convergence_threshold,
                                  method="aa",
                                  linkage=params$linkage,
                                  normalize="len",
