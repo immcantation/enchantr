@@ -14,7 +14,8 @@ db,
 fields,
 cell_id = "cell_id",
 seq = "sequence_alignment",
-sequence_id = "sequence_id"
+sequence_id = "sequence_id",
+mode = c("sequences", "cells")
 )
 ```
 
