@@ -3,7 +3,7 @@
 Run clonal detection combining all samples to identify overlapping "clones". The field
 `convergent_clone_id` will be created.
 
-```{r, warning=TRUE}
+```{r runconvergence, warning=TRUE}
 if (!is.null(params$convergence_vgene)) {
     db <- db %>% filter(grepl(paste(params$convergence_vgene, collapse="|"), v_call))
 }
@@ -47,7 +47,7 @@ if (sum(heavy_chains)>0) {
 
 ## Heatmap
 
-```{r overlap}
+```{r overlap, eval="convergent_clone_id" %in% colnames(db)}
 convergence_overlap <- plotDbOverlap(db %>% 
                                          filter(isHeavyChain(locus)) %>%
                                          rowwise() %>%
@@ -68,7 +68,7 @@ convergence_overlap <- plotDbOverlap(db %>%
                                      geom_text_size=3) 
 ```
 
-```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(50,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption}
+```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(50,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=exists("convergence_overlap")}
 caption <- paste0("Number of identical clone_id and convergent_clone_id. The percent represents the number of shared clones over the number of clones in the smaller set.")
 overlapconvergenceplot <- convergence_overlap$p
 overlapconvergenceplot <- eeplot(overlapconvergenceplot, 
@@ -81,7 +81,7 @@ caption <- overlapconvergenceplot$enchantr$html_caption
 
 ## UpSet plot
 
-```{r, results='asis'}
+```{r upset, results='asis', eval="convergent_clone_id" %in% colnames(db)}
 # Add clone_size
 convergent_clone_sizes <- countClones(
             db %>% filter(isHeavyChain(locus)) %>% select(-clone_id), # Keep heavy chains only
@@ -90,11 +90,12 @@ convergent_clone_sizes <- countClones(
 upset_plot <- plotConvergenceUpSet(convergent_clone_sizes)
 if (is.null(upset_plot)) {
     cat("There aren't any convergent and expanded clones.")
+    rm(upset_plot)
 }
 ```
 
 
-```{r upsetplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=!is.null(upset_plot)}
+```{r upsetplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=exists("upset_plot")}
 caption <- paste0("Unique convergent_clone_id and clone_id overlap. Subset to expanded clones (size>1 in at least one sample). Show most shared top 31. (Note: 31 is the maximum set size in the R package ComplexHeatmap.")
 us <- grid.grabExpr(draw(upset_plot)) 
 upset_plot <- eeplot(us, 
