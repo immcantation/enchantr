@@ -1,15 +1,14 @@
-Version 0.1.5: September 11, 2023
+Version 0.1.5: September 15, 2023
 -------------------------------------------------------------------------------
 
 General:
 
++ Bumped versions to `dowser >= 1.2.0`, `ggplot2 >= 3.4.0` and `shazam >= 1.1.2`.
 + Updated some reports' text to be more concise and clear.
-
 + In the define clones report, added the option to focus the convergence analysis on 
   a particular V gene by setting `convergence_vgene`. Added the option to specify
   a threshold for the convergence analysis (`convergence_threshold`). Added a step
   to remove light chain only cells after `createGermlines`.
-
 + Updated the updated single cell qc report to remove cells with duplicated 
   sequences, not just the sequences.
   
