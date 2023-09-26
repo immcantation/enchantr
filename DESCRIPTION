@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
-Version: 0.1.5
-Date: 2023-09-15
+Version: 0.1.6
+Date: 2023-09-26
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
              person("Edel", "Aron", role=c("aut"),
@@ -37,12 +37,12 @@ Imports:
     ComplexHeatmap,
     data.table,
     doParallel,
-    dowser (>= 1.1.0),
     dowser (>= 1.2.0),
     dplyr,
     DT,
     foreach,
     ggraph,
+    ggplot2 (>= 3.4.0),
     gridExtra,
     igraph,
     iterators,
@@ -55,6 +55,7 @@ Imports:
     rmarkdown,
     scales,
     scoper (>= 1.2.1),
+    shazam (>= 1.1.2),
     stringi,
     stringr,
     tidyr,
