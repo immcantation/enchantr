@@ -108,11 +108,11 @@ input_sizes <- db %>%
 # Track input size of the expected output groups, for the
 # end of report summary
 input_sizes_byoutput <- db %>%
-                 group_by(!!!rlang::syms(unique(params$outputby))) %>%
-                 summarize(input_size = n(),
-                            input_file = paste(unique(input_file), collapse=","),
-                            num_input_files = length(unique(input_file))
-                           )
+    group_by(!!!rlang::syms(unique(params$outputby))) %>%
+    summarize(input_size = n(),
+              num_input_files = length(unique(input_file))
+              input_file = paste(unique(input_file), collapse=",")
+    )
 
 input_size <- nrow(db)
 
