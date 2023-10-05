@@ -201,6 +201,15 @@ input_sizes <- db %>%
     group_by(!!!rlang::syms(unique(c("input_file")))) %>%
     summarize(input_size=n())
 
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+    group_by(!!!rlang::syms(unique(params$outputby))) %>%
+    summarize(input_size = n(),
+              num_input_files = length(unique(input_file)),
+              input_file = paste(unique(input_file), collapse=",")
+    )
+
 if (!"locus" %in% colnames(db)) {
     db[['locus']] <- getLocus(db[['v_call']])
 }
@@ -521,15 +530,10 @@ output_groups <- db %>%
     ungroup() %>%
     select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
     group_by(!!!rlang::syms(params$outputby)) %>%
-    summarize(output_size=n(),
-              input_file=unique(input_file),
-              num_input_files=length(unique(input_file))) %>%
-    left_join(input_sizes)
+    summarize(output_size = n()) %>%
+    right_join(input_sizes_byoutput) %>%
+    select(input_size, output_size, everything())
    
-if (any(output_groups[["num_input_files"]] > 1)) {
-   stop("Unhandled.")
-}
-
 output_files <- c()
 output_sizes <- c()
 dir.create(file.path(params$outdir,"repertoires")) 
