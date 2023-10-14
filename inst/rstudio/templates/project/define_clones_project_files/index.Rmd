@@ -538,10 +538,10 @@ output_files <- c()
 output_sizes <- c()
 dir.create(file.path(params$outdir,"repertoires")) 
 for (i in 1:nrow(output_groups))  {
-    group_db <- right_join(db,
+    group_db <- left_join(db %>% select(-input_file),
                            output_groups[i,,drop=F],
-                           by=c(params$outputby,"input_file")) %>%
-       select(-input_file,-num_input_files,-input_size)
+                           by=c(params$outputby)) %>%
+       select(-num_input_files,-input_size, -input_file)
     
     group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
     group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))

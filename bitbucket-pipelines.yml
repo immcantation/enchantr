@@ -18,7 +18,7 @@ pipelines:
     # https://confluence.atlassian.com/bbkb/docker-error-authorization-denied-by-plugin-pipelines-command-not-supported-1142238807.html and Nextflow tries to add other folders
     # Use immcantation/suite:devel and local executor
       - step:
-          name: Test nf-core/airrflow
+          name: Test nf-core/airrflow with enchantr
           image: immcantation/suite:devel
           script:
             - dnf install -y java-17-openjdk
