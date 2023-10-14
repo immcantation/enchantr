@@ -534,13 +534,23 @@ if (!is.null(params$log)) {
 ```
 
 ```{r dbpass, results='asis', echo=FALSE}
+
+# collpase in case there are multiple rows
+# due to multiple input files
+input_sizes_byoutput <- input_sizes_byoutput %>%
+    select(-input_files) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarise(across(everything(), function(x) {paste(x, collapse = ",")} ))
+    
 output_groups <- db %>%
     ungroup() %>%
     select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
     group_by(!!!rlang::syms(params$outputby)) %>%
     summarize(output_size = n()) %>%
     right_join(input_sizes_byoutput) %>%
-    select(input_size, output_size, everything())
+    select(input_size, output_size, everything()) 
+    
    
 output_files <- c()
 output_sizes <- c()
@@ -555,7 +565,8 @@ for (i in 1:nrow(output_groups))  {
     group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
     output_files <- c(output_files, group_fn)
     output_sizes <- c(output_sizes, nrow(group_db))
-    input_sizes <- c(input_sizes, output_groups[["input_size"]][i])
+    i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
+    input_sizes <- c(input_sizes, i_input_size)
     write_rearrangement(group_db %>% select(-input_file), file=group_fn)
     cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
