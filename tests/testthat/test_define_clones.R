@@ -20,11 +20,9 @@ IMGT_DB <- prepareIMGT(IMGT_URL)
 
 test_that("define clones 1:1", {
     # Input in one file, output in 1 file.
-    
+    # All sequences have sampletype = FNA
     skip_on_cran()
-    input <- file.path("..", "data-tests", "subj_multiple_files")[1]
-    input <- paste(normalizePath(list.files(input, full.names = T)),
-                   collapse=",")
+    input <- normalizePath(file.path("..", "data-tests", "subj_multiple_files","db_let_12.tsv"))
     tmp_dir <- file.path(tempdir(),"define_clones_1_1")
     enchantr_report('define_clones', 
                               report_params=list('input'=input, 
@@ -39,19 +37,21 @@ test_that("define clones 1:1", {
                                                  'log'='test_clone_command_log'))
     report_dir <- file.path(tmp_dir,"enchantr")
     repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
+    expect_equal(length(repertoires), 1)
     expect_equal(basename(repertoires), "FNA_define-clones_clone-pass.tsv")
     db <- read_rearrangement(repertoires)
-    expect_equal(nrow(db), 2998)
+    expect_equal(nrow(db), 1142)
 
 })
 
 test_that("define clones 1:n", {
     # Input in one file, output in multiple files.
+    # sampletype = FNA
+    # subject_id = P05, Subject_0_60
     
     skip_on_cran()
-    input <- file.path("..", "data-tests", "subj_multiple_files")[1]
-    input <- paste(normalizePath(list.files(input, full.names = T)),
-                   collapse=",")
+    
+    input <- normalizePath(file.path("..", "data-tests", "subj_multiple_files","db_let_12.tsv"))
     tmp_dir <- file.path(tempdir(),"define_clones_1_n")
     enchantr_report('define_clones', 
                     report_params=list('input'=input, 
@@ -64,4 +64,19 @@ test_that("define clones 1:n", {
                                        'outdir'=tmp_dir,
                                        'nproc'=1,
                                        'log'='test_clone_command_log'))
+    
+    report_dir <- file.path(tmp_dir,"enchantr")
+    repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
+    expect_equal(length(repertoires), 2)
+    expect_equal(sort(basename(repertoires)),
+                 sort(c("P05_define-clones_clone-pass.tsv", 
+                        "Subject_0_60_define-clones_clone-pass.tsv")))
+    db <- read_rearrangement(file.path(report_dir, "repertoires", 
+                                           "P05_define-clones_clone-pass.tsv"))
+    expect_equal(nrow(db), 633)
+    
+    db <- read_rearrangement(file.path(report_dir, "repertoires", 
+                                       "Subject_0_60_define-clones_clone-pass.tsv"))
+    expect_equal(nrow(db), 509)    
+    
 })
