@@ -110,7 +110,7 @@ input_sizes <- db %>%
 input_sizes_byoutput <- db %>%
     group_by(!!!rlang::syms(unique(params$outputby))) %>%
     summarize(input_size = n(),
-              num_input_files = length(unique(input_file))
+              num_input_files = length(unique(input_file)),
               input_file = paste(unique(input_file), collapse=",")
     )
 
@@ -388,8 +388,8 @@ output_groups <- db %>%
                    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
                    group_by(!!!rlang::syms(params$outputby)) %>%
                    summarize(output_size = n(),
-                             input_file = paste(unique(input_file), collapse=","),
-                             num_input_files = length(unique(input_file))) %>%
+                             num_input_files = length(unique(input_file)),
+                             input_file = paste(unique(input_file), collapse=",")) %>%
                    right_join(input_sizes_byoutput) %>%
                    select(sample_id, input_size, output_size, everything())
 output_groups[is.na(output_groups)] <- 0
