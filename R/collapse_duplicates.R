@@ -44,7 +44,7 @@ findDuplicates <- function (db, groups="sample_id",
     columns <- c(groups, id, seq, text_fields, num_fields, seq_fields, 
                  "v_call", d_call, "j_call", "junction_length", c_call, "productive")
     columns <- columns[!is.null(columns)]
-    check <- alakazam:::checkColumns(db, columns)
+    check <- alakazam::checkColumns(db, columns)
     if (!check == TRUE ) { stop(check) }
 
     db[['finddups_row_idx']] <- 1:nrow(db)
