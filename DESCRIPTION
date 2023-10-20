@@ -21,7 +21,10 @@ Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
              person("Steven", "Kleinstein", role=c("aut", "cph"),
                     email="steven.kleinstein@yale.edu"))
 Title: enchantr
-Description: QC and reports for the analysis of AIRR-seq data with Immcantation
+Description: enchantr provides QC functions and reports for AIRR-seq data.
+             enchantr connects packages of the Immcantation framework in markdown
+             reports to perform common analysis of immune repertoire sequencing 
+             data.
 License: AGPL-3
 LazyData: true
 BuildVignettes: true
