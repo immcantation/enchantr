@@ -277,7 +277,7 @@ if (any(db[[singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r dtnplot, fig.width=8, fig.height=max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/2), fig.cap=caption}
+```{r dtnplot, fig.width=8, fig.height=min(50,max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/2)), fig.cap=caption}
 
 caption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
