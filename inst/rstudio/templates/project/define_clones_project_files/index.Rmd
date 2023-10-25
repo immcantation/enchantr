@@ -559,8 +559,7 @@ dir.create(file.path(params$outdir,"repertoires"))
 for (i in 1:nrow(output_groups))  {
     group_db <- left_join( output_groups[i,params$outputby,drop=F],
                            db,
-                           by=c(params$outputby)) %>%
-                select(-input_size, -input_file)
+                           by=c(params$outputby))
     
     group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
     group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))

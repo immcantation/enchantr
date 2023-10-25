@@ -1,6 +1,6 @@
 Package: enchantr
 Type: Package
-Version: 0.1.8.999
+Version: 0.1.9
 Date: 2023-10-24
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
