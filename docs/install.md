@@ -11,7 +11,7 @@ Then build using the following R commands from the package root:
 ```R
 install.packages(c("devtools", "roxygen2"))
 library(devtools)
-install_deps(dependencies=T)
+install_deps(dependencies=TRUE)
 document()
 install()
 ```
