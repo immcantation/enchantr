@@ -68,6 +68,10 @@ params:
        label: "`convergence_vgene`"
        input: text
        value: NULL
+   convergence_threshold:
+       label: "`convergence_threshold`"
+       input: numeric
+       value: 0.2
    nboot:
        label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
        input: numeric
@@ -192,11 +196,6 @@ if (!is.null(singlecell)) {
 
 }
 
-input_size <- nrow(db)
-input_sizes <- db %>%
-    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
-    summarize(input_size=n())
-
 if (!"locus" %in% colnames(db)) {
     db[['locus']] <- getLocus(db[['v_call']])
 }
@@ -219,6 +218,28 @@ if ("clone_id" %in% colnames(db)) {
     }
 }
 ```
+
+```{r}
+input_size <- nrow(db)
+input_sizes <- db %>%
+    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+    summarize(input_size=n())
+
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+    group_by(!!!rlang::syms(unique(params$outputby))) %>%
+    mutate(
+        num_input_files = length(unique(input_file)),
+        input_files = paste(unique(input_file), collapse=",")
+    ) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(unique(c(params$outputby, "input_file", "num_input_files", "input_files")))) %>%
+    summarize(
+        input_size = n()
+    )
+```
+
 
 Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r sum(heavy_chains, na.rm=T)`.
 
@@ -513,33 +534,40 @@ if (!is.null(params$log)) {
 ```
 
 ```{r dbpass, results='asis', echo=FALSE}
+
+# collpase in case there are multiple rows
+# due to multiple input files
+input_sizes_byoutput <- input_sizes_byoutput %>%
+    select(-input_files) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarise(across(everything(), function(x) {paste(x, collapse = ",")} ))
+    
 output_groups <- db %>%
     ungroup() %>%
     select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
     group_by(!!!rlang::syms(params$outputby)) %>%
-    summarize(output_size=n(),
-              input_file=unique(input_file),
-              num_input_files=length(unique(input_file))) %>%
-    left_join(input_sizes)
+    summarize(output_size = n()) %>%
+    right_join(input_sizes_byoutput) %>%
+    select(input_size, output_size, everything()) 
+    
    
-if (any(output_groups[["num_input_files"]] > 1)) {
-   stop("Unhandled.")
-}
-
 output_files <- c()
 output_sizes <- c()
+input_sizes <- c()
 dir.create(file.path(params$outdir,"repertoires")) 
 for (i in 1:nrow(output_groups))  {
-    group_db <- right_join(db,
-                           output_groups[i,,drop=F],
-                           by=c(params$outputby,"input_file")) %>%
-       select(-input_file,-num_input_files,-input_size)
+    group_db <- left_join( output_groups[i,params$outputby,drop=F],
+                           db,
+                           by=c(params$outputby))
     
     group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
     group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
     output_files <- c(output_files, group_fn)
     output_sizes <- c(output_sizes, nrow(group_db))
-    write_rearrangement(group_db, file=group_fn)
+    i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
+    input_sizes <- c(input_sizes, i_input_size)
+    write_rearrangement(group_db %>% select(-input_file), file=group_fn)
     cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
 ```
@@ -550,7 +578,7 @@ for (i in 1:nrow(output_groups)) {
     cat(paste0("\nFILE",i,"> ",basename(output_groups[['input_file']][i])), file=log_fn, append=T)
     cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
     cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
-    cat(paste0("\nFAIL",i,"> ",output_groups[['input_size']][i]-output_sizes[i]), file=log_fn, append=T)    
+    cat(paste0("\nFAIL",i,"> ",input_sizes[i]-output_sizes[i]), file=log_fn, append=T)    
 }
 ```
 

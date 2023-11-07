@@ -143,7 +143,6 @@ seqs_per_cell <- countSequencesPerCell(db)
 ```
 
 ```{r p-seqs-per-cell, fig.width=7, fig.height=min(50,length(unique(seqs_per_cell[['sample_id']]))*2), fig.cap=p_seqs_per_cell$enchantr$html_caption}
-
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell) +
     theme_enchantr()
 p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,

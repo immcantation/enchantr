@@ -21,6 +21,7 @@ nav:
     - 'Download & Installation': install.md
     - 'Package Overview': topics/enchantr.md
     - 'Release Notes': news.md
+    - 'Related Projects': projects.md      
   - 'Vignettes':
     - 'enchantR reports': vignettes/enchantr-vignette.md
   - 'Help Topics':

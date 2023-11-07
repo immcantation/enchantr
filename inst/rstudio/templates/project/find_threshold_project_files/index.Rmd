@@ -277,7 +277,7 @@ if (any(db[[singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r dtnplot, fig.width=8, fig.height=max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/2), fig.cap=caption}
+```{r dtnplot, fig.width=8, fig.height=min(50,max(4, nrow(unique(db[,c("sample_id", singlecell)], drop=F))/2)), fig.cap=caption}
 
 caption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
@@ -447,8 +447,13 @@ if (!is.null(params$log)) {
 }
 
 # write_rearrangement(db , file=output_fn)
+tables_dir <- file.path(params$outdir,"tables")
+if (!dir.exists(tables_dir)) {
+    dir.create(tables_dir, recursive = T)
+}
 cat(threshold_summary[['mean_threshold']][1], 
-    file=file.path(params$outdir,"tables",sub("threshold-pass.tsv$", "threshold-mean.tsv" ,output_fn)),
+    file=file.path(tables_dir,
+                   sub("threshold-pass.tsv$", "threshold-mean.tsv" ,output_fn)),
     append=F
 )
 ```
