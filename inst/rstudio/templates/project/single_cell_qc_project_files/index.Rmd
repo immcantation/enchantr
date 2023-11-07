@@ -110,8 +110,8 @@ input_sizes <- db %>%
 input_sizes_byoutput <- db %>%
                  group_by(!!!rlang::syms(unique(params$outputby))) %>%
                  summarize(input_size = n(),
-                            input_file = paste(unique(input_file), collapse=","),
-                            num_input_files = length(unique(input_file))
+                            num_input_files = length(unique(input_file)),
+                            input_file = paste(unique(input_file), collapse=",")
                            )
 
 input_size <- nrow(db)
@@ -142,7 +142,8 @@ Distribution of the number of sequences per cell and locus
 seqs_per_cell <- countSequencesPerCell(db)
 ```
 
-```{r p-seqs-per-cell, fig.width=7, fig.height=length(unique(seqs_per_cell[['sample_id']]))*2, fig.cap=p_seqs_per_cell$enchantr$html_caption}
+```{r p-seqs-per-cell, fig.width=7, fig.height=min(50,length(unique(seqs_per_cell[['sample_id']]))*2), fig.cap=p_seqs_per_cell$enchantr$html_caption}
+
 p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell) +
     theme_enchantr()
 p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,
@@ -388,8 +389,8 @@ output_groups <- db %>%
                    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
                    group_by(!!!rlang::syms(params$outputby)) %>%
                    summarize(output_size = n(),
-                             input_file = paste(unique(input_file), collapse=","),
-                             num_input_files = length(unique(input_file))) %>%
+                             num_input_files = length(unique(input_file)),
+                             input_file = paste(unique(input_file), collapse=",")) %>%
                    right_join(input_sizes_byoutput) %>%
                    select(sample_id, input_size, output_size, everything())
 output_groups[is.na(output_groups)] <- 0
