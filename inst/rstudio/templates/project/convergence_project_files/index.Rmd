@@ -25,7 +25,7 @@ params:
       input: text
       value: "human"        
    force:
-      label: "`force`: if convergence_cluster_id already exists, overwrite (force=TRUE) or skip clone assignment and render the report (force=FALSE)."
+      label: "`force`: if convergent_cluster_id already exists, overwrite (force=TRUE) or skip cluster assignment and render the report (force=FALSE)."
       input: logical        
       value: !r FALSE 
    singlecell:
@@ -36,6 +36,10 @@ params:
       label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
       input: text
       value: "sample_id"
+   cloneby:
+      label: "`cloneby`"
+      input: text
+      value: "subject_id" 
    model:
       label: "`model`"
       input: text
@@ -189,20 +193,11 @@ if (!"locus" %in% colnames(db)) {
 }
 heavy_chains <- isHeavyChain(db[['locus']])
 
-if ("clone_id" %in% colnames(db)) {
+if ("convergent_cluster_id" %in% colnames(db)) {
     if (params$force) {
         # Reset if force
-        warning("Overwritting clone_id.")
+        warning("Overwritting convergent_cluster_id.")
         db$clone_id <- NULL
-    }   
-    # Reset always if clone_id exists
-    if ("clone_size_count" %in% colnames(db)) {    
-        warning("Overwritting clone_size_count.")    
-        db$clone_size_count <- NULL
-    }
-    if ("clone_size_freq" %in% colnames(db)) {    
-        warning("Overwritting clone_size_freq.")    
-        db$clone_size_freq <- NULL
     }
 }
 ```
