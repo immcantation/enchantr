@@ -1,6 +1,6 @@
 --- 
 title: "Immcantation - enchantR"
-subtitle: "Define Clones"
+subtitle: "Convergence analysis"
 author: ""
 date: "Updated: `r date()`"
 knit: enchantr::render_book
@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr define clones"
+description: "enchantr convergence analysis"
 output: enchantr::immcantation
 params:
    input: 
