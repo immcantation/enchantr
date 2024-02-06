@@ -325,7 +325,9 @@ cat("\n\nThe input data contains clonal assingments, and are being reused.")
 ```{r, child=c('run_scoper.Rmd'), eval=!"clone_id" %in% colnames(db)}
 ```
 
-# Summary of clonal assignment
+# Clone size distribution
+
+Find your [clone sizes table here](tables/clone_sizes_table.tsv). Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure to compare clone size between samples due to possible disproportionate sampling. See the [Clonal abundance](#clonal_abundance) section.
 
 Description of terms:
 
@@ -380,78 +382,7 @@ tab$table
 print_table_caption(tag="num_clones_table", text=tab$caption)
 ```
 
-## Expanded clones within `sample_id` (heavy chain, without singletons)
-
-```{r, results='asis', eval=any(isHeavyChain(db$locus))}
-num_clones_table_nosingle <- db %>%
-   filter(isHeavyChain(locus)) %>% # Keep heavy chains only
-   filter(clone_size_count>1) %>%
-   group_by(sample_id) %>%
-   mutate(sequences=n()) %>%
-   group_by(sample_id) %>%
-   mutate(
-      number_of_clones=length(unique(clone_id)),
-   ) %>%
-   group_by(!!!rlang::syms(unique(c("sample_id","sequences", params$cloneby, "number_of_clones")))) %>%
-   summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
-   mutate_at(vars(starts_with("clone_size")), round, 2)
-
-tab_caption <- "Summary of the number of clones of size > 1, and their clone sizes, per sample."
-tab <- eetable(num_clones_table_nosingle, caption = tab_caption, outdir=params$outdir, file="num_clones_table_nosingle")
-tab$table
-```
-```{r echo=FALSE,results='asis', eval=any(isHeavyChain(db$locus))}
-print_table_caption(tag="num_clones_table_nosingle", text=tab_caption)
-```
-
-## Expanded clones within `r paste(params$cloneby,collapse=", ")`
-
-```{r, results='asis', eval=any(isHeavyChain(db$locus)) & "tissue" %in% colnames(db) }
-any_tissues <- db %>%
-   filter(isHeavyChain(locus)) %>% # Keep heavy chains only
-   group_by(!!!rlang::syms(c("clone_id", params$cloneby))) %>%
-   summarize(
-             clone_size_group_count=n(),
-             num_tissues=length(unique(tissue)),
-             tissues=paste(sort(unique(tissue)),collapse=" & "), .groups="drop") %>%
-   filter(clone_size_group_count>1) %>%
-   group_by(!!!rlang::syms(c("tissues", params$cloneby))) %>%
-   summarize(num_clones=length(unique(clone_id)))
-    
-tab_caption <- paste0("Summary of expanded clones in ", paste(params$cloneby, collapse = ", "), " . Subsetting to clones of size > 1 in the cloning group (not the sample).")
-eetable(any_tissues, caption=tab_caption)$table
-```
-```{r echo=FALSE, results='asis', eval=any(isHeavyChain(db$locus))  & "tissue" %in% colnames(db) }
-print_table_caption(tag="any_tissues", text=tab_caption)
-```
-
-## Clones spanning multiple tissues
-
-```{r, results='asis', eval=any(isHeavyChain(db$locus))  & "tissue" %in% colnames(db) }
-multi_tissue <- db %>%
-    filter(isHeavyChain(locus)) %>% # Keep heavy chains only
-    group_by(!!!rlang::syms(c(params$cloneby, "clone_id"))) %>%
-    summarize(num_tissues=length(unique(tissue))) %>%
-    filter(num_tissues>1)
-
-multi_tissue <- multi_tissue %>%
-   left_join(db %>% filter(isHeavyChain(locus)), 
-   by=c("clone_id", params$cloneby)) %>%
-   select(!!!rlang::syms(unique(c("clone_id", "tissue", "sample_id", "clone_size_count", "clone_size_freq", params$clone_by, "sequence_id")))) %>%
-   group_by(!!!rlang::syms(c("clone_id", "clone_size_count", "clone_size_freq","tissue", "sample_id", params$clone_by))) %>%
-   summarize(seq_count=n())
-
-tab_caption <- "Summary of clones spanning more than one tissue."
-eetable(multi_tissue, caption=tab_caption)$table
-```
-```{r echo=FALSE, results='asis',eval=any(isHeavyChain(db$locus))  & "tissue" %in% colnames(db) }
-print_table_caption(tag="multi_tissue", text=tab_caption)
-```
-
-# Clone size distribution
-
-Find your [clone sizes table here](tables/clone_sizes_table.tsv). Most real datasets, will have most clones of size 1 (one sequence). Straight sequence count as a mesure of the size of the clones is not the best measure to compare clone size between samples. See [Clonal abundance](#clonal_abundance)
-
+## Clone size distribution
 
 ```{r clonesize, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption, eval=any(isHeavyChain(db$locus))}
 caption <- "Clone size distribution. Size is measured as number of heavy chain sequences belonging to the same clone."
@@ -468,7 +399,7 @@ ggplotly(clone_size_plot + theme(panel.spacing=unit(2, 'lines'), legend.position
 caption <- clone_size_plot$enchantr$html_caption
 ```
 
-## Subset to clone size > 1
+## Clone size distribution without singletons
 
 ```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
 caption <- "Clone size distribution, excluding singletons (subset to clone size > 1). Size is measured as number of heavy chain sequences belonging to the same clone."
