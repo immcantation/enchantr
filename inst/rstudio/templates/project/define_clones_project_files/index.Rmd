@@ -287,8 +287,34 @@ tab_caption <- paste0("Input data. Number of sequences in each ",
       )
 eetable(input_c_call_summary)$table
 ```
-```{r echo=FALSE, results='asis'}
+```{r echo=FALSE, eval="c_call" %in% colnames(db), results='asis'}
 print_table_caption(tag="input_c_call_summary", text=tab_caption)
+```
+
+```{r eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
+cat("## Sequences per isotype\n")
+```
+
+```{r input-isotype-sumary, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
+
+# Create isotype column
+db <- db %>%
+    mutate(isotype = ifelse(grepl("IGH", locus), alakazam::getGene(c_call, first=TRUE), NA))
+
+input_isotype_summary <- db %>%
+   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "isotype")))) %>%
+   summarize(n=n(), .groups="drop") %>%
+       pivot_wider(names_from=isotype, values_from=n)
+
+tab_caption <- paste0("Input data. Number of sequences in each ", 
+                   paste("sample", params$cloneby, sep=", "),
+                   " and isotype"
+      )
+eetable(input_isotype_summary)$table
+```
+
+```{r echo=FALSE, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db), results='asis'}
+print_table_caption(tag="input_isotype_summary", text=tab_caption)
 ```
 
 # Clonal assignment
