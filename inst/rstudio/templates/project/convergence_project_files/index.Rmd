@@ -197,7 +197,7 @@ if ("convergent_cluster_id" %in% colnames(db)) {
     if (params$force) {
         # Reset if force
         warning("Overwritting convergent_cluster_id.")
-        db$clone_id <- NULL
+        db$convergent_cluster_id <- NULL
     }
 }
 ```
