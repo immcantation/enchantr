@@ -1,7 +1,7 @@
 # Convergence
 
-Run clonal detection combining all samples to identify overlapping "clones". The field
-`convergent_clone_id` will be created.
+Run cluster detection combining all samples to identify overlapping "clones". The field
+`convergent_cluster_id` will be created.
 
 ```{r runconvergence, warning=TRUE}
 if (!is.null(params$convergence_vgene)) {
@@ -25,7 +25,7 @@ if (sum(heavy_chains)>0) {
                                  normalize="len",
                                  junction="junction",
                                  v_call="v_call", j_call="j_call",
-                                 clone="convergent_clone_id",
+                                 clone="convergent_cluster_id",
                                  fields=NULL,
                                  cell_id=cell_id,
                                  locus="locus",
@@ -41,13 +41,13 @@ if (sum(heavy_chains)>0) {
     }
 } else {
     warning("No heavy chain sequences found.")
-    db$convergent_clone_id <- NA
+    db$convergent_cluster_id <- NA
 }
 ```
 
 ## Heatmap
 
-```{r overlap, eval="convergent_clone_id" %in% colnames(db)}
+```{r overlap, eval="convergent_cluster_id" %in% colnames(db)}
 convergence_overlap <- plotDbOverlap(db %>% 
                                          filter(isHeavyChain(locus)) %>%
                                          rowwise() %>%
@@ -56,7 +56,7 @@ convergence_overlap <- plotDbOverlap(db %>%
                                                       clone_id)), collapse ="_")
                                          ), 
                                      group="sample_id", 
-                                     features=c("convergent_clone_id","clone_id"), 
+                                     features=c("convergent_cluster_id","clone_id"), 
                                      heatmap_colors=c("white","orange", "grey80"), 
                                      print_zero=FALSE, long_x_angle=90,
                                      title=NULL,xlab=NULL, ylab=NULL,
@@ -69,7 +69,7 @@ convergence_overlap <- plotDbOverlap(db %>%
 ```
 
 ```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(50,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=exists("convergence_overlap")}
-caption <- paste0("Number of identical clone_id and convergent_clone_id. The percent represents the number of shared clones over the number of clones in the smaller set.")
+caption <- paste0("Number of identical clone_id and convergent_cluster_id. The percent represents the number of shared clones over the number of clones in the smaller set.")
 overlapconvergenceplot <- convergence_overlap$p
 overlapconvergenceplot <- eeplot(overlapconvergenceplot, 
        outdir=params$outdir, 
@@ -81,12 +81,12 @@ caption <- overlapconvergenceplot$enchantr$html_caption
 
 ## UpSet plot
 
-```{r upset, results='asis', eval="convergent_clone_id" %in% colnames(db)}
+```{r upset, results='asis', eval="convergent_cluster_id" %in% colnames(db)}
 # Add clone_size
 convergent_clone_sizes <- countClones(
             db %>% filter(isHeavyChain(locus)) %>% select(-clone_id), # Keep heavy chains only
             groups="sample_id",
-            clone = "convergent_clone_id")
+            clone = "convergent_cluster_id")
 upset_plot <- plotConvergenceUpSet(convergent_clone_sizes)
 if (is.null(upset_plot)) {
     cat("There aren't any convergent and expanded clones.")
@@ -96,7 +96,7 @@ if (is.null(upset_plot)) {
 
 
 ```{r upsetplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(10,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=exists("upset_plot")}
-caption <- paste0("Unique convergent_clone_id and clone_id overlap. Subset to expanded clones (size>1 in at least one sample). Show most shared top 31. (Note: 31 is the maximum set size in the R package ComplexHeatmap.")
+caption <- paste0("Unique convergent_cluster_id and clone_id overlap. Subset to expanded clones (size>1 in at least one sample). Show most shared top 31. (Note: 31 is the maximum set size in the R package ComplexHeatmap.")
 us <- grid.grabExpr(draw(upset_plot)) 
 upset_plot <- eeplot(us, 
        outdir=params$outdir, 

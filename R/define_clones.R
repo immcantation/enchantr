@@ -471,11 +471,11 @@ plotDbOverlap <- function(db, group="sample",
 plotConvergenceUpSet <- function(convergent_clone_sizes) {
     upset_data <- convergent_clone_sizes %>%
         ungroup() %>%
-        select(sample_id, convergent_clone_id, seq_count) %>%
+        select(sample_id, convergent_cluster_id, seq_count) %>%
         pivot_wider(names_from=sample_id, values_from = seq_count,values_fill=0) %>%
         data.frame()
-    rownames(upset_data) <- upset_data[['convergent_clone_id']]
-    upset_data <- upset_data %>% select(-convergent_clone_id)
+    rownames(upset_data) <- upset_data[['convergent_cluster_id']]
+    upset_data <- upset_data %>% select(-convergent_cluster_id)
     
     # Filter to use only expanded clones
     isExpanded <- function(df, min_size=2, mode=c("any")) {

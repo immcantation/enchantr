@@ -4,15 +4,14 @@
 a@abundance <- a@abundance %>%
    left_join( db %>% 
                  select(any_of(c(unique(c("sample_id", 
-                                                "subject_id", 
-                                                "tissue", 
+                                                "subject_id",
                                                 params$cloneby)))
                                        )
                   ) %>%
                  distinct(),
               
               )
-p <- plotAbundanceCurve(a, annotate="depth", silent = T) 
+p <- plotAbundanceCurve(a, annotate="depth", silent = T)
 ```
 
 ```{r clonalAbundanceTable, results='asis'}
@@ -34,7 +33,7 @@ getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
     min(max_w, max(ncols*2, min_w))
 }
 
-getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=12) {
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=20) {
     nrows <- ceiling(nfacets/ncols)
     min(max_h, max(nrows*2, min_h))
 }
@@ -46,25 +45,16 @@ abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
 abundanceSample <- eeplot(abundanceSample, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('abundanceSample'),
-                     caption="Clonal abundance plot.",
+                     caption=paste0("Clonal abundance plot per `sample_id`. Clonal abundance was calculated with a sample of N=",
+                      a@n,
+                      " sequences with ",
+                      a@nboot,
+                      " boostrapping repetitions."),
                      a)
 abundanceSample +
     theme(legend.position = "none")
 caption <- abundanceSample$enchantr$html_caption  
 ```
-
-## Abundance plot by tissue
-
-```{r abundanceTissue, eval= "tissue" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['tissue']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['tissue']])), ncols=3), fig.cap=caption}
-abundanceTissue <- p + facet_wrap(~ tissue, ncol=3)
-abundanceTissue <- eeplot(abundanceTissue, 
-                     outdir=params$outdir, 
-                     file=knitr::opts_current$get('label'),
-                     caption="Clonal abundance plot visualized by tissue.")
-abundanceTissue
-caption <- abundanceTissue$enchantr$html_caption  
-```
-
 
 # Diversity
 
@@ -108,11 +98,25 @@ weighted by their proportion in the sample.
 
 ## Diversity curves
 
+The following table shows the summary of the diversity calculations per sample.
+
 ```{r diversity, results='asis'}
 # generate the Hill diversity curve
 d <- alphaDiversity(db %>% filter(isHeavyChain(locus)), 
                     group = "sample_id", 
                     min_n=params$min_n)
+
+d@diversity <- d@diversity %>%
+   left_join( db %>% 
+                 select(any_of(c(unique(c("sample_id", 
+                                                "subject_id", 
+                                                params$cloneby)))
+                                       )
+                  ) %>%
+                 distinct(),
+              
+              )
+
 diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
 
 tab <- eetable(d@diversity, file = "clonal_diversity", 
@@ -125,26 +129,34 @@ tab$table %>%
 print_table_caption("clonal_diversity", tab$caption)
 ```
 
-```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=7, fig.height=min(50,0.3*length(unique(db[['sample_id']])))}
+## Diversity plot by sample
+
+```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3)}
 # plot duplicated cells
 diversitySample <- diversitySample + 
     geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
-    geom_text(data = data.frame(q = c(0,1,2), y = round(max(p$data$d_upper)/2),
-              label = c("Richness", "Shannon", "Simpson")),
-              aes(x = q, y = y,label = label), size = 3, angle = 90, vjust = -0.4, inherit.aes  =  F, color = "grey50") +
-    facet_wrap(~sample_id)
+    facet_wrap(~sample_id + subject_id, ncol=3)
 diversitySample <- eeplot(diversitySample, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
-                     caption="Clonal diversity per `sample_id`.",
+                     caption=paste0("Clonal diversity per `sample_id`.Clonal diversity was calculated with a sample of N=",
+                      d@n,
+                      " sequences with ",
+                      a@nboot,
+                      " boostrapping repetitions."),
                      d)
-diversitySample
-caption <- diversitySample$enchantr$html_caption 
+diversitySample +
+    theme(legend.position = "none")
+caption <- diversitySample$enchantr$html_caption
 ```
 
 ## Diversity at different `q`
 
-```{r div_at_q, eval=TRUE,  fig.cap=caption, fig.width=7, fig.height=6}
+- `q=0` corresponds to Richness (number of different clones in the sample).
+- `q=1` corresponds to Shannon diversity.
+- `q=2` corresponds to Simpson diversity.
+
+```{r div_at_q, eval=TRUE,  fig.cap=caption, fig.width=5, fig.height=3}
 # plot duplicated cells
 div_data <- d@diversity %>% dplyr::filter(q==0 | q==1 | q==2)
 
@@ -154,8 +166,8 @@ div_at_q <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
     
 div_at_q <- eeplot(div_at_q, 
                      outdir=params$outdir, 
-                     file="div_at_q",
-                     caption="Diversity at differet q.")
+                     file=knitr::opts_current$get('label'),
+                     caption="Diversity at different q values.")
 div_at_q
-caption <- div_at_q$enchantr$html_caption  
+caption <- div_at_q$enchantr$html_caption
 ```
