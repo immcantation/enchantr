@@ -13,6 +13,7 @@ single_cell_qc_project <- function(path,...) {
         message("Creating project_dir ", project_dir)
         dir.create(project_dir, recursive = TRUE, showWarnings = FALSE)
     }
+
     project_files <- list.files(skeleton_dir,full.names = T)
     file.copy(project_files, project_dir, recursive = TRUE)
 }
@@ -42,14 +43,13 @@ countSequencesPerCell <- function(db,
                                   cell_id="cell_id",
                                   locus="locus",
                                   c_call="c_call") {
-    seqs_per_cell <- db %>%
-        group_by(sample_id, cell_id, locus) %>%
-        summarize(cell_num_sequences = n(),
-                  cell_num_isotypes = length(unique(c_call)),
-                  cell_isotypes = paste(unique(c_call), sep = ",", collapse = ","),
-                  .groups = "drop") %>%
-        ungroup()
-    seqs_per_cell
+    db %>%
+      group_by(sample_id, cell_id, locus) %>%
+      summarize(cell_num_sequences = n(),
+                cell_num_isotypes = length(unique(c_call)),
+                cell_isotypes = paste(unique(c_call), sep = ",", collapse = ","),
+                .groups = "drop") %>%
+      ungroup()
 }
 
 #' TODO: example
@@ -66,15 +66,13 @@ countSequencesPerCell <- function(db,
 #'
 #' @export
 plotSequencesPerCell <- function(seqs_per_cell) {
-    ggplot(seqs_per_cell,aes(x = cell_num_sequences)) +
-        geom_histogram(binwidth = 1) +
-        scale_x_continuous(breaks = 1:max(seqs_per_cell$cell_num_sequences)) +
-        facet_grid(sample_id~locus) +
-        labs(
-            x = "Number of sequences in a cell.",
-            y = "Number of cells",
-            caption = "Distribution of the number of sequences per cell and locus."
-        )
+    ggplot(seqs_per_cell, aes(x = cell_num_sequences)) +
+      geom_histogram(binwidth = 1, linewidth = 0.2, color = "black") +
+      scale_x_continuous(breaks = 1:max(seqs_per_cell$cell_num_sequences)) +
+      facet_grid(sample_id~locus) +
+      labs(x = "Number of sequences per cell",
+           y = "Number of cells",
+           caption = "Distribution of the number of sequences per cell and locus")
 }
 
 #' TODO: example
@@ -93,22 +91,22 @@ plotSequencesPerCell <- function(seqs_per_cell) {
 #'           with values TRUE/FALSE.
 #' @export
 findLightOnlyCells <- function(db,
-                             sample_id = "sample_id",
-                             cell_id="cell_id", locus="locus",
-                             fields=NULL) {
+                               sample_id = "sample_id",
+                               cell_id="cell_id", locus="locus",
+                               fields=NULL) {
 
     groups <- c(sample_id, fields)
 
     db <- db %>%
-        group_by(!!!rlang::syms(c(cell_id, groups))) %>%
-        mutate(light_only_cell = sum(isHeavyChain(!!rlang::sym(locus))) == 0) %>%
-        ungroup()
+            group_by(!!!rlang::syms(c(cell_id, groups))) %>%
+            mutate(light_only_cell = sum(isHeavyChain(!!rlang::sym(locus))) == 0) %>%
+            ungroup()
 
     num_cells <- db %>%
-        filter(light_only_cell) %>%
-        select(!!!rlang::syms(c(sample_id, cell_id, fields))) %>%
-        distinct() %>%
-        nrow()
+                   dplyr::filter(light_only_cell) %>%
+                   select(!!!rlang::syms(c(sample_id, cell_id, fields))) %>%
+                   distinct() %>%
+                   nrow()
 
     message("db size: ", nrow(db), " sequences.")
     message("number of light only cells: ", num_cells)
@@ -133,10 +131,10 @@ findLightOnlyCells <- function(db,
 #' @export
 removeDoublets <- function(db, cell_id = "cell_id", locus = "locus",
                            sequence_id = "sequence_id", fields = NULL) {
-    
-    check <- alakazam::checkColumns(db, columns=c(cell_id, locus, sequence_id, fields))
+    check <- alakazam::checkColumns(db,
+                                    columns = c(cell_id, locus, sequence_id, fields))
     if (check != TRUE) { stop(check) }
-    
+
     db_h <- db[isHeavyChain(db[[locus]]),, drop = FALSE] #IGH, TRB, TRD
     if (nrow(db_h) == 0) {
       message("`db` does not contain heavy chain sequences. Doublets check can't be performed.")
@@ -265,9 +263,9 @@ findSingleCellDuplicates <- function(db, fields,
                                      seq="sequence_alignment",
                                      sequence_id="sequence_id",
                                      mode=c("sequences", "cells")) {
-    
+
     mode <- match.arg(mode)
-    
+
     # Check for valid columns
     if (is.null(fields)) { stop("`fields` must be valid column name(s)")}
     columns <- c(fields,cell_id, seq, sequence_id)
@@ -285,12 +283,13 @@ findSingleCellDuplicates <- function(db, fields,
 
     # Identify groups
     db[["group_idx"]] <- db %>%
-        dplyr::group_by(!!!rlang::syms(fields)) %>%
-        group_indices() %>%
-        paste0("gidx_", .)
+                           dplyr::group_by(!!!rlang::syms(fields)) %>%
+                           group_indices() %>%
+                           paste0("gidx_", .)
 
     db <- db %>%
-        select(!!!rlang::syms(c(fields, cell_id, seq, sequence_id, "group_idx")))
+            select(!!!rlang::syms(c(fields, cell_id, seq, sequence_id,
+                                    "group_idx")))
 
     # extract group names
     groups_table <- unique(db[, c("group_idx", fields), drop = FALSE])
@@ -309,7 +308,7 @@ findSingleCellDuplicates <- function(db, fields,
                    group_by(!!rlang::sym(cell_id)) %>%
                    mutate(is_shared_cell = length(unique(group_idx)) > 1) %>%
                    ungroup() %>%
-                   filter(is_shared_cell) %>%
+                   dplyr::filter(is_shared_cell) %>%
                    select(-is_shared_cell)
 
     # Helper function to label as duplicate T/F those sequences
@@ -337,7 +336,7 @@ findSingleCellDuplicates <- function(db, fields,
                     rename(sequence_id_group = group_idx) %>%
                     left_join(x[, c(sequence_id, "group_idx")],
                               by = c("group_seq" = sequence_id)) %>%
-                    filter(sequence_id_group != group_idx) %>%
+                    dplyr::filter(sequence_id_group != group_idx) %>%
                     select(-group_seq, -sequence_id_group) %>%
                     group_by(!!!rlang::syms(c(sequence_id, "group_idx"))) %>%
                     summarize(n = sum(value, na.rm = T), .groups = "drop") %>%
@@ -352,7 +351,7 @@ findSingleCellDuplicates <- function(db, fields,
     # default to not duplicated
     db[["sc_duplicate"]] <- F
     duplicated_seq_id <- c()
-    dups <- data.frame(matrix(ncol=length(fields),nrow=0, dimnames=list(NULL, fields)))
+    dups <- data.frame(matrix(ncol=length(fields), nrow=0, dimnames=list(NULL, fields)))
 
     if (nrow(db_shared) > 0 ) {
         db_shared <- db_shared %>%
@@ -363,16 +362,16 @@ findSingleCellDuplicates <- function(db, fields,
     }
 
     if ( sum(db_shared[["is_duplicate_seq"]],na.rm = T)>0 ) {
-        
+
         if (mode == "sequences") {
             duplicated_seq_id <- db_shared %>%
                 filter(is_duplicate_seq) %>%
                 pull(!!rlang::sym(sequence_id))
-            
+
             db[["sc_duplicate"]][db[[sequence_id]] %in% duplicated_seq_id] <- T
-            
+
             dups <- db %>%
-                left_join(db_shared %>% select(-is_duplicate_seq), 
+                left_join(db_shared %>% select(-is_duplicate_seq),
                           by = c(fields, sequence_id, seq, cell_id)) %>%
                 rename(
                     sc_duplicate_group = group_idx
@@ -385,7 +384,7 @@ findSingleCellDuplicates <- function(db, fields,
                 distinct()
             dups <- db %>%
                 select(-sc_duplicate) %>%
-                left_join(duplicated_cells, 
+                left_join(duplicated_cells,
                           by = c(fields, cell_id)) %>%
                 rename(
                     sc_duplicate_group = group_idx
@@ -403,7 +402,6 @@ findSingleCellDuplicates <- function(db, fields,
         seq = seq,
         sequence_id = sequence_id
     )
-
 }
 
 # TODO: example
@@ -430,9 +428,9 @@ removeSingleCellDuplicates <- function(db, fields,
 
     mode <- match.arg(mode)
 
-    check <- alakazam::checkColumns(db, columns=c(fields, cell_id, seq, sequence_id))
+    check <- alakazam::checkColumns(db, columns = c(fields, cell_id, seq, sequence_id))
     if (check != TRUE) { stop(check) }
-    
+
     # Check that sequence_id are unique, because I will use this id
     # later to remove the duplicated sequences
     if (any(duplicated(db[[sequence_id]]))) {

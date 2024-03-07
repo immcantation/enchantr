@@ -99,7 +99,7 @@ save(params, file = file.path(params$outdir, "params.RData"))
 
 ```{r, results="asis"}
 # Read repertoire(s)
-db <- readInput(params[['input']], col_select = NULL)
+db <- readInput(params[["input"]], col_select = NULL)
 
 input_sizes <- db %>%
                  group_by(!!!rlang::syms(unique(c("input_file")))) %>%
@@ -110,9 +110,9 @@ input_sizes <- db %>%
 input_sizes_byoutput <- db %>%
                  group_by(!!!rlang::syms(unique(params$outputby))) %>%
                  summarize(input_size = n(),
-                            num_input_files = length(unique(input_file)),
-                            input_file = paste(unique(input_file), collapse=",")
-                           )
+                           num_input_files = length(unique(input_file)),
+                           input_file = paste(unique(input_file),
+                                              collapse = ","))
 
 input_size <- nrow(db)
 
@@ -123,9 +123,11 @@ input_summary <- db %>%
                    summarize(n = n()) %>%
                    pivot_wider(id_cols = sample_id,
                                values_from = n, names_from = locus)
-caption_text <- paste0("Summary of input data. Number of sequences per sample and 
-                       locus. ", nrow(input_summary), " repertoires loaded, 
-                       with ", input_size, " sequences.")
+
+caption_text_rep <- ifelse(nrow(input_summary) > 1, "repertoires", "repertoire")
+caption_text <- paste("Summary of input data. Displays the number of sequences per sample and 
+                       per locus. There was", nrow(input_summary), caption_text_rep,
+                      "loaded with", input_size, "sequences in total.")
 
 eetable(input_summary, caption = caption_text)$table
 ```
@@ -142,9 +144,8 @@ Distribution of the number of sequences per cell and locus
 seqs_per_cell <- countSequencesPerCell(db)
 ```
 
-```{r p-seqs-per-cell, fig.width=7, fig.height=min(50,length(unique(seqs_per_cell[['sample_id']]))*2), fig.cap=p_seqs_per_cell$enchantr$html_caption}
-p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell) +
-    theme_enchantr()
+```{r p-seqs-per-cell, fig.width=7, fig.height=min(50,length(unique(seqs_per_cell[["sample_id"]]))*2), fig.cap=p_seqs_per_cell$enchantr$html_caption}
+p_seqs_per_cell <- plotSequencesPerCell(seqs_per_cell) + theme_enchantr()
 p_seqs_per_cell <- eeplot(p_seqs_per_cell, params$outdir,
                           knitr::opts_current$get("label"))
 ggplotly(p_seqs_per_cell)
@@ -188,9 +189,10 @@ light_only <- db %>%
 db <- db %>% dplyr::filter(!light_only_cell)
 db_with_heavy_size <- nrow(db)
 
+caption_text_seq <- ifelse(light_only_size > 0, "sequences", "sequence")
 tab <- eetable(light_only,
-               caption = paste0("Cells with only light chains account for ",
-                                light_only_size, " sequences removed."))
+               caption = paste("Cells with only light chains account for",
+                               light_only_size, caption_text_seq, "removed."))
 tab$table
 ```
 
@@ -219,8 +221,8 @@ Sequences in different samples that share the same `cell_id` and nucleotide sequ
 ```{r sc-duplicates, results="asis"}
 # Find duplicated sequences
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
-                                 seq = "sequence_alignment", mode="sequences")
-dups_found <- sum(dups$dups$sc_duplicate, na.rm = T) > 0 
+                                 seq = "sequence_alignment", mode = "sequences")
+dups_found <- sum(dups$dups$sc_duplicate, na.rm = T) > 0
 ```
 
 ```{r sc-duplicates-zero, results="asis", eval=!dups_found, echo=FALSE}
@@ -231,20 +233,20 @@ if (nrow(dups[["dups"]]) == 0) {
 
 ```{r sc-duplicates-summary, results="asis", eval=dups_found}
 dups$dups <- dups$dups %>%
-    group_by(sample_id, cell_id) %>%
-    mutate(sc_duplicate_cell = if_else(any(sc_duplicate), T, F))
+               group_by(sample_id, cell_id) %>%
+               mutate(sc_duplicate_cell = if_else(any(sc_duplicate),
+                                                  TRUE, FALSE))
 
 num_cells_with_dups <- dups$dups %>%
-    filter(sc_duplicate_cell) %>%
-    select(sample_id, cell_id) %>%
-    distinct() %>%
-    nrow()
+                         dplyr::filter(sc_duplicate_cell) %>%
+                         select(sample_id, cell_id) %>%
+                         distinct() %>%
+                         nrow()
 
-cat(
-    sum(dups$dups$sc_duplicate), " duplicated sequences detected. Removing ",
-    sum(dups$dups$sc_duplicate_cell), " sequences belonging to ",
-    num_cells_with_dups , " suspicious cells "
-)
+cat(paste(sum(dups$dups$sc_duplicate), "duplicated sequences detected. Removing ",
+          sum(dups$dups$sc_duplicate_cell), "sequences belonging to",
+          num_cells_with_dups , "suspicious cells."))
+
 dups_summary <- dups[["dups"]] %>%
     group_by(sample_id) %>%
     summarize(duplicates = sum(sc_duplicate_cell, na.rm = TRUE),
@@ -256,20 +258,21 @@ dups_summary <- dups[["dups"]] %>%
 
 tab_dups_summary <- eetable(
     dups_summary %>% mutate(duplication_percent = round(duplication_percent, 2)),
-    caption = paste0("Summary of duplicated sequences: sequences belonging to cells with
-                     suspicious sequences (sequences that have the 
-                     same cell_id and sequence across samples). The percent represents 
-                     the number of duplicated sequences over the total of sequences in the sample."))
+    caption = "Summary of duplicated sequences: sequences belonging to cells
+               with suspicious sequences (sequences that have the same cell_id
+               and sequence across samples). The percent represents the number
+               of duplicated sequences over the total of sequences in the
+               sample.")
 
 tab_dups_summary$table %>% 
     formatStyle("duplication_percent", target = "cell",
-                backgroundColor = 
-                    styleInterval(0:100,
-                                  round(seq(255, 40,
-                                            length.out = length(0:100) + 1), 0) %>%
-                                      {paste0("rgb(255,", ., ",", ., ")")})
+                backgroundColor =
+                  styleInterval(0:100, round(seq(255, 40,
+                                                 length.out = length(0:100) + 1), 0) %>%
+                                  {paste0("rgb(255,", ., ",", ., ")")})
     )
 ```
+
 ```{r echo=FALSE, results="asis", eval=dups_found}
 print_table_caption(tag = "dups_summary", text = tab_dups_summary$caption)
 ```
@@ -280,18 +283,17 @@ print_table_caption(tag = "dups_summary", text = tab_dups_summary$caption)
 caption <- "Number of sequences that share cell_id and sequence with other samples."
 p_sc_duplicates <- ggplot(dups[["dups"]],
                           aes(x = sample_id, fill = sc_duplicate_cell)) +
-    geom_bar() +
-    coord_flip() +
-    theme_enchantr()
-
+                     geom_bar(linewidth = 0.2, color = "black") +
+                     coord_flip() +
+                     theme_enchantr()
 p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir,
                           knitr::opts_current$get("label"),
-                          caption=caption)
-ggplotly(p_sc_duplicates) %>% layout(barmode="stack")
+                          caption = caption)
+
+ggplotly(p_sc_duplicates) %>% layout(barmode = "stack")
 ```
 
 ## Cell overlaps matrix
-
 
 ```{r overlap-summary}
 # find the number of cells having same seq and cell barcode
@@ -304,33 +306,35 @@ if (nrow(dup_count) > 0) {
     
     overlap_summary_tab <- eetable(
         overlap_summary,
-        caption=paste0("Summary of duplicated cells: cells that have sequences with a combination of cell_id and sequence found in multiple samples.")
+        caption = "Summary of duplicated cells: cells that have sequences with a
+                   combination of cell_id and sequence found in multiple
+                   samples."
     )
     
     overlap_summary_tab$table %>% 
-        formatStyle(
-            'overlap_percent',
-            target = 'cell',
-            backgroundColor = styleInterval(0:100, 
-                                            round(seq(255, 40, length.out = length(0:100) + 1), 0) %>%
-                                                {paste0("rgb(255,", ., ",", ., ")")})
+        formatStyle("overlap_percent", target = "cell",
+                    backgroundColor =
+                      styleInterval(0:100, round(seq(255, 40,
+                                                     length.out = length(0:100) + 1), 0) %>%
+                                      {paste0("rgb(255,", ., ",", ., ")")})
         )
 }
 ```
+
 ```{r echo=FALSE, results="asis", eval=dups_found }
 print_table_caption(tag = "overlap_summary", text = overlap_summary_tab$caption)
 ```
 
-```{r p-overlap-matrix, eval=TRUE, fig.cap=caption, eval=dups_found }
+```{r p-overlap-matrix, eval=TRUE, fig.cap=caption, eval=dups_found}
 # plot duplicated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
-  p_overlap_matrix <- plotOverlapSingleCell(dup_count) +
-      theme_enchantr()
+  p_overlap_matrix <- plotOverlapSingleCell(dup_count) + theme_enchantr()
   p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir,
                              knitr::opts_current$get("label"),
-                             caption="Duplicated cells.")
+                             caption = "Duplicated cells.")
   caption <- p_overlap_matrix$enchantr$html_caption
+  
   ggplotly(p_overlap_matrix)
 }
 ```
@@ -348,14 +352,13 @@ samples) to `sequence_id` and `cell_id`.
 
 # Final repertoires 
 
-
 ```{r outsetup, echo=FALSE}
 # Remove cells (all sequences in cells) with duplicated sequences
 # pass <- qc_results$log$scqc_pass
 if (dups_found) {
   pass <- dups[["dups"]][["sc_duplicate_cell"]] == FALSE
 } else {
-  pass <- rep(T, nrow(db))
+  pass <- rep(TRUE, nrow(db))
 }
 
 if (!is.null(params$outname)) {
@@ -396,16 +399,16 @@ output_groups[is.na(output_groups)] <- 0
 
 output_summary_tab <- eetable(
     output_groups,
-    caption=paste0("Output summary.")
+    caption = paste0("Output summary.")
 )
 output_summary_tab$table
 ```
+
 ```{r output_summary, results="asis", echo=FALSE}
 print_table_caption(tag = "output_summary_tab", text = output_summary_tab$caption)
 ```
 
 Find your final repertoires here, saved by `r paste(params$outputby, collapse=", ")`.
-
 
 ```{r dbpass-save, results="asis", echo=FALSE}
 if (any(output_groups[["num_input_files"]] > 1)) {
@@ -419,7 +422,7 @@ for (i in 1:nrow(output_groups)) {
     this_group <- output_groups[i, , drop = F]
     group_fn <- ""
     
-    if (this_group[['output_size']]>0) {
+    if (this_group[["output_size"]]>0) {
         group_db <- right_join(db, this_group,
                                by = c(params$outputby, "input_file")) %>%
             select(-input_file, -num_input_files, -input_size, -output_size)
