@@ -25,6 +25,6 @@ pipelines:
             - update-alternatives --install  /usr/bin/python python /usr/bin/python3 1
             - export PYTHONPATH=/usr/local/lib/python3.11/site-packages
             - wget -qO- https://get.nextflow.io | bash && chmod +x nextflow
-            - ./nextflow run nf-core/airrflow -r enchantr-0.1.5 -c tests/airrflow/airrflow.config --outdir ./results
+            - ./nextflow run nf-core/airrflow -r dev -c tests/airrflow/airrflow.config --outdir ./results
           artifacts: # defining the artifacts to be passed to each future step.
             - results/**
