@@ -1,3 +1,12 @@
+Version 0.1.10: January 11, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Added a copy of `fuse.js@6.4.6` to be able to render the reports when there is 
+no internet access.
+
+
 Version 0.1.5: September 15, 2023
 -------------------------------------------------------------------------------
 

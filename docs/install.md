@@ -13,7 +13,7 @@ Then building it using the following R commands from the package root:
 ```R
 install.packages(c("devtools", "roxygen2"))
 library(devtools)
-install_deps(dependencies = TRUE)
+install_deps(dependencies=TRUE)
 document()
 install()
 ```

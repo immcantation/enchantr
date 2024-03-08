@@ -1,0 +1,360 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Convergence analysis"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr convergence analysis"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoires files"
+      input: file
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
+   imgt_db:
+      label: "`imgt_db`: Path to IMGT reference  database."
+      input: file
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+   species:
+      label: "`species`"
+      input: text
+      value: "human"        
+   force:
+      label: "`force`: if convergent_cluster_id already exists, overwrite (force=TRUE) or skip cluster assignment and render the report (force=FALSE)."
+      input: logical        
+      value: !r FALSE 
+   singlecell:
+      label: "`singlecell`"
+      input: text
+      value: NULL
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      input: text
+      value: "sample_id"
+   cloneby:
+      label: "`cloneby`"
+      input: text
+      value: "subject_id" 
+   model:
+      label: "`model`"
+      input: text
+      value: "hierarchical" 
+   method:
+       label: "`method`"
+       input: text
+       value: "nt"
+   linkage:
+       label: "`linkage`"
+       input: text
+       value: "single"
+   skip_convergence:
+       label: "`skip_convergence`"
+       input: logical
+       value: !r FALSE
+   convergence_vgene:
+       label: "`convergence_vgene`"
+       input: text
+       value: NULL
+   convergence_threshold:
+       label: "`convergence_threshold`"
+       input: numeric
+       value: 0.2
+   nboot:
+       label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
+       input: numeric
+       value: 200               
+   outname:
+      label: "`outname`"
+      input: text
+      value: "define-clones"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1      
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: TRUE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+# Libraries
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("scoper"))
+suppressPackageStartupMessages(library("dowser"))
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("ComplexHeatmap"))
+suppressPackageStartupMessages(library("plotly"))
+
+if (!dir.exists(params[['outdir']])) {
+    dir.create(params[['outdir']], recursive=T)
+}
+
+file.copy(params$logo,
+          file.path(params$outdir,"assets", "logo.png"),
+          recursive=T, overwrite=T)
+
+singlecell <- params$singlecell
+```
+
+
+# Input parameters
+
+```{r input-parameters, results='asis'}
+printParams(params)
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="input", text="Input parameters.")
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoires
+
+```{r}
+# Read repertoire
+db <- readInput(params[['input']], col_select = NULL)
+
+if (params$species =="auto") {
+    if ("species" %in% colnames(db)) {
+        species <- unique(db[['species']])
+        if (length(species)>1) {
+            stop("Multiple species detected. Only one allowed.")
+        }
+    } else  {
+        stop("Can't detect species. The column `species` does not exist in `db`.")
+    }
+} else {
+    species <- params$species
+}
+
+# Check fo single cell label
+if (!is.null(singlecell)) {
+    if (singlecell %in% colnames(db)) {
+         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
+    } else {
+        stop("`",singlecell, "` is not a valid field in `db`.")
+    }
+} else {
+   singlecell <- "single_cell"
+   db[[singlecell]] <- F
+   if ("cell_id" %in% colnames(db)) {
+       message("Setting `singlecell` using `cell_id`.") 
+       db[[singlecell]][!db[['cell_id']] %in% c(NA, '')] <- T
+   }
+
+}
+
+if (!"locus" %in% colnames(db)) {
+    db[['locus']] <- getLocus(db[['v_call']])
+}
+heavy_chains <- isHeavyChain(db[['locus']])
+
+if ("convergent_cluster_id" %in% colnames(db)) {
+    if (params$force) {
+        # Reset if force
+        warning("Overwritting convergent_cluster_id.")
+        db$convergent_cluster_id <- NULL
+    }
+}
+```
+
+```{r}
+input_size <- nrow(db)
+input_sizes <- db %>%
+    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+    summarize(input_size=n())
+
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+    group_by(!!!rlang::syms(unique(params$outputby))) %>%
+    mutate(
+        num_input_files = length(unique(input_file)),
+        input_files = paste(unique(input_file), collapse=",")
+    ) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(unique(c(params$outputby, "input_file", "num_input_files", "input_files")))) %>%
+    summarize(
+        input_size = n()
+    )
+```
+
+
+Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r sum(heavy_chains, na.rm=T)`.
+
+```{r inputsamplesumary, results='asis', eval="tissue" %in% colnames(db)}
+input_samples_summary <- db %>%
+   group_by(sample_id, subject_id, tissue) %>%
+   summarize(size = n()) %>%
+   arrange(subject_id)
+
+eetable(input_samples_summary)$table
+```
+```{r echo=FALSE, results='asis', eval="tissue" %in% colnames(db)}
+print_table_caption(tag="input_samples_summary", text="Input samples summary.")
+```
+
+
+## Sequences per locus
+
+```{r inputlocussumary, results='asis'}
+input_locus_summary <- db %>%
+   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "locus")))) %>%
+   summarize(n=n(), .groups="drop") %>%
+   pivot_wider(names_from=locus, values_from=n) %>%
+   rowwise() %>%
+   mutate(Total = sum(!!!rlang::syms(unique(db[['locus']]))))
+
+total <- data.frame(list("sample_id"="Total", 
+                    t(input_locus_summary %>%
+   select(!!!rlang::syms(c(unique(db[['locus']]), "Total"))) %>%
+   colSums(na.rm = T))))
+
+input_locus_summary <- bind_rows(input_locus_summary, total)
+
+tab_caption <- paste0("Input data. Number of sequences in each ", 
+                   paste("sample", params$cloneby, sep=", "),
+                   " and locus."
+      )
+eetable(input_locus_summary)$table
+```
+```{r echo=FALSE,results='asis'}
+print_table_caption(tag="input_locus_summary", text=tab_caption)
+```
+
+```{r eval="c_call" %in% colnames(db), results='asis'}
+cat("## Sequences per c_call\n")
+```
+
+```{r input-ccall-sumary, eval="c_call" %in% colnames(db), results='asis'}
+input_c_call_summary <- db %>%
+   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "c_call")))) %>%
+   summarize(n=n(), .groups="drop") %>%
+       pivot_wider(names_from=c_call, values_from=n)
+
+tab_caption <- paste0("Input data. Number of sequences in each ", 
+                   paste("sample", params$cloneby, sep=", "),
+                   " and c_call"
+      )
+eetable(input_c_call_summary)$table
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="input_c_call_summary", text=tab_caption)
+```
+
+```{r, child=c('convergence.Rmd'), eval=!as.logical(params$skip_convergence)}
+```
+
+Find your final repertoires here:
+
+```{r fn, results='asis', echo=F}
+# pass <- db[['collapse_pass']]
+
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_convergence-pass.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_convergence-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- file.path(params$outdir,paste0(params$log,".txt"))
+} else {
+    log_fn <- file.path(params$outdir,sub("_convergence-pass.tsv$", "_command_log.txt", basename(output_fn)))
+}
+```
+
+```{r dbpass, results='asis', echo=FALSE}
+
+# collpase in case there are multiple rows
+# due to multiple input files
+input_sizes_byoutput <- input_sizes_byoutput %>%
+    select(-input_files) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarise(across(everything(), function(x) {paste(x, collapse = ",")} ))
+    
+output_groups <- db %>%
+    ungroup() %>%
+    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarize(output_size = n()) %>%
+    right_join(input_sizes_byoutput) %>%
+    select(input_size, output_size, everything()) 
+    
+   
+output_files <- c()
+output_sizes <- c()
+input_sizes <- c()
+dir.create(file.path(params$outdir,"repertoires")) 
+for (i in 1:nrow(output_groups))  {
+    group_db <- left_join( output_groups[i,params$outputby,drop=F],
+                           db,
+                           by=c(params$outputby))
+    
+    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
+    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
+    output_files <- c(output_files, group_fn)
+    output_sizes <- c(output_sizes, nrow(group_db))
+    i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
+    input_sizes <- c(input_sizes, i_input_size)
+    write_rearrangement(group_db %>% select(-input_file), file=group_fn)
+    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
+}
+```
+
+```{r log, echo=FALSE}
+cat("START> ConvergencePass", file=log_fn, append=F)
+for (i in 1:nrow(output_groups)) {
+    cat(paste0("\nFILE",i,"> ",basename(output_groups[['input_file']][i])), file=log_fn, append=T)
+    cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
+    cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
+    cat(paste0("\nFAIL",i,"> ",input_sizes[i]-output_sizes[i]), file=log_fn, append=T)    
+}
+```
+
+```{r, child=c('versions.Rmd')}
+```
