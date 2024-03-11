@@ -304,18 +304,16 @@ cat("## Sequences per isotype\n")
 if (params$isotype_column == "c_call") {
     db <- db %>%
     mutate(isotype = ifelse(grepl("IGH", locus), alakazam::getGene(c_call, first=TRUE), NA))
-} else if (params$isotype_column == "cregion" ) {
+} else {
     db <- db %>%
     mutate(isotype = case_when(
-      grepl("IGHA", cregion) ~ "IGHA",
-      grepl("IGHM", cregion) ~ "IGHM",
-      grepl("IGHG", cregion) ~ "IGHG",
-      grepl("IGHE", cregion) ~ "IGHE",
-      grepl("IGHD", cregion) ~ "IGHD",
+      grepl("IGHA", get(!!params$isotype_column)) ~ "IGHA",
+      grepl("IGHM", get(!!params$isotype_column)) ~ "IGHM",
+      grepl("IGHG", get(!!params$isotype_column)) ~ "IGHG",
+      grepl("IGHE", get(!!params$isotype_column)) ~ "IGHE",
+      grepl("IGHD", get(!!params$isotype_column)) ~ "IGHD",
       .default = NA
     ))
-} else {
-    stop("isotype_column must be either `c_call` or `cregion`, other isotype columns are not supported.")
 }
 
 
