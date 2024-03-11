@@ -295,11 +295,11 @@ eetable(input_c_call_summary)$table
 print_table_caption(tag="input_c_call_summary", text=tab_caption)
 ```
 
-```{r eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
+```{r eval=any(db$locus %in% c("IGH")) & params$isotype_column %in% colnames(db) , results='asis'}
 cat("## Sequences per isotype\n")
 ```
 
-```{r input-isotype-sumary, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
+```{r input-isotype-sumary, eval=any(db$locus %in% c("IGH")) & params$isotype_column %in% colnames(db) , results='asis'}
 # Create isotype column
 if (params$isotype_column == "c_call") {
     db <- db %>%
@@ -331,7 +331,7 @@ tab_caption <- paste0("Input data. Number of sequences in each ",
 eetable(input_isotype_summary)$table
 ```
 
-```{r echo=FALSE, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db), results='asis'}
+```{r echo=FALSE, eval=any(db$locus %in% c("IGH")) & params$isotype_column %in% colnames(db), results='asis'}
 print_table_caption(tag="input_isotype_summary", text=tab_caption)
 ```
 
@@ -494,7 +494,7 @@ cat("The mutation frequency per sequence is stored in the final dataframes in th
 ```
 
 
-```{r mufreqSample, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & "c_call" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r mufreqSample, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & "isotype" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 
 mufreqSample <- ggplot(db %>% filter(!is.na(isotype), locus=="IGH"), aes(x=isotype, y=mu_freq, fill=isotype)) + 
                     geom_boxplot() +
@@ -512,7 +512,7 @@ mufreqSample +
 caption <- mufreqSample$enchantr$html_caption  
 ```
 
-```{r mufreqSampleLocus, eval=any(db$locus %in% c("IGL", "IGK")) & "c_call" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r mufreqSampleLocus, eval=any(db$locus %in% c("IGL", "IGK")), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 mufreqSampleLocus <- ggplot(db %>% filter(!is.na(germline_alignment_d_mask)), aes(x=locus, y=mu_freq, fill=locus)) + 
                     geom_boxplot() +
                     facet_wrap(~ subject_id + sample_id, ncol=3) +
