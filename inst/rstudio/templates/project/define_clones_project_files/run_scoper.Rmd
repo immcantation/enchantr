@@ -8,6 +8,7 @@ if (sum(heavy_chains)>0) {
         if (all(db[[ singlecell ]] == T )) {
             cell_id <- 'cell_id'
         } else {
+            db_light <- db %>% filter(!isHeavyChain(locus))
             cell_id <- NULL
             if (all(c(T,F) %in% db[[ singlecell ]])) {
                 warning("Mix of single and bulk data. Setting cell_id=`NULL`.")
@@ -165,7 +166,6 @@ any_germ_fail <- pre_germ_size > nrow(db)
 
 `r nrow(db)` sequences passed the germline reconstruction step
 and `r pre_germ_size - nrow(db)` failed.
-
 
 ```{r eval=(any_germ_fail & !is.null(cell_id)) }
 # Remove cells that after createGermlines

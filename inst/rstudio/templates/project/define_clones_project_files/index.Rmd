@@ -60,6 +60,10 @@ params:
        label: "`linkage`"
        input: text
        value: "single"
+   isotype_column:
+       label: "`isotype_column`"
+       input: text
+       value: "c_call"
    nboot:
        label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
        input: numeric
@@ -167,7 +171,7 @@ if (params$species =="auto") {
     species <- params$species
 }
 
-# Check fo single cell label
+# Check for single cell label
 if (!is.null(singlecell)) {
     if (singlecell %in% colnames(db)) {
          db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
@@ -297,8 +301,23 @@ cat("## Sequences per isotype\n")
 
 ```{r input-isotype-sumary, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
 # Create isotype column
-db <- db %>%
+if (params$isotype_column == "c_call") {
+    db <- db %>%
     mutate(isotype = ifelse(grepl("IGH", locus), alakazam::getGene(c_call, first=TRUE), NA))
+} else if (params$isotype_column == "cregion" ) {
+    db <- db %>%
+    mutate(isotype = case_when(
+      grepl("IGHA", cregion) ~ "IGHA",
+      grepl("IGHM", cregion) ~ "IGHM",
+      grepl("IGHG", cregion) ~ "IGHG",
+      grepl("IGHE", cregion) ~ "IGHE",
+      grepl("IGHD", cregion) ~ "IGHD",
+      .default = NA
+    ))
+} else {
+    stop("isotype_column must be either `c_call` or `cregion`, other isotype columns are not supported.")
+}
+
 
 input_isotype_summary <- db %>%
    group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "isotype")))) %>%
@@ -442,6 +461,13 @@ if (nrow(a@abundance)==0) {
 ```{r, child=c('abundance.Rmd'), eval=nrow(a@abundance)>0}
 ```
 
+```{r eval=any(db[[ singlecell ]] == F), results='asis'}
+# Add again light chains before observed mutations when mixture of sc + bulk or only bulk
+if (nrow(db_light) > 0){
+    db <- bind_rows(db, db_light)
+}
+
+```
 
 ```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
 cat("# Mutation frequency\n")
@@ -469,7 +495,7 @@ getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=12) {
 ```
 
 ```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
-cat("Showing mutation frequency per isotype of heavy chains only if the `c_call` field is present.\n")
+cat("Showing mutation frequency per isotype of heavy chains only if the `c_call` or `cregion` field as well as the `germline_alignment_d_mask` are present.\n")
 cat("The mutation frequency per sequence is stored in the final dataframes in the `mu_freq` column.\n")
 ```
 
@@ -490,6 +516,23 @@ mufreqSample <- eeplot(mufreqSample,
 mufreqSample +
     theme(legend.position = "none")
 caption <- mufreqSample$enchantr$html_caption  
+```
+
+```{r mufreqSampleLocus, eval=any(db$locus %in% c("IGL", "IGK")) & "c_call" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+mufreqSampleLocus <- ggplot(db %>% filter(!is.na(germline_alignment_d_mask)), aes(x=locus, y=mu_freq, fill=locus)) + 
+                    geom_boxplot() +
+                    facet_wrap(~ subject_id + sample_id, ncol=3) +
+                    theme_enchantr() +
+                    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+mufreqSampleLocus <- eeplot(mufreqSampleLocus, 
+                     outdir=params$outdir, 
+                     file='mutation_frequency_sample_locus',
+                     caption=paste0("Mutation frequency per locus per `sample_id`."),
+                     mufreqSample)
+mufreqSampleLocus +
+    theme(legend.position = "none")
+caption <- mufreqSampleLocus$enchantr$html_caption  
 ```
 
 # Final repertoires and tables
