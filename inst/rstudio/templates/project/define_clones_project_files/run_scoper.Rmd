@@ -182,3 +182,10 @@ if (num_light_only > 0) {
 db[["light_only_cell"]] <- NULL
 ```
 
+```{r eval=any(db[[ singlecell ]] == F), results='asis'}
+# Add again light chains before observed mutations when mixture of sc + bulk or only bulk
+if (nrow(db_light) > 0){
+    db <- bind_rows(db, db_light)
+}
+
+```
