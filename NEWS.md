@@ -1,3 +1,13 @@
+Version 0.1.13: March 12, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Improved defineClones report and added mutation frequency calculation
++ Fixed bug that eliminated light chains from bulk or mixed sequencing data from
+final repertoires.
+
+
 Version 0.1.10: January 11, 2024
 -------------------------------------------------------------------------------
 
