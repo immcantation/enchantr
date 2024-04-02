@@ -5,13 +5,15 @@
 #' to create the skeleton of an Immcantation ... project
 #' @param  path path to the directory where the project will be created
 find_threshold_project <- function(path, ...) {
-    skeleton_dir <- file.path(system.file(package = "enchantr"), "rstudio", "templates", "project", "find_threshold_project_files")
+    skeleton_dir <- file.path(system.file(package = "enchantr"), "rstudio",
+                              "templates", "project",
+                              "find_threshold_project_files")
     project_dir <- path
     if (!dir.exists(project_dir)) {
         message("Creating project_dir ", project_dir)
         dir.create(project_dir, recursive = TRUE, showWarnings = FALSE)
     }
-    project_files <- list.files(skeleton_dir, full.names = T)
+    project_files <- list.files(skeleton_dir, full.names = TRUE)
     file.copy(project_files, project_dir, recursive = TRUE)
 }
 

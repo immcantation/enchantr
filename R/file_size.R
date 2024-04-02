@@ -1,30 +1,32 @@
 #' Create an Immcantation input validation project
-#' 
+#'
 #' From RStudio, use the New Project wizard: File > New Project >
 #' New Directory > then select  Immcantation Input Validation
 #' to create the skeleton of an Immcantation Input Validation project
 #' @param  path path to the directory where the project will be created
 file_size_project <- function(path,...) {
-    skeleton_dir <- file.path(system.file(package="enchantr"),"rstudio", "templates", "project", "file_size_project_files")
+    skeleton_dir <- file.path(system.file(package = "enchantr"), "rstudio",
+                              "templates", "project",
+                              "file_size_project_files")
     project_dir <- path
     if (!dir.exists(project_dir)) {
         message("Creating project_dir ", project_dir)
         dir.create(project_dir, recursive = TRUE, showWarnings = FALSE)
     }
-    project_files <- list.files(skeleton_dir,full.names = T)
-    file.copy(project_files, project_dir, recursive=TRUE)
-} 
+    project_files <- list.files(skeleton_dir, full.names = TRUE)
+    file.copy(project_files, project_dir, recursive = TRUE)
+}
 
 
 # consoleLogNetwork(log_file)
 formatConsoleLog <- function(log_file){
     log_table <- loadConsoleLog(log_file)
     task <- unique(log_table[['task']])
-    
+
     if (length(task)>1) {
         stop("more than one task in the same log")
     }
-    
+
     if (task == "ParseDb-split") {
         file_field <- grepl("FILE",log_table[['field']])
         if (sum(file_field)>1) {
@@ -37,29 +39,29 @@ formatConsoleLog <- function(log_file){
         i <- 2
         while (i <= parts) {
             log_table <- bind_rows(log_table,
-                      log_table[which(file_field),]   
+                      log_table[which(file_field),]
             )
             log_table[['field']][nrow(log_table)] <- paste0("FILE",i)
             i <- i + 1
         }
-        
-        
+
+
     }
-    
+
     if (task == "MakeDB-igblast") {
         log_table <- log_table %>%
             filter(field != "SEQ_FILE")
     }
-    
+
     .getFileID <- function(x) {
         sapply(x, function(i){
             if (grepl("[0-9]$",i)){
-                gsub("(.*?)([0-9]+)$","\\2",i)  
+                gsub("(.*?)([0-9]+)$","\\2",i)
             } else {
                 0
             }
         })
-        
+
     }
     log_table <- log_table %>%
         filter(    grepl("ALIGNER_FILE",field) |
@@ -69,11 +71,11 @@ formatConsoleLog <- function(log_file){
                        grepl("FAIL",field) |
                        grepl("RECORDS",field) |
                        grepl("SIZE",field) |
-                       grepl("OUTPUT[0-9]*",field)                     
+                       grepl("OUTPUT[0-9]*",field)
         ) %>%
         mutate(file_id=.getFileID(field)) %>%
         mutate(
-            field_type = case_when(grepl("OUTPUT", field) ~ "output", 
+            field_type = case_when(grepl("OUTPUT", field) ~ "output",
                                    grepl("FILE", field) ~ "input",
                                    grepl("ALIGNER_FILE", field) ~ "input",
                                    grepl("SEQ_FILE", field) ~ "input",
@@ -82,42 +84,42 @@ formatConsoleLog <- function(log_file){
                                    grepl("SIZE", field) ~ "output_size",
                                    grepl("FAIL", field) ~ "fail")
         ) %>%
-        select(-field, -step) 
-    
+        select(-field, -step)
+
     log_table_input <- log_table %>%
         filter(grepl("input", field_type))
     input_fields <- log_table_input[["field_type"]] == "input"
-    
+
     if (!all(input_fields)) {
         log_table_input <- log_table_input[input_fields,] %>%
             left_join(
                 log_table_input <- log_table_input[!input_fields,] %>%
-                    pivot_wider(id_cols=file_id, 
+                    pivot_wider(id_cols=file_id,
                                 values_from=value, names_from=field_type),
                 by="file_id"
             )
     }
     log_table_input <- log_table_input %>%
         rename(input=value)
-    
+
     log_table_output <- log_table %>%
         filter(!grepl("input", field_type)) %>%
-        pivot_wider(id_cols=file_id, 
+        pivot_wider(id_cols=file_id,
                     values_from=value, names_from=field_type)
-    
+
     log_table <- log_table_input %>%
         left_join(log_table_output, by="file_id")
-    
+
     if (!"input_size" %in% colnames(log_table)) {
         if (all(c("output_size", "fail") %in% colnames(log_table))) {
             log_table <- log_table %>%
                 group_by(file_id) %>%
                 rowwise() %>%
-                mutate(input_size=as.numeric(output_size)+as.numeric(fail))   
+                mutate(input_size=as.numeric(output_size)+as.numeric(fail))
         } else {
             log_table[['input_size']] <- NA
         }
-    } 
+    }
     log_table[['task']] <- task
     log_table[['input_size']] <- as.numeric(log_table[['input_size']])
     log_table[['output_size']] <- as.numeric(log_table[['output_size']])
@@ -125,16 +127,16 @@ formatConsoleLog <- function(log_file){
         ungroup() %>%
         select(input, output, task, input_size, output_size) %>%
         as.data.frame(stringsAsFactors = F)
-    
+
 }
 
 #' @export
 consoleLogsAsGraph <- function(logs) {
     vertex_size <- bind_rows(
         logs %>% select(input,input_size) %>% rename(vertex=input, num_seqs=input_size),
-        logs %>% select(output,output_size)  %>% rename(vertex=output, num_seqs=output_size),        
+        logs %>% select(output,output_size)  %>% rename(vertex=output, num_seqs=output_size),
     ) %>%
-    distinct() 
+    distinct()
     # rm duplicate vertex names
     dup_v <- duplicated(vertex_size$vertex)
     if (any(dup_v)) {
@@ -143,25 +145,25 @@ consoleLogsAsGraph <- function(logs) {
             is.na(vertex_size$num_seqs)
         vertex_size <- vertex_size[!rm_me,,drop=F]
     }
-    g <- graph_from_data_frame(logs[,c("input","output", "task")], 
-                               directed = TRUE, 
+    g <- graph_from_data_frame(logs[,c("input","output", "task")],
+                               directed = TRUE,
                                vertices = vertex_size)
     g
 }
 
 
 plotLog <- function(g) {
-    ggraph(g, layout="tree") + 
+    ggraph(g, layout="tree") +
         #geom_node_point(aes(size = num_seqs), colour = "black") +
-        geom_node_label(aes(label=paste0(name,": ", num_seqs, " sequences")), 
+        geom_node_label(aes(label=paste0(name,": ", num_seqs, " sequences")),
                         colour = "black", label.size=0) +
-        geom_edge_link(aes(start_cap = label_rect(node1.name), 
+        geom_edge_link(aes(start_cap = label_rect(node1.name),
                            end_cap = label_rect(node2.name),
                            # colour = factor(task),
-                           label=task), 
+                           label=task),
                        color="grey50",
                        angle_calc = "across",
-                       arrow = arrow(type = "closed", 
+                       arrow = arrow(type = "closed",
                                      length = unit(3, 'mm'))) +
         theme_enchantr() +
         theme(
@@ -179,7 +181,7 @@ plotWorkflow <- function(g) {
     for (i in root_nodes) {
         g <- add_edges(g, c(input_node,i), task="Input")
     }
-    g2 <- make_line_graph(g) 
+    g2 <- make_line_graph(g)
     V(g2)$name <- E(g)$task
     g3 <- graph_from_edgelist(unique(as_edgelist(g2)))
     p <- ggraph(g3, layout = "tree") +
@@ -209,7 +211,7 @@ getConsoleLogs <- function(log_files) {
 }
 
 #' @param log_df data.frame of log data
-#' @param style  Style plot. \code{workflow} will plot one figure with 
+#' @param style  Style plot. \code{workflow} will plot one figure with
 #'               the pipeline steps. \code{decompose} will plot one figure
 #'               for each starting input file.
 #' @seealso  See also \link{getConsoleLogs}.
