@@ -14,7 +14,7 @@ single_cell_qc_project <- function(path,...) {
         dir.create(project_dir, recursive = TRUE, showWarnings = FALSE)
     }
 
-    project_files <- list.files(skeleton_dir,full.names = T)
+    project_files <- list.files(skeleton_dir, full.names = TRUE)
     file.copy(project_files, project_dir, recursive = TRUE)
 }
 
