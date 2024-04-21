@@ -1,3 +1,11 @@
+Version 0.1.14: April 21, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed bug to run Dowser lineages with raxml
++ Added saving RDS object for Dowser formatted clones and trees
+
 Version 0.1.13: March 12, 2024
 -------------------------------------------------------------------------------
 
