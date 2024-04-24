@@ -493,38 +493,48 @@ cat("The mutation frequency per sequence is stored in the final dataframes in th
 
 
 ```{r mufreqSample, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & "isotype" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+db_isotype_igh <- db %>% filter(!is.na(isotype), locus=="IGH")
 
-mufreqSample <- ggplot(db %>% filter(!is.na(isotype), locus=="IGH"), aes(x=isotype, y=mu_freq, fill=isotype)) + 
+if (nrow(db_isotype_igh) > 0) {
+    mufreqSample <- ggplot(db %>% filter(!is.na(isotype), locus=="IGH"), aes(x=isotype, y=mu_freq, fill=isotype)) + 
                     geom_boxplot() +
                     facet_wrap(~ subject_id + sample_id, ncol=3) +
                     theme_enchantr() +
                     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-mufreqSample <- eeplot(mufreqSample, 
-                     outdir=params$outdir, 
-                     file='mutation_frequency_sample',
-                     caption=paste0("Mutation frequency per isotype per `sample_id`."),
-                     mufreqSample)
-mufreqSample +
-    theme(legend.position = "none")
-caption <- mufreqSample$enchantr$html_caption  
+    mufreqSample <- eeplot(mufreqSample, 
+                        outdir=params$outdir, 
+                        file='mutation_frequency_sample',
+                        caption=paste0("Mutation frequency per isotype per `sample_id`."),
+                        mufreqSample)
+    mufreqSample +
+        theme(legend.position = "none")
+    caption <- mufreqSample$enchantr$html_caption  
+}
+
 ```
 
 ```{r mufreqSampleLocus, eval=any(db$locus %in% c("IGL", "IGK")), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
-mufreqSampleLocus <- ggplot(db %>% filter(!is.na(germline_alignment_d_mask)), aes(x=locus, y=mu_freq, fill=locus)) + 
+
+db_locus <- db %>% filter(!is.na(germline_alignment_d_mask))
+
+if (nrow(db_locus) > 0) {
+    mufreqSampleLocus <- ggplot(db %>% filter(!is.na(germline_alignment_d_mask)), aes(x=locus, y=mu_freq, fill=locus)) + 
                     geom_boxplot() +
                     facet_wrap(~ subject_id + sample_id, ncol=3) +
                     theme_enchantr() +
                     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-mufreqSampleLocus <- eeplot(mufreqSampleLocus, 
-                     outdir=params$outdir, 
-                     file='mutation_frequency_sample_locus',
-                     caption=paste0("Mutation frequency per locus per `sample_id`."),
-                     mufreqSample)
-mufreqSampleLocus +
-    theme(legend.position = "none")
-caption <- mufreqSampleLocus$enchantr$html_caption  
+    mufreqSampleLocus <- eeplot(mufreqSampleLocus, 
+                        outdir=params$outdir, 
+                        file='mutation_frequency_sample_locus',
+                        caption=paste0("Mutation frequency per locus per `sample_id`."),
+                        mufreqSample)
+    mufreqSampleLocus +
+        theme(legend.position = "none")
+    caption <- mufreqSampleLocus$enchantr$html_caption 
+}
+
 ```
 
 # Final repertoires and tables
