@@ -405,7 +405,7 @@ print_table_caption(tag="num_clones_table", text=tab$caption)
 caption <- "Clone size distribution. Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_plot <- ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
-    facet_wrap(~sample_id, scales = "free", ncol=3) +
+    facet_wrap(~sample_id, scales = "free_y", ncol=3) +
     xlab("Clone size (Number of sequences per clone)")
 clone_size_plot <- eeplot(clone_size_plot, 
        outdir=params$outdir, 
@@ -422,7 +422,7 @@ caption <- clone_size_plot$enchantr$html_caption
 caption <- "Clone size distribution, excluding singletons (subset to clone size > 1). Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_atleast2 <- ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
-    facet_wrap(~sample_id, scales = "free", ncol=3) +
+    facet_wrap(~sample_id, scales = "free_y", ncol=3) +
     xlab("Clone size (Sequences per clone)")
 clone_size_atleast2 <- eeplot(clone_size_atleast2, 
        outdir=params$outdir, 
