@@ -405,7 +405,7 @@ print_table_caption(tag="num_clones_table", text=tab$caption)
 caption <- "Clone size distribution. Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_plot <- ggplot(clone_sizes, aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
-    facet_wrap(~sample_id, scales = "free_y", ncol=3) +
+    facet_wrap(~sample_id, scales = "free", ncol=3) +
     xlab("Clone size (Number of sequences per clone)")
 clone_size_plot <- eeplot(clone_size_plot, 
        outdir=params$outdir, 
@@ -422,7 +422,7 @@ caption <- clone_size_plot$enchantr$html_caption
 caption <- "Clone size distribution, excluding singletons (subset to clone size > 1). Size is measured as number of heavy chain sequences belonging to the same clone."
 clone_size_atleast2 <- ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
     geom_bar() + theme_enchantr() +
-    facet_wrap(~sample_id, scales = "free_y", ncol=3) +
+    facet_wrap(~sample_id, scales = "free", ncol=3) +
     xlab("Clone size (Sequences per clone)")
 clone_size_atleast2 <- eeplot(clone_size_atleast2, 
        outdir=params$outdir, 
@@ -480,7 +480,7 @@ getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
     min(max_w, max(ncols*2, min_w))
 }
 
-getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=12) {
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=20) {
     nrows <- ceiling(nfacets/ncols)
     min(max_h, max(nrows*2, min_h))
 }
@@ -499,7 +499,7 @@ db_isotype$mu_freq <- as.numeric(db_isotype$mu_freq)
 if (nrow(db_isotype) > 0) {
     mufreqSample <- ggplot(db_isotype, aes(x=isotype, y=mu_freq, fill=isotype)) + 
                     geom_boxplot() +
-                    facet_wrap(~ subject_id + sample_id, ncol=3) +
+                    facet_wrap(~ subject_id + sample_id, ncol=3, scales = "free") +
                     theme_enchantr() +
                     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -523,7 +523,7 @@ db_locus$mu_freq <- as.numeric(db_locus$mu_freq)
 if (nrow(db_locus) > 0) {
     mufreqSampleLocus <- ggplot(db_locus, aes(x=locus, y=mu_freq, fill=locus)) + 
                     geom_boxplot() +
-                    facet_wrap(~ subject_id + sample_id, ncol=3) +
+                    facet_wrap(~ subject_id + sample_id, ncol=3, scales = "free") +
                     theme_enchantr() +
                     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
