@@ -529,7 +529,7 @@ if (nrow(db_locus) > 0) {
                         outdir=params$outdir, 
                         file='mutation_frequency_sample_locus',
                         caption=paste0("Mutation frequency per locus per `sample_id`."),
-                        mufreqSample)
+                        mufreqSampleLocus)
     mufreqSampleLocus +
         theme(legend.position = "none")
     caption <- mufreqSampleLocus$enchantr$html_caption 
