@@ -465,7 +465,7 @@ if (nrow(a@abundance)==0) {
 cat("# Mutation frequency\n")
 ```
 
-```{r mutation_frequency, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & !(mu_freq %in% colnames(db)), results='asis'}
+```{r mutation_frequency, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & !("mu_freq" %in% colnames(db)), results='asis'}
 db <- shazam::observedMutations(db,
                                 sequenceColumn = "sequence_alignment",
                                 germlineColumn = "germline_alignment_d_mask",
