@@ -494,6 +494,7 @@ cat("The mutation frequency per sequence is stored in the final dataframes in th
 
 ```{r mufreqSample, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & "isotype" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 db_isotype <- db %>% filter(!is.na(isotype), !(is.na(mu_freq)))
+db_isotype$mu_freq <- as.numeric(db_isotype$mu_freq)
 
 if (nrow(db_isotype) > 0) {
     mufreqSample <- ggplot(db_isotype, aes(x=isotype, y=mu_freq, fill=isotype)) + 
@@ -517,6 +518,7 @@ if (nrow(db_isotype) > 0) {
 ```{r mufreqSampleLocus, eval=any(db$locus %in% c("IGL", "IGK")), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 
 db_locus <- db %>% filter(!is.na(locus), !is.na(mu_freq))
+db_locus$mu_freq <- as.numeric(db_locus$mu_freq)
 
 if (nrow(db_locus) > 0) {
     mufreqSampleLocus <- ggplot(db_locus, aes(x=locus, y=mu_freq, fill=locus)) + 
