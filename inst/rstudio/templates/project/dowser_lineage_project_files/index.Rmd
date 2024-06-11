@@ -202,6 +202,7 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
                                collapse=params$collapse,
                                columns=columns)
     )
+    saveRDS(clones, file=file.path(params$outdir,"formatted_clones.RDS"))
 }
 ```
 
@@ -213,6 +214,7 @@ if (nrow(clones)>0) {
                       build=params$build,
                       exec=params$exec,
                       nproc=params$nproc)
+    saveRDS(trees, file=file.path(params$outdir,"trees_object.RDS"))
 }  else {
     cat("All clones have less than minseq = ",params$minseq," sequences.")
 }
@@ -230,18 +232,6 @@ if (length(trees)>0) {
     # Saving all trees in a PDF
     treesToPDF(plots, file.path(params$outdir, "all_trees.pdf"))
 
-    # Converting trees to graphs
-    graphs = lapply(trees$trees, phyloToGraph, germline="Germline")
-    names(graphs) <- trees$clone_id
-
-    # Saving all trees in graphML format
-    lapply(names(graphs), 
-           function(x) {
-               igraph::write.graph(file = file.path(params$outdir, paste("clone_", x, ".graphml", sep="")), 
-                                   graph=graphs[[x]], 
-                                   format="graphml")
-               }
-    )
 }
 ```
 

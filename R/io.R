@@ -1,12 +1,12 @@
 #' Load input repertertoires
-#' 
+#'
 #' @param input   Path to repertoire(s). Can be a directory or comma separated paths.
 #'                The target files can be repertoire files or file-of-files (
 #'                tabulated text files with one or more paths to repertoires in the first column).
-#' @param pattern If input is a directory, the pattern to select the input 
+#' @param pattern If input is a directory, the pattern to select the input
 #'                repertoire files to be loaded.
 #' @param col_select  Columns to select from the repertoire. Will be passed to airr::read_rearrangement
-#' 
+#'
 #' @export
 readInput <- function(input, pattern="pass.tsv", col_select=NULL) {
     # input is a directory
@@ -15,9 +15,9 @@ readInput <- function(input, pattern="pass.tsv", col_select=NULL) {
     } else {
         input_files <- strsplit(input, ",")[[1]]
     }
-    
-    # named vector or list giving the type for fields that are not defined 
-    # in the AIRR schema. The field name is the name, the value the type, 
+
+    # named vector or list giving the type for fields that are not defined
+    # in the AIRR schema. The field name is the name, the value the type,
     # denoted by one of "c" (character), "l" (logical), "i" (integer),
     # "d" (double), or "n" (numeric).
     aux_types <- c(
@@ -31,26 +31,29 @@ readInput <- function(input, pattern="pass.tsv", col_select=NULL) {
     bind_rows(lapply(input_files, function(in_file) {
         # Check if file (local or url) exists
         input_header <- data.frame()
-        try ( input_header <- read.delim(in_file, nrows=1, header=F, sep="\t")) 
+        try (input_header <- read.delim(in_file, nrows=1, header=F, sep="\t"))
         if (!file.exists(in_file) & nrow(input_header) == 0 ) {
             stop(paste0("File ", basename(in_file), " doesn't exist."))
-        } 
+        }
         # check if it is a fof by reading the first line
         # if >1 column -> repertoire; if 1 column -> fof
         input_repertoires <- in_file
         if (ncol(input_header) == 1 ) {
             input_repertoires <- read.delim(in_file, header=F, sep="\t")[[1]]
-        } 
+        }
         bind_rows(lapply(input_repertoires, function(repertoire) {
             repertoire_header <- data.frame()
-            try ( repertoire_header <- read.delim(repertoire, nrows=1, header=F, sep="\t"))             
+            try ( repertoire_header <- read.delim(repertoire, nrows=1, header=F, sep="\t"))
             if (!file.exists(repertoire) && nrow(repertoire_header)==0 ) {
                 stop(paste0("File ", basename(repertoire), " doesn't exist."))
-            } 
+            }
             if (!is.null(col_select)) {
-                bind_cols(read_rearrangement(repertoire, aux_types=aux_types) %>% select(any_of(col_select)),data.frame("input_file"=basename(repertoire)))
+                bind_cols(read_rearrangement(repertoire, aux_types=aux_types) %>%
+                              select(any_of(col_select)),
+                          data.frame("input_file"=basename(repertoire)))
             } else {
-                bind_cols(read_rearrangement(repertoire, aux_types=aux_types),data.frame("input_file"=basename(repertoire)))
+                bind_cols(read_rearrangement(repertoire, aux_types=aux_types),
+                          data.frame("input_file"=basename(repertoire)))
             }
 
         }))
@@ -58,19 +61,19 @@ readInput <- function(input, pattern="pass.tsv", col_select=NULL) {
 }
 
 #' eeplot: a convenience function to save ggplot figures
-#' 
+#'
 #' This function takes a \code{ggplot}, and saves it in an .RData file in
-#' the \code{outdir} directory. It returns the same input \code{p} with an 
+#' the \code{outdir} directory. It returns the same input \code{p} with an
 #' additional field,\code{enchantr}, with an \code{html_caption}
 #' that can be used in html reports, to provide a download link to the figure file.
-#' 
+#'
 #' @param p ggplot figure
 #' @param outdir directory where the output file will be saved.
 #' @param file   filename. If null, \code{p} will be used.
 #' @param caption catption for the image. Will be updated to add the path to
 #'                the output file.
-#' @param ...   Additional objects to be save in the same output file               
-#' @examples 
+#' @param ...   Additional objects to be save in the same output file
+#' @examples
 #' library(ggplot2)
 #' diamonds_plot <- ggplot(diamonds, aes(carat)) + geom_histogram() +
 #'     labs(title = "Title of the plot",
@@ -94,22 +97,24 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
             file <- plot_name
         }
         p_path <- file.path("ggplots",paste0(file,".RData"))
-        p_list[[plot_name]][['enchantr']][['html_caption']] <- paste0(caption," <a href='",p_path,"'>ggplot file: ",basename(p_path),"</a>")
+        p_list[[plot_name]][['enchantr']][['html_caption']] <-
+            paste0(caption, " <a href='", p_path, "'>ggplot file: ",
+                   basename(p_path), "</a>")
         p_path <- file.path(outdir, p_path)
         var_name <- paste(plot_name,"extra_objects", sep="_")
         assign(var_name, list(...))
         dir.create(dirname(p_path))
-        save(list=c(names(p_list),var_name), file=p_path)
-    } 
+        save(list=c(names(p_list), var_name), file=p_path)
+    }
     p_list[[plot_name]]
 }
 
 
 #' eeplot: a convenience function to save tables
-#' 
+#'
 #' This function takes a \code{data.frame}, and saves it as a .tsv file in
-#' the \code{outdir} directory. 
-#' 
+#' the \code{outdir} directory.
+#'
 #' @param df data.frame
 #' @param caption caption for the table
 #' @param outdir directory where the output table be saved.
@@ -118,7 +123,7 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
 #' @param file   filename. If null, \code{p} will be used.
 #' @param show_max Number of lines to show. All data will be saved in the .tsv file.
 #'
-#' @return It returns a list with a \code{DT::datatable} and the caption, 
+#' @return It returns a list with a \code{DT::datatable} and the caption,
 #'         updated with additional text with a link to the destination file.
 #' @seealso  See \link{print_table_caption}, the use of which is required for
 #'           correct placement of the caption.
@@ -126,34 +131,35 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
 eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
     element_id <- deparse1(substitute(df))
     element_id <- paste0(element_id,format(Sys.time(), "%Y%m%d%H%M%S"))
-    
+
     # caption and numbering https://stackoverflow.com/questions/49819892/cross-referencing-dtdatatable-in-bookdown
     # tag <- gsub("_","-",paste0("(\\#tab:",element_id,")"))
     tag <- ""
     if (is.null(caption)) {
         caption=""
     } else if (!is.null(caption)) {
-        caption <- paste0(tag," ",caption)   
-    } 
+        caption <- paste0(tag," ",caption)
+    }
     if (!is.null(outdir)) {
         if (is.null(file)) {
             file <- element_id
         }
         #tab_path <- file.path(outdir, paste0(file,".tsv"))
         tab_path <- file.path("tables", paste0(file,".tsv"))
-        caption <- paste0(caption, " File can be found here: <a href='",tab_path,"'> ",basename(tab_path),"</a>")
+        caption <- paste0(caption, " File can be found here: <a href='",
+                          tab_path,"'> ",basename(tab_path),"</a>")
         dir.create(dirname(file.path(outdir,tab_path)))
-        write.table(df, 
-                    file = file.path(outdir,tab_path), 
+        write.table(df,
+                    file = file.path(outdir,tab_path),
                     sep="\t", quote = F, row.names = F)
-    } 
+    }
     if (!is.null(show_max)) {
         df <- df[1:min(show_max,nrow(df)),]
     }
     dt <- DT::datatable(df,
-                        filter="top", elementId = element_id, 
-                        rownames = FALSE, fillContainer = F, 
-                        # style = 'bootstrap', 
+                        filter="top", elementId = element_id,
+                        rownames = FALSE, fillContainer = F,
+                        # style = 'bootstrap',
                         # class = 'table-bordered table-condensed',
                         class = 'stripe hover order-column row-border compact',
                         options = list(
@@ -169,7 +175,7 @@ eetable <- function(df, caption=NULL, outdir=NULL, file=NULL, show_max=NULL) {
                         #     style = 'caption-side: top; text-align: left;',
                         #     caption
                         # )
-    )   
+    )
     # https://stackoverflow.com/questions/70868546/r-markdown-printing-datatable-from-inside-the-function
     # https://stackoverflow.com/questions/30509866/for-loop-over-dygraph-does-not-work-in-r
     # doesn't work, prints white space
@@ -193,7 +199,7 @@ print_table_caption <- function(tag, text) {
     if (!is.null(text)) {
         if  (grepl("^\\(", text)) {
             text <- sub(".*\\)\\s+","", text)
-        }   
+        }
     }
     tag <- gsub("_","-",tag)
     cat("<table>", paste0("<caption>",
@@ -239,9 +245,9 @@ printParams <- function(p) {
 #' @param    locus       column in \code{db} containing locus assignments
 #' @param    sequence_id column in \code{db} containing locus assignments
 #' @param    fields      Columns in \code{db}, in addition to \code{sample_id},
-#'                       that should be used to group sequences to be 
+#'                       that should be used to group sequences to be
 #'                       analyzed independently.
-#'                       
+#'
 #' @return   The input data.frame (\code{db}) with doublets removed.
 #' @examples
 #' isHeavyChain(c("IGH","igh","TRA"))
@@ -260,20 +266,20 @@ isHeavyChain <- function(loci) {
 #' @export
 validateFields <- function(fields, db, na_action=c("null", "stop")) {
     na_action <- match.arg(na_action)
-    field_exists <- sapply(fields, function(x) { 
+    field_exists <- sapply(fields, function(x) {
         x %in% colnames(db)}
     )
     if (any(!field_exists)) {
         message("Ignoring non-existing : ",paste(fields[!field_exists], collapse = ", "))
         fields <- fields[field_exists]
     }
-    if (length(fields) == 0 ) { 
+    if (length(fields) == 0 ) {
         fields <- NULL
         return (fields)
     }
     # Check that all values are not NA
     has_data <- sapply(fields, function(f) {
-        if (all(is.na(db[[f]]))) { 
+        if (all(is.na(db[[f]]))) {
             return (FALSE)
         } else {
             return(TRUE)
@@ -290,10 +296,10 @@ validateFields <- function(fields, db, na_action=c("null", "stop")) {
             fields <- fields[has_data]
         }
     }
-    if (length(fields) == 0 ) { 
+    if (length(fields) == 0 ) {
         fields <- NULL
-        return (fields)
-    }            
+        return(fields)
+    }
+
     fields
-    
 }

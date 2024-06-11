@@ -135,7 +135,7 @@ print_table_caption("clonal_diversity", tab$caption)
 # plot duplicated cells
 diversitySample <- diversitySample + 
     geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
-    facet_wrap(~sample_id + subject_id, ncol=3)
+    facet_wrap(~sample_id + subject_id, ncol=3, scales = "free_x")
 diversitySample <- eeplot(diversitySample, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
@@ -167,7 +167,8 @@ div_at_q <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
 div_at_q <- eeplot(div_at_q, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
-                     caption="Diversity at different q values.")
-div_at_q
+                     caption="Diversity at different q values.",
+                     div_at_q)
+ggplotly(div_at_q)
 caption <- div_at_q$enchantr$html_caption
 ```

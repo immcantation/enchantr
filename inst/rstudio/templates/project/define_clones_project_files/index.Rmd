@@ -60,6 +60,10 @@ params:
        label: "`linkage`"
        input: text
        value: "single"
+   isotype_column:
+       label: "`isotype_column`"
+       input: text
+       value: "c_call"
    nboot:
        label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
        input: numeric
@@ -167,7 +171,7 @@ if (params$species =="auto") {
     species <- params$species
 }
 
-# Check fo single cell label
+# Check for single cell label
 if (!is.null(singlecell)) {
     if (singlecell %in% colnames(db)) {
          db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
@@ -291,14 +295,27 @@ eetable(input_c_call_summary)$table
 print_table_caption(tag="input_c_call_summary", text=tab_caption)
 ```
 
-```{r eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
+```{r eval=any(db$locus %in% c("IGH")) & params$isotype_column %in% colnames(db) , results='asis'}
 cat("## Sequences per isotype\n")
 ```
 
-```{r input-isotype-sumary, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
+```{r input-isotype-sumary, eval=any(db$locus %in% c("IGH")) & params$isotype_column %in% colnames(db) , results='asis'}
 # Create isotype column
-db <- db %>%
-    mutate(isotype = ifelse(grepl("IGH", locus), alakazam::getGene(c_call, first=TRUE), NA))
+if (params$isotype_column == "c_call") {
+    db <- db %>% filter(locus %in% c("IGH", "IGK", "IGL")) %>%
+    mutate(isotype = alakazam::getGene(c_call, first=TRUE))
+} else {
+    db <- db %>%
+    mutate(isotype = case_when(
+      grepl("IGHA", get(!!params$isotype_column)) ~ "IGHA",
+      grepl("IGHM", get(!!params$isotype_column)) ~ "IGHM",
+      grepl("IGHG", get(!!params$isotype_column)) ~ "IGHG",
+      grepl("IGHE", get(!!params$isotype_column)) ~ "IGHE",
+      grepl("IGHD", get(!!params$isotype_column)) ~ "IGHD",
+      .default = NA
+    ))
+}
+
 
 input_isotype_summary <- db %>%
    group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "isotype")))) %>%
@@ -312,14 +329,14 @@ tab_caption <- paste0("Input data. Number of sequences in each ",
 eetable(input_isotype_summary)$table
 ```
 
-```{r echo=FALSE, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db), results='asis'}
+```{r echo=FALSE, eval=any(db$locus %in% c("IGH")) & params$isotype_column %in% colnames(db), results='asis'}
 print_table_caption(tag="input_isotype_summary", text=tab_caption)
 ```
 
 # Clonal assignment
 
 ```{r, eval="clone_id" %in% colnames(db), results='asis', echo=FALSE}
-cat("\n\nThe input data contains clonal assingments, and are being reused.")
+cat("\n\nThe input data contains clonal assignments, and are being reused.")
 ```
 
 ```{r, child=c('run_scoper.Rmd'), eval=!"clone_id" %in% colnames(db)}
@@ -443,11 +460,12 @@ if (nrow(a@abundance)==0) {
 ```
 
 
+
 ```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
 cat("# Mutation frequency\n")
 ```
 
-```{r mutation_frequency, eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
+```{r mutation_frequency, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & !("mu_freq" %in% colnames(db)), results='asis'}
 db <- shazam::observedMutations(db,
                                 sequenceColumn = "sequence_alignment",
                                 germlineColumn = "germline_alignment_d_mask",
@@ -462,34 +480,63 @@ getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
     min(max_w, max(ncols*2, min_w))
 }
 
-getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=12) {
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=20) {
     nrows <- ceiling(nfacets/ncols)
     min(max_h, max(nrows*2, min_h))
 }
 ```
 
 ```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
-cat("Showing mutation frequency per isotype of heavy chains only if the `c_call` field is present.\n")
+cat("Showing mutation frequency per isotype of heavy chains only if the `c_call` or `isotype_column` field as well as the `germline_alignment_d_mask` are present.\n")
 cat("The mutation frequency per sequence is stored in the final dataframes in the `mu_freq` column.\n")
 ```
 
 
-```{r mufreqSample, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & "c_call" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r mufreqSample, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & "isotype" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+db_isotype <- db %>% filter(!is.na(isotype), !(is.na(mu_freq)))
+db_isotype$mu_freq <- as.numeric(db_isotype$mu_freq)
 
-mufreqSample <- ggplot(db %>% filter(!is.na(isotype), locus=="IGH"), aes(x=isotype, y=mu_freq, fill=isotype)) + 
+if (nrow(db_isotype) > 0) {
+    mufreqSample <- ggplot(db_isotype, aes(x=isotype, y=mu_freq, fill=isotype)) + 
                     geom_boxplot() +
-                    facet_wrap(~ subject_id + sample_id, ncol=3) +
+                    facet_wrap(~ subject_id + sample_id, ncol=3, scales = "free") +
                     theme_enchantr() +
                     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-mufreqSample <- eeplot(mufreqSample, 
-                     outdir=params$outdir, 
-                     file='mutation_frequency_sample',
-                     caption=paste0("Mutation frequency per isotype per `sample_id`."),
-                     mufreqSample)
-mufreqSample +
-    theme(legend.position = "none")
-caption <- mufreqSample$enchantr$html_caption  
+    mufreqSample <- eeplot(mufreqSample, 
+                        outdir=params$outdir, 
+                        file='mutation_frequency_sample',
+                        caption=paste0("Mutation frequency per isotype per `sample_id`."),
+                        mufreqSample)
+    print(mufreqSample +
+        theme(legend.position = "none"))
+    caption <- mufreqSample$enchantr$html_caption  
+}
+
+```
+
+```{r mufreqSampleLocus, eval=any(db$locus %in% c("IGL", "IGK")), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+
+db_locus <- db %>% filter(!is.na(locus), !is.na(mu_freq))
+db_locus$mu_freq <- as.numeric(db_locus$mu_freq)
+
+if (nrow(db_locus) > 0) {
+    mufreqSampleLocus <- ggplot(db_locus, aes(x=locus, y=mu_freq, fill=locus)) + 
+                    geom_boxplot() +
+                    facet_wrap(~ subject_id + sample_id, ncol=3, scales = "free") +
+                    theme_enchantr() +
+                    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+    mufreqSampleLocus <- eeplot(mufreqSampleLocus, 
+                        outdir=params$outdir, 
+                        file='mutation_frequency_sample_locus',
+                        caption=paste0("Mutation frequency per locus per `sample_id`."),
+                        mufreqSampleLocus)
+    print(mufreqSampleLocus +
+        theme(legend.position = "none"))
+    caption <- mufreqSampleLocus$enchantr$html_caption 
+}
+
 ```
 
 # Final repertoires and tables
