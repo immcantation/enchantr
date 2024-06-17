@@ -421,6 +421,7 @@ dir.create(file.path(params$outdir, "repertoires"))
 for (i in 1:nrow(output_groups)) {
     this_group <- output_groups[i, , drop = F]
     group_fn <- ""
+    group_db <- data.frame()
     
     if (this_group[["output_size"]]>0) {
         group_db <- right_join(db, this_group,
