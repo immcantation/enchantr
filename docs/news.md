@@ -1,5 +1,39 @@
 # Release Notes
 
+Version 0.1.17: October 14, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed bug in single-cell QC report when database was empty.
++ Fixed bug in collapseDuplicates to provide as numeric field "duplicate_count" and "consensus_count".
+
+
+Version 0.1.16: May 29, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed bug plotting mutation frequency.
+
+
+Version 0.1.14: April 21, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed bug to run Dowser lineages with raxml
++ Added saving RDS object for Dowser formatted clones and trees
+
+Version 0.1.13: March 12, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Improved defineClones report and added mutation frequency calculation
++ Fixed bug that eliminated light chains from bulk or mixed sequencing data from
+final repertoires.
+
 Version 0.1.10: January 11, 2024
 -------------------------------------------------------------------------------
 
