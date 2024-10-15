@@ -6,8 +6,8 @@
 #' @param  path path to the directory where the project will be created
 collapse_duplicates_project <- function(path,...) {
     skeleton_dir <- file.path(system.file(package = "enchantr"), "rstudio",
-                              "templates", "project",
-                              "collapse_duplicates_project_files")
+                                "templates", "project",
+                                "collapse_duplicates_project_files")
     project_dir <- path
     if (!dir.exists(project_dir)) {
         message("Creating project_dir ", project_dir)
@@ -23,7 +23,7 @@ findDuplicates <- function (db, groups="sample_id",
                             id = "sequence_id",
                             seq = "sequence_alignment",
                             text_fields = NULL,
-                            num_fields = c("conscount", "dupcount"),
+                            num_fields = c("consensus_count", "duplicate_count"),
                             seq_fields = NULL,
                             add_count = TRUE,
                             ignore = c("N", "-", ".", "?"), sep=",",
@@ -44,7 +44,7 @@ findDuplicates <- function (db, groups="sample_id",
         }
     }
     columns <- c(groups, id, seq, text_fields, num_fields, seq_fields,
-                 "v_call", d_call, "j_call", "junction_length", c_call, "productive")
+                "v_call", d_call, "j_call", "junction_length", c_call, "productive")
     columns <- columns[!is.null(columns)]
     check <- alakazam::checkColumns(db, columns)
     if (!check == TRUE ) { stop(check) }
@@ -54,8 +54,8 @@ findDuplicates <- function (db, groups="sample_id",
 
     db[['collapse_idx']] <- db %>%
         mutate(v_gene=getGene(v_call),
-               d_gene=getGene(d_call),
-               j_gene=getGene(j_call)) %>%
+                d_gene=getGene(d_call),
+                j_gene=getGene(j_call)) %>%
         group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, "junction_length", "productive", "seq_len"))) %>%
         group_indices()
 
@@ -96,8 +96,8 @@ findDuplicates <- function (db, groups="sample_id",
         if (cluster_type == "PSOCK") {
             parallel::clusterExport(cluster,
                                     list('db_subset', 'id', 'seq', 'text_fields',
-                                         'num_fields', 'seq_fields', 'add_count',
-                                         'ignore', 'sep', 'dry', 'verbose', 'columns'),
+                                            'num_fields', 'seq_fields', 'add_count',
+                                            'ignore', 'sep', 'dry', 'verbose', 'columns'),
                                     envir=environment() )
         }
         registerDoParallel(cluster)
@@ -118,15 +118,15 @@ findDuplicates <- function (db, groups="sample_id",
                 }
 
             collapsed_db <- collapseDuplicates(db_subset %>%
-                                                   filter(collapse_idx == this_group),
-                                               id = id,
-                                               seq = seq,
-                                               text_fields = text_fields,
-                                               num_fields = num_fields,
-                                               seq_fields = seq_fields,
-                                               add_count = add_count,
-                                               ignore = ignore, sep=sep,
-                                               dry = dry, verbose = verbose)
+                                                filter(collapse_idx == this_group),
+                                                id = id,
+                                                seq = seq,
+                                                text_fields = text_fields,
+                                                num_fields = num_fields,
+                                                seq_fields = seq_fields,
+                                                add_count = add_count,
+                                                ignore = ignore, sep=sep,
+                                                dry = dry, verbose = verbose)
             collapsed_db %>%
                 select(any_of(c(columns,'collapse_count', 'finddups_row_idx')))
         },

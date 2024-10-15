@@ -11,6 +11,7 @@ enchantr_report <- function(name=c("validate_input",
                                    "collapse_duplicates",
                                    "find_threshold",
                                    "define_clones",
+                                   "convergence",
                                    "dowser_lineage"), report_params=list()) {
     
     name <- match.arg(name)
@@ -37,6 +38,7 @@ enchantr_report <- function(name=c("validate_input",
             "collapse_duplicates" = invisible(collapse_duplicates_project(outdir)),
             "find_threshold" = invisible(find_threshold_project(outdir)),
             "define_clones" = invisible(define_clones_project(outdir)),
+            "convergence" = invisible(convergence_project(outdir)),            
             "dowser_lineage" = invisible(dowser_lineage_project(outdir))
     )
     

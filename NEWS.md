@@ -1,3 +1,12 @@
+Version 0.1.17: October 14, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed bug in single-cell QC report when database was empty.
++ Fixed bug in collapseDuplicates to provide as numeric field "duplicate_count" and "consensus_count".
+
+
 Version 0.1.16: May 29, 2024
 -------------------------------------------------------------------------------
 

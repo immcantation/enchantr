@@ -57,16 +57,16 @@ params:
       input: checkbox
       value: FALSE
 editor_options: 
-  chunk_output_type: console
+   chunk_output_type: console
 ---
 
 ```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
-                      echo=params$echo,cache=params$cache,
-                      warning=FALSE, message=FALSE,
-                      eval.after="fig.cap",
-                      out_dir=params$outdir,
-                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+                     echo=params$echo,cache=params$cache,
+                     warning=FALSE, message=FALSE,
+                     eval.after="fig.cap",
+                     out_dir=params$outdir,
+                     eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
 
 # Libraries
 suppressPackageStartupMessages(library("enchantr"))
@@ -77,12 +77,12 @@ suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
 
 if (!dir.exists(params[['outdir']])) {
-    dir.create(params[['outdir']], recursive = T)
+   dir.create(params[['outdir']], recursive = T)
 }
 
 file.copy(params$logo, 
-          file.path(params$outdir,"assets", "logo.png"),
-          recursive = T, overwrite=T)
+         file.path(params$outdir,"assets", "logo.png"),
+         recursive = T, overwrite=T)
 ```
 
 # Input parameters
@@ -103,8 +103,8 @@ save(params, file=file.path(params$outdir,"params.RData"))
 db <- readInput(params[['input']])
 
 input_sizes <- db %>%
-    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
-    summarize(input_size=n())
+   group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+   summarize(input_size=n())
 input_size <- nrow(db)
 ```
 
@@ -117,7 +117,7 @@ table(duplicated(db[['sequence_alignment']]))
 ```
 
 ```{r findDuplicates}
-num_fields <- c("conscount","dupcount")
+num_fields <- c("consensus_count","duplicate_count")
 num_fields <- num_fields[num_fields %in% colnames(db)]
 if (length(num_fields)<1) {num_fields <- NULL}
 
@@ -134,47 +134,47 @@ db <- findDuplicates(db, groups=params$collapseby,
 pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_collapse-pass.tsv")
+   output_fn <- paste0(params$outname,"_collapse-pass.tsv")
 } else {
-    output_fn <- sub(".tsv$", "_collapse-pass.tsv", basename(params$input))
+   output_fn <- sub(".tsv$", "_collapse-pass.tsv", basename(params$input))
 }
 
 if (!is.null(params$log)) {
-    log_fn <- paste0(params$log,".txt")
+   log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("_collapse-pass.tsv$", "_command_log.txt", basename(output_fn))
+   log_fn <- sub("_collapse-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
 output_groups <- db[pass,] %>%
-    ungroup() %>%
-    group_by(input_file) %>%
-    summarize(output_size=n()) %>%
-    left_join(input_sizes)
+   ungroup() %>%
+   group_by(input_file) %>%
+   summarize(output_size=n()) %>%
+   left_join(input_sizes)
 
 
 output_files <- c()
 output_sizes <- c()
 dir.create(file.path(params$outdir,"repertoires"))   
 for (i in 1:nrow(output_groups))  {
-    group_db <- right_join(db[pass,],
+   group_db <- right_join(db[pass,],
                            output_groups[i,,drop=F],
                            by="input_file")
-    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= "input_file"))
-    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
-    output_files <- c(output_files, group_fn)
-    output_sizes <- c(output_sizes, nrow(group_db))
-    write_rearrangement(group_db %>% select(!any_of(c("input_file", "input_size", "output_size"))), file=group_fn)
-    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
+   group_db_label <- gsub("^id_","",makeLabel(group_db, fields= "input_file"))
+   group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
+   output_files <- c(output_files, group_fn)
+   output_sizes <- c(output_sizes, nrow(group_db))
+   write_rearrangement(group_db %>% select(!any_of(c("input_file", "input_size", "output_size"))), file=group_fn)
+   cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
 ```
 
 ```{r log}
 cat("START> CollapseDuplicates", file=log_fn, append=F)
 for (i in 1:nrow(output_groups)) {
-    cat(paste0("\nFILE",i,"> ",output_groups[['input_file']][i]), file=log_fn, append=T)
-    cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
-    cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
-    cat(paste0("\nFAIL",i,"> ",output_groups[['input_size']][i]-output_sizes[i]), file=log_fn, append=T)    
+   cat(paste0("\nFILE",i,"> ",output_groups[['input_file']][i]), file=log_fn, append=T)
+   cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
+   cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
+   cat(paste0("\nFAIL",i,"> ",output_groups[['input_size']][i]-output_sizes[i]), file=log_fn, append=T)    
 }
 ```
 
