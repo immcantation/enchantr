@@ -68,5 +68,5 @@ Suggests:
     testthat
 RoxygenNote: 7.3.1
 URL: https://enchantr.readthedocs.io/en/stable
-BugReports: https://bitbucket.org/kleinstein/enchantr/issues
+BugReports: https://github.com/immcantation/enchantr/issues
 Language: en-US
