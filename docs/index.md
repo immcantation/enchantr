@@ -24,7 +24,7 @@ Contact
 -------------------------------------------------------------------------------
 
 For help and questions, please contact the [Immcantation Group](mailto:immcantation@googlegroups.com)
-or use the [issue tracker](https://bitbucket.org/kleinstein/enchantr/issues?status=new&status=open).
+or use the [issue tracker](https://github.com/immcantation/enchantr/issues).
 
 
 ## Dependencies
