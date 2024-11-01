@@ -19,17 +19,20 @@ collapse_duplicates_project <- function(path,...) {
 
 
 #' @export
-findDuplicates <- function (db, groups="sample_id",
+findDuplicates <- function (db, 
+                            groups="sample_id",
                             id = "sequence_id",
                             seq = "sequence_alignment",
                             text_fields = NULL,
                             num_fields = c("consensus_count", "duplicate_count"),
                             seq_fields = NULL,
                             add_count = TRUE,
-                            ignore = c("N", "-", ".", "?"), sep=",",
+                            ignore = c("N", "-", ".", "?"), 
+                            sep=",",
                             dry = F, verbose = F,
                             nproc=1) {
-
+    
+    # Including c_call if present in the groups, so sequences with different c_call will not be collapsed
     c_call <- NULL
     if ("c_call" %in% colnames(db)) {
         if (any(!is.na(db[['c_call']]))) {
@@ -43,6 +46,23 @@ findDuplicates <- function (db, groups="sample_id",
             d_call <- "d_call"
         }
     }
+
+    # For many bulk protocols, the isotype will be determined with either the cprimer or the cregion annotations
+    # Including cprimer and cregion if present in the groups, so sequences with different cprimer or cregions will not be collapsed
+    cprimer <- NULL
+    if ("cprimer" %in% colnames(db)) {
+        if (any(!is.na(db[['cprimer']]))) {
+            cprimer <- "cprimer"
+        }
+    }
+
+    cregion <- NULL
+    if ("cregion" %in% colnames(db)) {
+        if (any(!is.na(db[['cregion']]))) {
+            cregion <- "cregion"
+        }
+    }
+
     columns <- c(groups, id, seq, text_fields, num_fields, seq_fields,
                 "v_call", d_call, "j_call", "junction_length", c_call, "productive")
     columns <- columns[!is.null(columns)]
@@ -125,7 +145,8 @@ findDuplicates <- function (db, groups="sample_id",
                                                 num_fields = num_fields,
                                                 seq_fields = seq_fields,
                                                 add_count = add_count,
-                                                ignore = ignore, sep=sep,
+                                                ignore = ignore,
+                                                sep=sep,
                                                 dry = dry, verbose = verbose)
             collapsed_db %>%
                 select(any_of(c(columns,'collapse_count', 'finddups_row_idx')))

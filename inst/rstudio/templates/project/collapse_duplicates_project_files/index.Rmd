@@ -121,7 +121,8 @@ num_fields <- c("consensus_count","duplicate_count")
 num_fields <- num_fields[num_fields %in% colnames(db)]
 if (length(num_fields)<1) {num_fields <- NULL}
 
-db <- findDuplicates(db, groups=params$collapseby, 
+db <- findDuplicates(db, 
+               groups=params$collapseby, 
                text_fields=NULL,
                num_fields=num_fields,
                seq_fields=NULL,
