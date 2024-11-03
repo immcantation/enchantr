@@ -49,10 +49,10 @@ findDuplicates <- function (db,
 
     # For many bulk protocols, the isotype will be determined with either the cprimer or the cregion annotations
     # Including cprimer and cregion if present in the groups, so sequences with different cprimer or cregions will not be collapsed
-    cprimer <- NULL
-    if ("cprimer" %in% colnames(db)) {
-        if (any(!is.na(db[['cprimer']]))) {
-            cprimer <- "cprimer"
+    c_primer <- NULL
+    if ("c_primer" %in% colnames(db)) {
+        if (any(!is.na(db[['c_primer']]))) {
+            c_primer <- "c_primer"
         }
     }
 
@@ -64,7 +64,7 @@ findDuplicates <- function (db,
     }
 
     columns <- c(groups, id, seq, text_fields, num_fields, seq_fields,
-                "v_call", d_call, "j_call", "junction_length", c_call, "productive")
+                "v_call", d_call, "j_call", "junction_length", c_call, "productive", c_primer, cregion)
     columns <- columns[!is.null(columns)]
     check <- alakazam::checkColumns(db, columns)
     if (!check == TRUE ) { stop(check) }
@@ -76,7 +76,7 @@ findDuplicates <- function (db,
         mutate(v_gene=getGene(v_call),
                 d_gene=getGene(d_call),
                 j_gene=getGene(j_call)) %>%
-        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, "junction_length", "productive", "seq_len"))) %>%
+        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, c_primer, cregion, "junction_length", "productive", "seq_len"))) %>%
         group_indices()
 
     db_subset <- db %>%
