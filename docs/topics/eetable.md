@@ -37,7 +37,7 @@ show_max
 Value
 -------------------
 
-It returns a list with a `DT::datatable` and the caption, 
+It returns a list with a `DT::datatable` and the caption,
 updated with additional text with a link to the destination file.
 
 

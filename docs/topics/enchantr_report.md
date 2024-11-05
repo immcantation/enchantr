@@ -12,7 +12,7 @@ Usage
 enchantr_report(
 name = c("validate_input", "file_size", "chimera_analysis", "single_cell_qc",
 "contamination", "collapse_duplicates", "find_threshold", "define_clones",
-"dowser_lineage"),
+"convergence", "dowser_lineage"),
 report_params = list()
 )
 ```

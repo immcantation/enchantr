@@ -1,12 +1,13 @@
 site_name: enchantr
 site_url: https://enchantr.readthedocs.io
 site_favicon: img/favicon.ico
-repo_url: https://bitbucket.org/kleinstein/enchantr
+repo_url: https://github.com/immcantation/enchantr
 edit_uri: src/master/docs/
 theme: readthedocs
 site_name: enchantr
 docs_dir: docs
 markdown_extensions:
+  - admonition
   - def_list
   - sane_lists
   - smarty
@@ -21,16 +22,16 @@ nav:
     - 'Download & Installation': install.md
     - 'Package Overview': topics/enchantr.md
     - 'Release Notes': news.md
-    - 'Related Projects': projects.md      
+    - 'Related Projects': projects.md
   - 'Vignettes':
     - 'enchantR reports': vignettes/enchantr-vignette.md
   - 'Help Topics':
     - 'Reports':
       - topics/chimera_analysis_project.md
       - topics/collapse_duplicates_project.md
-      - topics/contamination_project.md      
-      - topics/single_cell_qc_project.md      
+      - topics/contamination_project.md
+      - topics/single_cell_qc_project.md
       - topics/find_threshold_project.md
       - topics/define_clones_project.md
-      - topics/dowser_lineage_project.md      
+      - topics/dowser_lineage_project.md
 

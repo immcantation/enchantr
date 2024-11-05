@@ -1,17 +1,17 @@
-**chimera_analysis_project** - *Create an Immcantation Chimera detection*
+**convergence_project** - *Create an Immcantation ...*
 
 Description
 --------------------
 
 From RStudio, use the New Project wizard: File > New Project >
-New Directory > then select Immcantation Input Validation
-to create the skeleton of an Immcantation Input Validation project
+New Directory > then select  Immcantation ...
+to create the skeleton of an Immcantation ... project
 
 
 Usage
 --------------------
 ```
-chimera_analysis_project(path, ...)
+convergence_project(path, ...)
 ```
 
 Arguments
