@@ -1,5 +1,13 @@
 # Release Notes
 
+Version 0.1.18: November 5, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ CollapseDuplicates now does not collapse duplicates with different cprimer or c_region fields
+
+
 Version 0.1.17: October 14, 2024
 -------------------------------------------------------------------------------
 
