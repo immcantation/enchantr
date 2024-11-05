@@ -6,7 +6,7 @@ Download
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
 `enchantr` is currently not available from CRAN and must be installed from the
-Bitbucket repository directly by first cloning it from [https://bitbucket.org/kleinstein/enchantr](https://bitbucket.org/kleinstein/enchantr)
+GitHub repository directly by first cloning it from [https://github.com/immcantation/enchantr](https://github.com/immcantation/enchantr)
 
 Then building it using the following R commands from the package root:
 
@@ -18,10 +18,10 @@ document()
 install()
 ```
 
-Alternatively, you can install the package directly from the Bitbucket repository, but this
+Alternatively, you can install the package directly from the GitHub repository, but this
 will not build the documentation:
 
 ```R
 library(devtools)
-install_bitbucket("kleinstein/enchantr@master")
+install_github("immcantation/enchantr@master")
 ```

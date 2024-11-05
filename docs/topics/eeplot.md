@@ -4,7 +4,7 @@ Description
 --------------------
 
 This function takes a `ggplot`, and saves it in an .RData file in
-the `outdir` directory. It returns the same input `p` with an 
+the `outdir` directory. It returns the same input `p` with an
 additional field,`enchantr`, with an `html_caption`
 that can be used in html reports, to provide a download link to the figure file.
 
@@ -56,6 +56,7 @@ p
 
 ```R
 p$enchantr$html_caption
+
 ```
 
 
