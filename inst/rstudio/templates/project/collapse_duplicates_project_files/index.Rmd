@@ -129,12 +129,13 @@ match_isotype <- function(x, regex) {
                      match <- stringr::str_match(x, regex)
                      if (length(match) > 0) return(match) else return(NA)
                   }
-ig_isotype_heavy_regex <- "IG[H][AEMGD][1234]?[ABC]?"
-ig_isotype_light_regex <- "IG[LK][C][1234]?[ABC]?"
-tr_isotype_regex <- "TR[ABDG]C[14]?"
+# Based on Human and mouse IMGT gene nomenclature
+ig_isotype_heavy_regex <- "IG[H][AEMGD]P?[1234]?[ABC]?"
+ig_isotype_light_regex <- "IG[LK][C][1234567]?[ABC]?"
+tr_isotype_regex <- "TR[ABDG]C[1234]?"
 
 if (any(is.na(db[['c_call']]))) {
-   if ("c_region" %in% colnames(db)) {
+   if (params$c_region_column %in% colnames(db)) {
       if (params$locus == "IG") {
          db <- db %>%
             mutate(
@@ -154,7 +155,7 @@ if (any(is.na(db[['c_call']]))) {
             c_call = ifelse(is.na(c_call), c_region_translated, c_call)
             ) %>%
          select(-c_region_translated)
-   } else if ("c_primer" %in% colnames(db)) {
+   } else if (params$c_primer_column %in% colnames(db)) {
       if (params$locus == "IG") {
          db <- db %>%
             mutate(
