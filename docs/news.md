@@ -5,7 +5,7 @@ Version 0.1.18: November 5, 2024
 
 General:
 
-+ Fixed CollapseDuplicates to not collapse duplicates with different c_primer or c_region fields
++ Fixed CollapseDuplicates to annotate isotype information in c_region or c_primer fields in the c_call field when c_call is NA.
 
 
 Version 0.1.17: October 14, 2024
