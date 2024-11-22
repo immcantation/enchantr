@@ -27,7 +27,19 @@ params:
    nproc:
       label: "`nproc`"
       input: numeric
-      value: 1      
+      value: 1
+   c_primer_column:
+      label: "`c_primer_column`"
+      input: text
+      value: "c_primer"
+   c_region_column:
+      label: "`c_region_column`"
+      input: text
+      value: "c_region"
+   locus:
+      label: "`locus`"
+      input: text
+      value: "IG"
    log:
       label: "`log`"
       input: text
@@ -80,7 +92,7 @@ if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
 }
 
-file.copy(params$logo, 
+file.copy(params$logo,
          file.path(params$outdir,"assets", "logo.png"),
          recursive = T, overwrite=T)
 ```
@@ -97,7 +109,6 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 # Read repertoires
 
-
 ```{r}
 # Read input
 db <- readInput(params[['input']])
@@ -106,6 +117,64 @@ input_sizes <- db %>%
    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
    summarize(input_size=n())
 input_size <- nrow(db)
+
+```
+
+
+# Homogenize c_call, c_primer and c_region fields containing isotype information
+
+```{r eval="c_call" %in% colnames(db)}
+
+match_isotype <- function(x, regex) {
+                     match <- stringr::str_match(x, regex)
+                     if (length(match) > 0) return(match) else return(NA)
+                  }
+ig_isotype_heavy_regex <- "IG[H][AEMGD][1234]?[ABC]?"
+ig_isotype_light_regex <- "IG[LK][C][1234]?[ABC]?"
+tr_isotype_regex <- "TR[ABDG]C[14]?"
+
+if (any(is.na(db[['c_call']]))) {
+   if ("c_region" %in% colnames(db)) {
+      if (params$locus == "IG") {
+         db <- db %>%
+            mutate(
+               c_region_translated = if_else(locus == "IGH", 
+                                             sapply(get(!!params$c_region_column), match_isotype, ig_isotype_heavy_regex),
+                                             sapply(get(!!params$c_region_column), match_isotype, ig_isotype_light_regex)),
+               )
+         cat(db$c_region_translated)
+      } else if (params$locus == "TR") {
+         db <- db %>%
+            mutate(
+               c_region_translated = sapply(get(!!params$c_region_column), match_isotype, tr_isotype_regex)
+               )
+      }
+      db <- db %>%
+         mutate(
+            c_call = ifelse(is.na(c_call), c_region_translated, c_call)
+            ) %>%
+         select(-c_region_translated)
+   } else if ("c_primer" %in% colnames(db)) {
+      if (params$locus == "IG") {
+         db <- db %>%
+            mutate(
+               c_primer_translated = if_else(locus == "IGH", 
+                                             sapply(get(!!params$c_primer_column), match_isotype, ig_isotype_heavy_regex),
+                                             sapply(get(!!params$c_primer_column), match_isotype, ig_isotype_light_regex))
+               )
+      } else if (params$locus == "TR") {
+         db <- db %>%
+            mutate(
+               c_primer_translated = sapply(get(!!params$c_primer_column), match_isotype, tr_isotype_regex)
+               )
+      }
+      db <- db %>%
+         mutate(
+            c_call = ifelse(is.na(c_call), c_primer_translated, c_call)
+            ) %>%
+         select(-c_primer_translated)
+   }
+}
 ```
 
 # Collapse Duplicates
@@ -155,7 +224,7 @@ output_groups <- db[pass,] %>%
 
 output_files <- c()
 output_sizes <- c()
-dir.create(file.path(params$outdir,"repertoires"))   
+dir.create(file.path(params$outdir,"repertoires"))
 for (i in 1:nrow(output_groups))  {
    group_db <- right_join(db[pass,],
                            output_groups[i,,drop=F],
