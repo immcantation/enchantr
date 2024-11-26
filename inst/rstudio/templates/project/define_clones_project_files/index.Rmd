@@ -555,7 +555,7 @@ if (!is.null(params$log)) {
 ```{r dbpass, results='asis', echo=FALSE}
 
 # Remove unnecessary columns
-db <- db %>% select(-clone_size_count, -clone_size_freq, -c_gene)
+db <- db %>% select(-clone_size_count, -clone_size_freq, -any_of(c("c_gene")))
 
 # collpase in case there are multiple rows
 # due to multiple input files
