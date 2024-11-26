@@ -1,5 +1,12 @@
 # Release Notes
 
+Version 0.1.19: November 25, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed defineClones no existing c_gene for TCR data.
+
 Version 0.1.18: November 25, 2024
 -------------------------------------------------------------------------------
 
