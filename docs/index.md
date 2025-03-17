@@ -1,7 +1,6 @@
 # 
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
-
 enchantR
 -------------------------------------------------------------------------------
 
@@ -25,6 +24,17 @@ Contact
 
 For help and questions, please contact the [Immcantation Group](mailto:immcantation@googlegroups.com)
 or use the [issue tracker](https://github.com/immcantation/enchantr/issues).
+
+**IMPORTANT!** 
+enchantR has moved to https://github.com/immcantation/enchantr
+
+To update Git configuration settings use:
+
+```
+   git config user.email "your-gh-user@email.com"
+   git config user.name "your-gh-user-name"
+   git remote set-url origin git@github.com:immcantation/enchantr.git
+```
 
 
 ## Dependencies

@@ -1,5 +1,20 @@
 # Release Notes
 
+Version 0.1.19: November 25, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed defineClones no existing c_gene for TCR data.
+
+Version 0.1.18: November 25, 2024
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed CollapseDuplicates to annotate isotype information in c_region or c_primer fields in the c_call field when c_call is NA.
+
+
 Version 0.1.17: October 14, 2024
 -------------------------------------------------------------------------------
 
@@ -33,6 +48,7 @@ General:
 + Improved defineClones report and added mutation frequency calculation
 + Fixed bug that eliminated light chains from bulk or mixed sequencing data from
 final repertoires.
+
 
 Version 0.1.10: January 11, 2024
 -------------------------------------------------------------------------------

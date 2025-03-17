@@ -21,7 +21,7 @@ The target files can be repertoire files or file-of-files (
 tabulated text files with one or more paths to repertoires in the first column).
 
 pattern
-:   If input is a directory, the pattern to select the input 
+:   If input is a directory, the pattern to select the input
 repertoire files to be loaded.
 
 col_select
