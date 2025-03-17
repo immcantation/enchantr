@@ -110,7 +110,7 @@ eeplot <- function(p, outdir=NULL, file=NULL, caption=NULL, ... ) {
 }
 
 
-#' eeplot: a convenience function to save tables
+#' eetable: a convenience function to save tables
 #'
 #' This function takes a \code{data.frame}, and saves it as a .tsv file in
 #' the \code{outdir} directory.
