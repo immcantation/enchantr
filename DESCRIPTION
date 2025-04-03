@@ -50,6 +50,7 @@ Imports:
     igraph,
     iterators,
     knitr,
+    lifecycle,
     plotly,
     RColorBrewer,
     R.utils,
