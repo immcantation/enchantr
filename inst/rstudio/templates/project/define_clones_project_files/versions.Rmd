@@ -1,6 +1,0 @@
-# Software versions
-
-```{r}
-sessionInfo()
-```
-
