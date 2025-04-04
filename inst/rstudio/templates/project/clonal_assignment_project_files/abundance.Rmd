@@ -1,0 +1,174 @@
+
+```{r abundanceAnnotation}
+# annotate
+a@abundance <- a@abundance %>%
+   left_join( db %>% 
+                 select(any_of(c(unique(c("sample_id", 
+                                                "subject_id",
+                                                params$cloneby)))
+                                       )
+                  ) %>%
+                 distinct(),
+              
+              )
+p <- plotAbundanceCurve(a, annotate="depth", silent = T)
+```
+
+```{r clonalAbundanceTable, results='asis'}
+tab <- eetable(a@abundance, file = "clonal_abundance", 
+               outdir=params$outdir, show_max=10,
+               caption="Example 10 lines of the clonal abundance file.")
+tab$table %>%
+        DT::formatRound(columns=c("p","p_sd","lower","upper"),digits=3)
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption("clonal_abundance", tab$caption)
+```
+
+## Abundance plot by sample
+
+```{r eval=TRUE, echo=F}
+getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
+    ncols <- min(nfacets, ncols)
+    min(max_w, max(ncols*2, min_w))
+}
+
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=20) {
+    nrows <- ceiling(nfacets/ncols)
+    min(max_h, max(nrows*2, min_h))
+}
+```
+
+
+```{r abundanceSample, eval=TRUE, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
+abundanceSample <- eeplot(abundanceSample, 
+                     outdir=params$outdir, 
+                     file=knitr::opts_current$get('abundanceSample'),
+                     caption=paste0("Clonal abundance plot per `sample_id`. Clonal abundance was calculated with a sample of N=",
+                      a@n,
+                      " sequences with ",
+                      a@nboot,
+                      " boostrapping repetitions."),
+                     a)
+abundanceSample +
+    theme(legend.position = "none")
+caption <- abundanceSample$enchantr$html_caption  
+```
+
+# Diversity
+
+The clonal abundance distribution can be characterized using diversity statistics. Diversity scores (D) are calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
+
+The function alphaDiversity resamples the sequences (`r params$nboot` random bootstrapping events, with the number of sequences in the sample with less sequences (N)) and calculates diversity scores (D) over a interval of diversity orders (q). The diversity (D) is shown on the y-axis and the x-axis is the parameter q. - q = 0 corresponds to Species Richness - q = 1 corresponds to Shannon Entropy - q = 2 corresponds to Simpson Index
+
+Inspection of this figure is useful to determine whether any difference in diversity between two repertoires depends on the statistic used or if it is a universal property. 
+
+
+The clonal diversity $D$ of the repertoire was calculated according to the general formula of Hill Diversity
+numbers:
+
+$$
+\begin{aligned}
+    ^{q}D = \left( \sum_{i=1}^Rp_i^q \right)^{1/(1-q)}
+\end{aligned}
+$$
+
+where:
+
+* $p_i$ is the proportion of unique sequences belonging to clone $i$.
+* $q$ are the values of the different diversity numbers.
+* $R$ is the Richness, the number of different clones in the sample.
+
+At $q=1$ the function is undefined and the limit to zero equals the exponential of the Shannon Entropy:
+
+$$
+\begin{aligned}
+    ^{1}D = exp \left(  \sum_{i=1}^Rp_i ln(p_i)  \right)
+\end{aligned}
+$$
+
+The intuition about the different Hill Diversity values is the following:
+
+* At $q=0$ the diversity index equals the number of clones in the sample.
+* At $q=1$ the diversity index is the geometric mean of the clones in the sample,
+weighted by their proportion in the sample.
+* At $q>1$ more weight is given to the clones with higher proportions in the sample.
+
+
+## Diversity curves
+
+The following table shows the summary of the diversity calculations per sample.
+
+```{r diversity, results='asis'}
+# generate the Hill diversity curve
+d <- alphaDiversity(db %>% filter(isHeavyChain(locus)), 
+                    group = "sample_id", 
+                    min_n=params$min_n)
+
+d@diversity <- d@diversity %>%
+   left_join( db %>% 
+                 select(any_of(c(unique(c("sample_id", 
+                                                "subject_id", 
+                                                params$cloneby)))
+                                       )
+                  ) %>%
+                 distinct(),
+              
+              )
+
+diversitySample <- plotDiversityCurve(d, silent = T, annotate="depth")
+
+tab <- eetable(d@diversity, file = "clonal_diversity", 
+               outdir=params$outdir, show_max=10,
+               caption="Example 10 lines of the clonal diversity file.")
+tab$table %>%
+        DT::formatRound(columns=c("q","d","d_sd","d_lower", "d_upper", "e", "e_lower", "e_upper"),digits=3)
+```
+```{r echo=FALSE,results='asis'}
+print_table_caption("clonal_diversity", tab$caption)
+```
+
+## Diversity plot by sample
+
+```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3)}
+# plot duplicated cells
+diversitySample <- diversitySample + 
+    geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
+    facet_wrap(~sample_id + subject_id, ncol=3, scales = "free_x")
+diversitySample <- eeplot(diversitySample, 
+                     outdir=params$outdir, 
+                     file=knitr::opts_current$get('label'),
+                     caption=paste0("Clonal diversity per `sample_id`.Clonal diversity was calculated with a sample of N=",
+                      d@n,
+                      " sequences with ",
+                      a@nboot,
+                      " boostrapping repetitions."),
+                     d)
+diversitySample +
+    theme(legend.position = "none")
+caption <- diversitySample$enchantr$html_caption
+```
+
+## Diversity at different `q`
+
+- `q=0` corresponds to Richness (number of different clones in the sample).
+- `q=1` corresponds to Shannon diversity.
+- `q=2` corresponds to Simpson diversity.
+
+```{r div_at_q, eval=TRUE,  fig.cap=caption, fig.width=5, fig.height=3}
+# plot duplicated cells
+div_data <- d@diversity %>% dplyr::filter(q==0 | q==1 | q==2)
+
+div_at_q <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
+    geom_point() + theme_enchantr() +
+    scale_x_continuous(breaks= c(0,1,2))
+    
+div_at_q <- eeplot(div_at_q, 
+                     outdir=params$outdir, 
+                     file=knitr::opts_current$get('label'),
+                     caption="Diversity at different q values.",
+                     div_at_q)
+ggplotly(div_at_q)
+caption <- div_at_q$enchantr$html_caption
+```
