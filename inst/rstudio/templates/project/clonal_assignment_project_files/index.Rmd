@@ -1,6 +1,6 @@
 --- 
 title: "Immcantation - enchantR"
-subtitle: "Define Clones"
+subtitle: "Clonal Assignment"
 author: ""
 date: "Updated: `r date()`"
 knit: enchantr::render_book
