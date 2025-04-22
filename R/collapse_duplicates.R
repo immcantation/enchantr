@@ -149,3 +149,33 @@ findDuplicates <- function (db,
         arrange(finddups_row_idx) %>%
         select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
+
+#' This is the function to truncate a single sequence at a specific position from 5' end
+#' @export
+truncate_from_5_end <- function(sequence_aligned, truncate_position_5_end) {
+  first_part <- substr(sequence_aligned, 1, truncate_position_5_end)        
+  rest_part  <- substr(sequence_aligned, truncate_position_5_end + 1, nchar(sequence_aligned))  
+  first_part <- gsub("[^.]", "N", first_part)
+  after_truncate<-paste0(first_part,rest_part)
+  return(after_truncate)
+}
+
+#' This is the function to truncate all the sequences at a specific position from 5' end
+#' @export
+truncate_all_from_5_end <- function(db, truncate_position_5_end){
+  if (truncate_position_5_end<0 | truncate_position_5_end %% 1 != 0){
+    print("The truncate position from 5 end should be 0 or a positive integer. ")
+  }else if(truncate_position_5_end>0){
+    min_v_end<-min(db$v_germline_end)
+    # Truncate_position_5_end must not be greater than the minimum of v_germline_end of all v germlines.
+    if(truncate_position_5_end>min_v_end){
+      print(paste("The truncate position from 5 end should be less than ", min_v_end))
+    }
+    else{
+      db$sequence_alignment_before_truncation<-db$sequence_alignment 
+      db <- db %>%
+        mutate(sequence_alignment = truncate_from_5_end(sequence_alignment_before_truncation, truncate_position_5_end))
+    }
+  }
+  return(db)
+}
