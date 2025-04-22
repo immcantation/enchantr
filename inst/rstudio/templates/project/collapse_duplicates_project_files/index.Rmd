@@ -15,7 +15,8 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "input.tsv"
+      #value: "input.tsv"
+      value: "Sample1_Gut_meta-pass.tsv"
    collapseby:
       label: "`collapseby`"
       input: text
@@ -40,6 +41,10 @@ params:
       label: "`locus`"
       input: text
       value: "IG"
+   truncate_position_5_end:
+      label: "truncate_position_5_end"
+      input: numeric
+      value: 80
    log:
       label: "`log`"
       input: text
@@ -87,6 +92,8 @@ suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
 
 if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
@@ -118,6 +125,11 @@ input_sizes <- db %>%
    summarize(input_size=n())
 input_size <- nrow(db)
 
+```
+
+# Truncate 5-prime end at specific location
+```{r truncate_all_from_5_end}
+db <- truncate_all_from_5_end(db, params[["truncate_position_5_end"]])
 ```
 
 
