@@ -15,8 +15,8 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      #value: "input.tsv"
-      value: "Sample1_Gut_meta-pass.tsv"
+      value: "input.tsv"
+      #value: "Sample1_Gut_meta-pass.tsv"
    collapseby:
       label: "`collapseby`"
       input: text
@@ -44,7 +44,7 @@ params:
    truncate_position_5_end:
       label: "truncate_position_5_end"
       input: numeric
-      value: 80
+      value: 0
    log:
       label: "`log`"
       input: text
