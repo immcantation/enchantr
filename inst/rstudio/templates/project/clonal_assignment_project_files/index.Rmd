@@ -153,7 +153,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 # Read repertoires
 <div style="margin-top: -10px; font-size: 15px; color: gray;">
-Tables summarizing repertoire distributions for each sample.
+Tables summarizing number of sequences in the provided repertoires according to different characteristics.
 </div>
 
 ```{r}
