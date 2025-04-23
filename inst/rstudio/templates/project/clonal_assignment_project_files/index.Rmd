@@ -104,8 +104,12 @@ editor_options:
   chunk_output_type: console
 ---
 
-<div style="margin-top: -10px; font-size: 16px; color: gray;">
-Report of clonal assignment, clone size distribution, clonal abundance, diversity and mutation frequency created by immcantation <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a> package. Immcantation package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> is used to assign clones. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for advanced analysis of somatic hypermutation (SHM). 
+```{r, results='asis', echo=FALSE}
+cat('<link rel="stylesheet" type="text/css" href="assets/style.css">')
+```
+
+<div class="introduction_paragraph">
+Report of clonal assignment, clone size distribution, clonal abundance, diversity and mutation frequency created by immcantation <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a> package. Immcantation package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> is used to assign clones. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
 </div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -152,7 +156,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
 # Read repertoires
-<div style="margin-top: -10px; font-size: 15px; color: gray;">
+<div class="introduction_paragraph">
 Tables summarizing repertoire distributions for each sample.
 </div>
 
@@ -306,8 +310,8 @@ print_table_caption(tag="input_cgene_summary", text=tab_caption)
 
 # Clonal assignment
 
-<div style="margin-top: -10px; font-size: 15px; color: gray;">
-Clonal assignment performed with function `hierarchicalClones` from package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a>. This approach clusters B or T cell receptor sequences based on junction region sequence similarity within partitions that share the same V gene, J gene, and junction length, allowing for ambiguous V or J gene annotations.By default, 'subject_id'is used for grouping. Sequences with different subject_id will be classified as separate clones.
+<div class="introduction_paragraph">
+Clonal assignment is performed with the function `hierarchicalClones` from package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a>. This approach clusters B or T cell receptor sequences based on junction region sequence similarity within partitions that share the same V gene, J gene, and junction length, allowing for ambiguous V or J gene annotations. By default, 'subject_id' is used for grouping samples before assigning clones. 
 </div>
 
 ```{r, eval="clone_id" %in% colnames(db), results='asis', echo=FALSE}
@@ -319,11 +323,11 @@ cat("\n\nThe input data contains clonal assignments, and are being reused.")
 
 # Clone size distribution
 
-<div style="margin-top: -10px; font-size: 15px; color: gray;">
-The clone sizes table is available <a href=tables/clone_sizes_table.tsv target="_blank">here</a>. With real datasets, most clones have a size of one (one sequence). Straight sequence count as a measure of the size of the clones is not the best measure for colonal size comparison between samples due to possible disproportionate sampling. That's why we also provide clonal abundance. You can find the Clonal abundance section below. 
+<div class="introduction_paragraph">
+The clone sizes table is available <a href=tables/clone_sizes_table.tsv target="_blank">here</a>. In real datasets, most clones contain only one unique sequence as they represent naive cells that have not undergone clonal expansion (also termed singletons). Straight sequence count as a measure of the size of the clones is not the best measure for clonal size comparison between samples due to possible disproportionate sampling. The clonal abundance and diversity computations (see sections below) address this issue by bootstrapping (i.e. re-sampling multiple times) the sample sequences to the same number of sequences. 
 </div>
 
-<div style="margin-top: -10px; font-size: 15px; color: gray;">
+<div class="introduction_paragraph">
 Description of terms:
 
 * `clone_size_count`: Clone size as sequence counts. In a sample (`sample_id`), the number of heavy chain sequences with the same `clone_id`.
@@ -333,8 +337,8 @@ Description of terms:
 
 
 ## Number of clones 
-<div style="margin-top: -10px; font-size: 15px; color: gray;">
-Summary of the number of clones base on heavy chain sequences, and clone size per sample. Singletons which are clone of single sequence are included in the table. 
+<div class="introduction_paragraph">
+Summary of the number of clones based on heavy chain sequences, and clone size per sample. Singletons (clones with just one sequence) are included in the table. 
 </div>
 
 ```{r clone_sizes_table}
@@ -382,7 +386,7 @@ print_table_caption(tag="num_clones_table", text=tab$caption)
 
 ## Clone size distribution without singletons
 
-<div style="margin-top: -10px; font-size: 15px; color: gray;">
+<div class="introduction_paragraph">
 Plot of clone size distribution. In most cases, the majority of clones are singletons (clones consisting of a single sequence). To improve readability for non-singleton clones, singletons are excluded from the plot.
 </div>
 
@@ -408,8 +412,8 @@ cat("Only singletons detected: there aren't clones of size>1.\n\n")
 
 # Clonal abundance {#clonal_abundance}
 
-<div style="margin-top: -10px; font-size: 15px; color: gray;">
-Clonal abundance is the size of each clone (as a fraction of the entire repertoire). To correct for the different number of sequences in each of the samples, Function `estimateAbundance` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping. `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less sequences (N). The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by clone size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
+<div class="introduction_paragraph">
+Clonal abundance is the size of each clone as a fraction of the entire repertoire. To correct for the different number of sequences in each of the samples, Function `estimateAbundance` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping. `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less sequences (N). The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by clone size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
 </div>
 
 ```{r}
@@ -433,8 +437,8 @@ if (nrow(a@abundance)==0) {
 cat("# Mutation frequency\n")
 ```
 
-<div style="margin-top: -10px; font-size: 16px; color: gray;">
-Mutation counts are determined by comparing a reference sequence to the input sequences. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations for each sequence. 
+<div class="introduction_paragraph">
+Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence to the germline reference. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations for each sequence. 
 </div>
 
 
