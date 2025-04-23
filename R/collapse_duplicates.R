@@ -150,31 +150,38 @@ findDuplicates <- function (db,
         select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
 
-#' This is the function to truncate a single sequence at a specific position from 5' end
+#' This is the function to mask a single sequence at a specific IMGT position from 5' end
 #' @export
-truncate_from_5_end <- function(sequence_aligned, truncate_position_5_end) {
-  first_part <- substr(sequence_aligned, 1, truncate_position_5_end)        
-  rest_part  <- substr(sequence_aligned, truncate_position_5_end + 1, nchar(sequence_aligned))  
+mask_single_5_prime_seq <- function(sequence_aligned, imgt_position) {
+  first_part <- substr(sequence_aligned, 1, imgt_position)        
+  rest_part  <- substr(sequence_aligned, imgt_position + 1, nchar(sequence_aligned))  
   first_part <- gsub("[^.]", "N", first_part)
   after_truncate<-paste0(first_part,rest_part)
   return(after_truncate)
 }
 
-#' This is the function to truncate all the sequences at a specific position from 5' end
+#' This is the function to mask all the sequences at a specific IMGT position from 5' end
 #' @export
-truncate_all_from_5_end <- function(db, truncate_position_5_end){
-  if (truncate_position_5_end<0 | truncate_position_5_end %% 1 != 0){
-    print("The truncate position from 5 end should be 0 or a positive integer. ")
-  }else if(truncate_position_5_end>0){
-    min_v_end<-min(db$v_germline_end)
-    # Truncate_position_5_end must not be greater than the minimum of v_germline_end of all v germlines.
-    if(truncate_position_5_end>min_v_end){
-      print(paste("The truncate position from 5 end should be less than ", min_v_end))
+mask_5prime_sequence_alignment <- function(db, imgt_position){
+  # check whether columns sequence_id, sequence_alignment, v_germline_end is in db
+  required_cols <- c("sequence_id", "sequence_alignment", "v_germline_end")
+  missing_cols <- setdiff(required_cols, colnames(db))
+  if (length(missing_cols) > 0) {
+    stop(paste("Missing columns:", paste(missing_cols, collapse = ", ")))
+  }
+  # Else if all the required column are in db, continue
+  if (imgt_position<0 | imgt_position %% 1 != 0){
+    stop("The IMGT masking position from 5' end should be 0 or a positive integer. ")
+  } else if ( imgt_position > 0 ){
+    min_v_end <- min( db$v_germline_end )
+    # imgt_position must not be greater than the minimum of v_germline_end of all v germlines.
+    if( imgt_position > min_v_end ){
+      stop(paste("The IMGT masking position from 5' end should be less than", min_v_end))
     }
     else{
-      db$sequence_alignment_before_truncation<-db$sequence_alignment 
+      db$sequence_alignment_before_mask <- db$sequence_alignment 
       db <- db %>%
-        mutate(sequence_alignment = truncate_from_5_end(sequence_alignment_before_truncation, truncate_position_5_end))
+        mutate(sequence_alignment = mask_single_5_prime_seq(sequence_alignment_before_mask, imgt_position))
     }
   }
   return(db)
