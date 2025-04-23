@@ -41,8 +41,8 @@ params:
       label: "`locus`"
       input: text
       value: "IG"
-   truncate_position_5_end:
-      label: "truncate_position_5_end"
+   imgt_position:
+      label: "imgt_position"
       input: numeric
       value: 0
    log:
@@ -127,9 +127,9 @@ input_size <- nrow(db)
 
 ```
 
-# Truncate 5-prime end at specific location
-```{r truncate_all_from_5_end}
-db <- truncate_all_from_5_end(db, params[["truncate_position_5_end"]])
+# Mask sequence alignments from 5' end to a specific IMGT position
+```{r mask_5prime_sequence_alignment}
+db <- mask_5prime_sequence_alignment(db, params[["imgt_position"]])
 ```
 
 
