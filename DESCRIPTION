@@ -1,6 +1,6 @@
 Package: enchantr
 Type: Package
-Version: 0.1.19.999
+Version: 0.1.21
 Date: 2024-11-25
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
@@ -50,6 +50,7 @@ Imports:
     igraph,
     iterators,
     knitr,
+    lifecycle,
     plotly,
     RColorBrewer,
     R.utils,
