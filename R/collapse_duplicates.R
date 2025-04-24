@@ -117,10 +117,10 @@ findDuplicates <- function (db,
             if (this_group_size == 1 ) {
                 return(
                     db_subset %>%
-                    filter(collapse_idx == this_group)
-                    ) %>%
+                    filter(collapse_idx == this_group) %>%
                     mutate(collapse_count = 1)
-                }
+                )
+            }
 
             collapsed_db <- collapseDuplicates(db_subset %>%
                                                 filter(collapse_idx == this_group),

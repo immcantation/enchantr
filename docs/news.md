@@ -1,5 +1,20 @@
 # Release Notes
 
+Version 0.1.21: April 3, 2025
+-------------------------------------------------------------------------------
+
+General:
+
++ Added lifecycle dependency
++ Fixed duplicate counting for singletons.
+
+Version 0.1.20: March 31, 2025
+-------------------------------------------------------------------------------
+
+General:
+
++ Fixed duplicate counting for singletons.
+
 Version 0.1.19: November 25, 2024
 -------------------------------------------------------------------------------
 
