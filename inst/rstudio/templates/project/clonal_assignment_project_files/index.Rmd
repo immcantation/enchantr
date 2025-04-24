@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr define clones"
+description: "enchantr clonal assignment"
 output: enchantr::immcantation
 params:
    input: 
@@ -67,7 +67,7 @@ params:
    outname:
       label: "`outname`"
       input: text
-      value: "define-clones"
+      value: "clonal-assignment"
    nproc:
       label: "`nproc`"
       input: numeric
@@ -103,10 +103,6 @@ params:
 editor_options: 
   chunk_output_type: console
 ---
-
-```{r, results='asis', echo=FALSE}
-cat('<link rel="stylesheet" type="text/css" href="assets/style.css">')
-```
 
 <div class="introduction_paragraph">
 Report of clonal assignment, clone size distribution, clonal abundance, diversity and mutation frequency created by immcantation <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a> package. Immcantation package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> is used to assign clones. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
