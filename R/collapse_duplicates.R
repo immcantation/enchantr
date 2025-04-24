@@ -176,7 +176,7 @@ mask_5prime_sequence_alignment <- function(db, imgt_position){
     min_v_end <- min( db$v_germline_end )
     # imgt_position must not be greater than the minimum of v_germline_end of all v germlines.
     if( imgt_position > min_v_end ){
-      stop(paste("The IMGT masking position from 5' end should be less than", min_v_end))
+      stop(paste("The IMGT masking position from 5' end should be smaller than the length of the shortest V gene germline: ", min_v_end))
     }
     else{
       db$sequence_alignment_before_mask <- db$sequence_alignment 
