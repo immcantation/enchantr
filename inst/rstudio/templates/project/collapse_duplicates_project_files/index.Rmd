@@ -127,7 +127,7 @@ input_size <- nrow(db)
 ```
 
 # Mask sequence alignments from 5' end to a specific IMGT position
-```{r mask_5prime_sequence_alignment}
+```{r mask_5prime_sequence_alignment, eval=params$imgt_position!=0}
 db <- mask_5prime_sequence_alignment(db, params[["imgt_position"]])
 ```
 
