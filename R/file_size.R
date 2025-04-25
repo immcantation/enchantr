@@ -44,15 +44,12 @@ formatConsoleLog <- function(log_file){
             log_table[['field']][nrow(log_table)] <- paste0("FILE",i)
             i <- i + 1
         }
-
-
     }
-
+  
     if (task == "MakeDB-igblast") {
         log_table <- log_table %>%
             filter(field != "SEQ_FILE")
     }
-
     # Add RECORDS field to track input file size
     # TODO: update for multi input/output
     if ( "RECORDS" %in% log_table[["field"]] == FALSE ) {
@@ -169,7 +166,6 @@ consoleLogsAsGraph <- function(logs) {
     g
 }
 
-
 plotLog <- function(g) {
     root_node <-  V(g)$name[degree(g, mode="in")==0]
     if ( length(root_node)>1 ) {
@@ -244,7 +240,12 @@ plotConsoleLogs <- function(log_df, style=c("decompose", "workflow")) {
     style <- match.arg(style)
     logs <- consoleLogsAsGraph(log_df)
     if (style == "decompose") {
-        lapply(decompose(logs), enchantr:::plotLog)
+        gl <- lapply(decompose(logs), enchantr:::plotLog)
+        # return named list
+        names(gl) <- sapply(gl, function(g) {
+            g$data$name[g$data$file_0]
+        })
+        gl
     } else {
         plotWorkflow(logs)
     }
