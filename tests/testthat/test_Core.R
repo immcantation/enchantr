@@ -5,8 +5,8 @@
 # })
 
 
-# test_that("define_clones report runs", {
-#     tmp_dir <- file.path(tempdir(),"test_define_clones","")
-#     enchantr_report('define_clones', report_params=list('outdir'=tmp_dir))
+# test_that("clonal_assignment report runs", {
+#     tmp_dir <- file.path(tempdir(),"test_clonal_assignment","")
+#     enchantr_report('clonal_assignment', report_params=list('outdir'=tmp_dir))
 #     expect_true(file.exists(file.path(tmp_dir,"enchantr","index.html")))
 # })
