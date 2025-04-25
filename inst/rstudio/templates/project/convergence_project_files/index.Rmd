@@ -71,7 +71,7 @@ params:
    outname:
       label: "`outname`"
       input: text
-      value: "define-clones"
+      value: "clonal-assignment"
    nproc:
       label: "`nproc`"
       input: numeric
