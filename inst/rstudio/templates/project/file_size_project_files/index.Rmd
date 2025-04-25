@@ -125,7 +125,7 @@ plot_list <- plotConsoleLogs(log_data, "decompose")
 log_data <- graphDataFrame(log_data)
 for (i in 1:length(plot_list)) {
     plot_data <- plot_list[[i]]$data
-    input_filename <- plot_data[['name']][which(plot_data[[".ggraph.index"]] == 1)]
+    input_filename <- plot_data[['name']][which(plot_data[["file_0"]] == TRUE )]
     cat(paste0("## ",input_filename,"\n\n"))
     cat("### Data flow \n\nNumber of sequences at each processing step of `", input_filename,"`.", sep="")
     print(plot_list[[i]])

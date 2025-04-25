@@ -171,7 +171,11 @@ consoleLogsAsGraph <- function(logs) {
 
 
 plotLog <- function(g) {
-    ggraph(g, layout="tree") +
+    root_node <-  V(g)$name[degree(g, mode="in")==0]
+    if ( length(root_node)>1 ) {
+        stop("Multiple root_node candidates found. Can't determine file_0.")
+    }
+    gp <- ggraph(g, layout="tree") +
         #geom_node_point(aes(size = num_seqs), colour = "black") +
         geom_node_label(aes(label=paste0(name,": ", num_seqs, " sequences")),
                         colour = "black", label.size=0) +
@@ -190,6 +194,8 @@ plotLog <- function(g) {
             axis.ticks=element_blank(),
             panel.border = element_blank()
         )
+    gp$data$file_0 <- gp$data$name %in% root_node
+    gp
 }
 
 plotWorkflow <- function(g) {
