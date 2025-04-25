@@ -53,6 +53,24 @@ formatConsoleLog <- function(log_file){
             filter(field != "SEQ_FILE")
     }
 
+    # Add RECORDS field to track input file size
+    # TODO: update for multi input/output
+    if ( "RECORDS" %in% log_table[["field"]] == FALSE ) {
+        records <- log_table %>%
+            filter(field %in% c("FAIL","PASS")) %>%
+            select(value) %>%
+            summarize(records=sum(as.numeric(value))) %>%
+            pull(records)
+        records_row <- log_table[1,] %>%
+            mutate(field="RECORDS",
+                   value=as.character(records))
+        log_table <- bind_rows(
+            log_table,
+            records_row
+        )
+        
+    }
+    
     .getFileID <- function(x) {
         sapply(x, function(i){
             if (grepl("[0-9]$",i)){
