@@ -17,7 +17,7 @@
 #'   \item  \link{collapse_duplicates_project}: Create an Immcantation Collapse duplicates project
 #'   \item  \link{contamination_project}:       Create an Immcantation Detect contamination project
 #'   \item  \link{find_threshold_project}:      Create an Find threshold project
-#'   \item  \link{define_clones_project}:       Create an Immcantation Define clones project
+#'   \item  \link{clonal_assignment_project}:       Create an Immcantation Clonal assignment project
 #'   \item  \link{convergence_project}:         Create an Immcantation Convergence project
 #'   \item  \link{dowser_lineage_project}:      Create an Immcantation Dowser project
 #'   \item  \link{single_cell_qc_project}:      Create an Immcantation sc QC project

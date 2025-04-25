@@ -626,7 +626,7 @@ singlecell_sharing_matrix <- function(db,
 
     num_groups = nrow(groups_table)
 
-    # define clone overlap matrices to be plotted
+    # clonal assignment overlap matrices to be plotted
     overlap_matrix <- matrix(0, num_groups, num_groups)
     dimnames(overlap_matrix) <- list(groups_table$group_name, groups_table$group_name)
 
