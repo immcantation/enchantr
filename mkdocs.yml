@@ -32,6 +32,6 @@ nav:
       - topics/contamination_project.md
       - topics/single_cell_qc_project.md
       - topics/find_threshold_project.md
-      - topics/define_clones_project.md
+      - topics/clonal_assignment_project.md
       - topics/dowser_lineage_project.md
 

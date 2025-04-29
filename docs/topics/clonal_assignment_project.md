@@ -1,4 +1,4 @@
-**define_clones_project** - *Create an Immcantation ...*
+**clonal_assignment_project** - *Create an Immcantation ...*
 
 Description
 --------------------
@@ -11,7 +11,7 @@ to create the skeleton of an Immcantation ... project
 Usage
 --------------------
 ```
-define_clones_project(path, ...)
+clonal_assignment_project(path, ...)
 ```
 
 Arguments
