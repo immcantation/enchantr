@@ -18,13 +18,13 @@ IMGT_DB <- prepareIMGT(IMGT_URL)
 #  
 # })
 
-test_that("define clones 1:1", {
+test_that("clonal assignment 1:1", {
     # Input in one file, output in 1 file.
     # All sequences have sampletype = FNA
     skip_on_cran()
     input <- normalizePath(file.path("..", "data-tests", "subj_multiple_files","db_let_12.tsv"))
-    tmp_dir <- file.path(tempdir(),"define_clones_1_1")
-    enchantr_report('define_clones', 
+    tmp_dir <- file.path(tempdir(),"clonal_assignment_1_1")
+    enchantr_report('clonal_assignment', 
                               report_params=list('input'=input, 
                                                  'imgt_db'=IMGT_DB, 
                                                  'species'='human', 
@@ -38,13 +38,13 @@ test_that("define clones 1:1", {
     report_dir <- file.path(tmp_dir,"enchantr")
     repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
     expect_equal(length(repertoires), 1)
-    expect_equal(basename(repertoires), "FNA_define-clones_clone-pass.tsv")
+    expect_equal(basename(repertoires), "FNA_clonal-assignment_clone-pass.tsv")
     db <- read_rearrangement(repertoires)
     expect_equal(nrow(db), 1142)
 
 })
 
-test_that("define clones 1:n", {
+test_that("clonal assignment 1:n", {
     # Input in one file, output in multiple files.
     # sampletype = FNA
     # subject_id = P05, Subject_0_60
@@ -52,8 +52,8 @@ test_that("define clones 1:n", {
     skip_on_cran()
     
     input <- normalizePath(file.path("..", "data-tests", "subj_multiple_files","db_let_12.tsv"))
-    tmp_dir <- file.path(tempdir(),"define_clones_1_n")
-    enchantr_report('define_clones', 
+    tmp_dir <- file.path(tempdir(),"clonal_assignment_1_n")
+    enchantr_report('clonal_assignment', 
                     report_params=list('input'=input, 
                                        'imgt_db'=IMGT_DB, 
                                        'species'='human', 
@@ -69,19 +69,19 @@ test_that("define clones 1:n", {
     repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
     expect_equal(length(repertoires), 2)
     expect_equal(sort(basename(repertoires)),
-                 sort(c("P05_define-clones_clone-pass.tsv", 
-                        "Subject_0_60_define-clones_clone-pass.tsv")))
+                 sort(c("P05_clonal-assignment_clone-pass.tsv", 
+                        "Subject_0_60_clonal-assignment_clone-pass.tsv")))
     db <- read_rearrangement(file.path(report_dir, "repertoires", 
-                                           "P05_define-clones_clone-pass.tsv"))
+                                           "P05_clonal-assignment_clone-pass.tsv"))
     expect_equal(nrow(db), 633)
     
     db <- read_rearrangement(file.path(report_dir, "repertoires", 
-                                       "Subject_0_60_define-clones_clone-pass.tsv"))
+                                       "Subject_0_60_clonal-assignment_clone-pass.tsv"))
     expect_equal(nrow(db), 509)    
     
 })
 
-test_that("define clones n:1", {
+test_that("clonal assignment n:1", {
     # Input in 2 files, output in 1 file.
 
     # > gt %>% group_by(day, subject_id, sampletype) %>% summarize(n=n())
@@ -107,8 +107,8 @@ test_that("define clones n:1", {
     input <- normalizePath(
         list.files(file.path("..", "data-tests", "subj_multiple_files"),
                    full.names = T))
-    tmp_dir <- file.path(tempdir(),"define_clones_n_1")
-    enchantr_report('define_clones', 
+    tmp_dir <- file.path(tempdir(),"clonal_assignment_n_1")
+    enchantr_report('clonal_assignment', 
                     report_params=list('input'=paste(input, collapse = ","), 
                                        'imgt_db'=IMGT_DB, 
                                        'species'='human', 
@@ -124,14 +124,14 @@ test_that("define clones n:1", {
     repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
     expect_equal(length(repertoires), 1)
     expect_equal(basename(repertoires),
-                 "FNA_define-clones_clone-pass.tsv")
-    db <- read_rearrangement(file.path(report_dir, "repertoires","FNA_define-clones_clone-pass.tsv"))
+                 "FNA_clonal-assignment_clone-pass.tsv")
+    db <- read_rearrangement(file.path(report_dir, "repertoires","FNA_clonal-assignment_clone-pass.tsv"))
     expect_equal(nrow(db), 2997)
 })
 
 
 
-test_that("define clones n:n", {
+test_that("clonal assignment n:n", {
     # Input in 2 files, output in 2 file.
     
     # > gt %>% group_by(day, subject_id, sampletype) %>% summarize(n=n())
@@ -157,8 +157,8 @@ test_that("define clones n:n", {
     input <- normalizePath(
         list.files(file.path("..", "data-tests", "subj_multiple_files"),
                    full.names = T))
-    tmp_dir <- file.path(tempdir(),"define_clones_n_n")
-    enchantr_report('define_clones', 
+    tmp_dir <- file.path(tempdir(),"clonal_assignment_n_n")
+    enchantr_report('clonal_assignment', 
                     report_params=list('input'=paste(input, collapse = ","), 
                                        'imgt_db'=IMGT_DB, 
                                        'species'='human', 
@@ -174,13 +174,13 @@ test_that("define clones n:n", {
     repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
     expect_equal(length(repertoires), 2)
     expect_equal(sort(basename(repertoires)),
-                 sort(c("P05_define-clones_clone-pass.tsv", 
-                        "Subject_0_60_define-clones_clone-pass.tsv")))
+                 sort(c("P05_clonal-assignment_clone-pass.tsv", 
+                        "Subject_0_60_clonal-assignment_clone-pass.tsv")))
     db <- read_rearrangement(file.path(report_dir, "repertoires", 
-                                       "P05_define-clones_clone-pass.tsv"))
+                                       "P05_clonal-assignment_clone-pass.tsv"))
     expect_equal(nrow(db), 1570)
     
     db <- read_rearrangement(file.path(report_dir, "repertoires", 
-                                       "Subject_0_60_define-clones_clone-pass.tsv"))
+                                       "Subject_0_60_clonal-assignment_clone-pass.tsv"))
     expect_equal(nrow(db), 1427)  
 })
