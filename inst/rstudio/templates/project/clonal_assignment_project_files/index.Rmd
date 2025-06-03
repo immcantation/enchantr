@@ -15,9 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires files"
       input: file
-      #value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
-      value: "d:/Yale_Keinstein_lab/Airrflow_report_Improvement/large_sample_clone-pass.tsv"
-      #value: "d:/Yale_Keinstein_lab/Airrflow_report_Improvement/Sarah_Sample__clone-pass.tsv"
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
    imgt_db:
       label: "`imgt_db`: Path to IMGT reference  database."
       input: file
