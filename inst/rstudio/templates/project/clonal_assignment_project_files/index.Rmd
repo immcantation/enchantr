@@ -471,14 +471,16 @@ clone_size_plot<-ggplot(clone_sizes_summary, aes(x=seq_count, y=count,
                 theme_enchantr() +
                 facet_wrap(~sample_id, scales = "free_y", ncol=3) +
                 xlab("Clone size (Sequences per clone)") +
-                ylab("Clone counts")
+                ylab("Clone counts") + 
+  theme(text = element_text(family = "Helvetica"))
 
 clone_size_plot <- eeplot(clone_size_plot, 
                   outdir=params$outdir, 
                   file=knitr::opts_current$get('clone-size-plot'),
                   caption=caption)
                 
-ggplotly(clone_size_plot + theme(panel.spacing=unit(2, 'lines'), legend.position="right"),tooltip = "text")
+ggplotly(clone_size_plot + theme(panel.spacing=unit(2, 'lines'), legend.position="right"),tooltip = "text")  %>%
+  layout(font = list(family = "Helvetica"))
 caption <- clone_size_plot$enchantr$html_caption
 ```
 
@@ -513,7 +515,8 @@ clone_size_cdf_plot <- ggplot(clone_sizes_summary, aes(x = seq_count, y = cdf,
   theme_enchantr() +
   facet_wrap(~sample_id, scales = "free_y", ncol = 3) +
   xlab("Clone size (Sequences per clone)") +
-  ylab("Cumulative Fraction")
+  ylab("Cumulative Fraction") + 
+  theme(text = element_text(family = "Helvetica"))
 
 clone_size_cdf_plot <- eeplot(clone_size_cdf_plot, 
                   outdir=params$outdir, 
@@ -523,7 +526,8 @@ clone_size_cdf_plot <- eeplot(clone_size_cdf_plot,
 # Step 3: Convert to interactive plot
 ggplotly(clone_size_cdf_plot + 
            theme(panel.spacing = unit(2, 'lines'), legend.position = "right"),
-         tooltip = "text")
+         tooltip = "text") %>%
+  layout(font = list(family = "Helvetica"))
 
 
 caption <- clone_size_cdf_plot$enchantr$html_caption
