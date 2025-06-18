@@ -105,7 +105,7 @@ editor_options:
 ---
 
 <div class="introduction_paragraph">
-Report of clonal assignment, clone size distribution, clonal abundance, diversity and mutation frequency created by immcantation <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a> package. Immcantation package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> is used to assign clones. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
+Report of clonal assignment, clone size distribution, clonal abundance, diversity and mutation frequency created by Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">  enchantR</a>. Immcantation package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> is used to assign clones. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
 </div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -119,6 +119,7 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
 # Libraries
 suppressPackageStartupMessages(library("DT"))
 suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
 suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
@@ -211,6 +212,15 @@ if ("clone_id" %in% colnames(db)) {
         db$clone_size_freq <- NULL
     }
 }
+
+subject_levels <- str_sort(unique(db$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(db$sample_id),  numeric = TRUE)
+db <- db %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) 
 ```
 
 ```{r}
@@ -232,6 +242,7 @@ input_sizes_byoutput <- db %>%
     summarize(
         input_size = n()
     )
+
 ```
 
 
@@ -240,8 +251,20 @@ Number of sequences loaded: `r input_size`. Number of heavy chain sequences load
 ```{r inputsamplesumary, results='asis', eval="tissue" %in% colnames(db)}
 input_samples_summary <- db %>%
    group_by(sample_id, subject_id, tissue) %>%
-   summarize(size = n()) %>%
-   arrange(subject_id)
+   summarize(size = n()) 
+
+subject_levels <- str_sort(unique(input_samples_summary$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(input_samples_summary$sample_id),  numeric = TRUE)
+input_samples_summary <- input_samples_summary %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id,tissue) %>%
+  mutate(
+    subject_id = as.character(subject_id),
+    sample_id  = as.character(sample_id)
+  )
 
 eetable(input_samples_summary)$table
 ```
@@ -266,6 +289,19 @@ total <- data.frame(list("sample_id"="Total",
    colSums(na.rm = T))))
 
 input_locus_summary <- bind_rows(input_locus_summary, total)
+
+subject_levels <- str_sort(unique(input_locus_summary$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(input_locus_summary$sample_id),  numeric = TRUE)
+input_locus_summary <- input_locus_summary %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) %>%
+  mutate(
+    subject_id = as.character(subject_id),
+    sample_id  = as.character(sample_id)
+  )
 
 tab_caption <- paste0("Input data. Number of sequences in each ", 
                    paste("sample", params$cloneby, sep=", "),
@@ -292,6 +328,15 @@ input_cgene_summary <- db %>%
    group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "c_gene")))) %>%
    summarize(n=n(), .groups="drop") %>%
        pivot_wider(names_from=c_gene, values_from=n)
+
+subject_levels <- str_sort(unique(input_cgene_summary$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(input_cgene_summary$sample_id),  numeric = TRUE)
+input_cgene_summary <- input_cgene_summary %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id)
 
 tab_caption <- paste0("Input data. Number of sequences in each ", 
                    paste("sample", params$cloneby, sep=", "),
@@ -342,6 +387,16 @@ Summary of the number of clones based on heavy chain sequences, and clone size p
 clone_sizes <- countClones(
             db %>% filter(isHeavyChain(locus)), # Keep heavy chains only
             groups=unique(c("sample_id", params$cloneby)))
+
+subject_levels <- str_sort(unique(clone_sizes$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(clone_sizes$sample_id),  numeric = TRUE)
+clone_sizes <- clone_sizes %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id)
+
 ```
 
 
@@ -372,6 +427,19 @@ num_clones_table <- db %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
+subject_levels <- str_sort(unique(num_clones_table$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(num_clones_table$sample_id),  numeric = TRUE)
+num_clones_table <- num_clones_table %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) %>%
+  mutate(
+    subject_id = as.character(subject_id),
+    sample_id  = as.character(sample_id)
+  )
+
 tab_caption <- "Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
 tab <- eetable(num_clones_table, caption=tab_caption, outdir=params$outdir, file="num_clones_table")
 tab$table
@@ -380,31 +448,94 @@ tab$table
 print_table_caption(tag="num_clones_table", text=tab$caption)
 ```
 
-## Clone size distribution without singletons
+## Clone size distribution 
 
 <div class="introduction_paragraph">
-Plot of clone size distribution. In most cases, the majority of clones are singletons (clones consisting of a single sequence). To improve readability for non-singleton clones, singletons are excluded from the plot.
+Plot of clone size distribution. Clone size is measured as number of heavy chain sequences belonging to the same clone. In most cases, the majority of clones are singletons (clone size = 1). To improve readability for non-singleton clones, we adopted two approaches and provided two corresponding plots. In the first plot, the y-axis (clone counts) was transformed to a logarithmic scale (base 10). In the second plot, the y-axis represents the cumulative fraction of clone counts, also known in statistics as the cumulative distribution function (CDF).
 </div>
 
-```{r clone-size-atleast2, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
-caption <- "Clone size distribution, excluding singletons (subset to clone size > 1). Size is measured as number of heavy chain sequences belonging to the same clone."
-clone_size_atleast2 <- ggplot(clone_sizes %>% filter(seq_count>1), aes(x=seq_count, color=sample_id, fill=sample_id))+
-    geom_bar() + theme_enchantr() +
-    facet_wrap(~sample_id, scales = "free_y", ncol=3) +
-    xlab("Clone size (Sequences per clone)")
-clone_size_atleast2 <- eeplot(clone_size_atleast2, 
-       outdir=params$outdir, 
-       file=knitr::opts_current$get('clone-size_atleast2'),
-       caption=caption
-       )
-ggplotly(clone_size_atleast2 + theme(panel.spacing=unit(2, 'lines'), legend.position="right"))
-caption <- clone_size_atleast2$enchantr$html_caption
+```{r clone-size-plot, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
+caption <- "Clone size distribution."
+
+clone_sizes_summary <- clone_sizes %>%
+  count(sample_id, seq_count, name = "count")
+
+clone_size_plot<-ggplot(clone_sizes_summary, aes(x=seq_count, y=count,
+                                         color=sample_id, 
+                                         fill=sample_id, 
+                                         text = paste("Clone size: ", seq_count, 
+                                                                 "<br>Clone count: ", count, 
+                                                                 "<br>sample_id: ", sample_id))) +
+                geom_bar(stat = "identity") + 
+                scale_y_log10()+
+                theme_enchantr() +
+                facet_wrap(~sample_id, scales = "free_y", ncol=3) +
+                xlab("Clone size (Sequences per clone)") +
+                ylab("Clone counts") + 
+  theme(text = element_text(family = "Helvetica"))
+
+clone_size_plot <- eeplot(clone_size_plot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('clone-size-plot'),
+                  caption=caption)
+                
+ggplotly(clone_size_plot + theme(panel.spacing=unit(2, 'lines'), legend.position="right"),tooltip = "text")  %>%
+  layout(font = list(family = "Helvetica"))
+caption <- clone_size_plot$enchantr$html_caption
+```
+
+
+```{r clone-size-cdf-plot, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
+caption <- "CDF plot of clone size distribution."
+
+# Step : Calculate count and CDF
+clone_sizes_summary <- clone_sizes %>%
+  count(sample_id, seq_count, name = "count") %>%
+  group_by(sample_id) %>%
+  arrange(seq_count) %>%
+  mutate(
+    cum_count = cumsum(count),
+    total = sum(count),
+    cdf = cum_count / total,
+    text = paste("Clone size:", seq_count,
+                 "<br>Clone count:", count,
+                 "<br>sample_id:", sample_id,
+                 "<br>CDF:", signif(cdf, 3))
+  )
+
+# Step 2: CDF plot with line and points
+clone_size_cdf_plot <- ggplot(clone_sizes_summary, aes(x = seq_count, y = cdf,
+                                                       color = sample_id,
+                                                       group = sample_id,
+                                                       text = text)) +
+  geom_line() +
+  geom_point(size = 1, alpha = 0.9)+
+  scale_y_log10() +
+  scale_x_log10() +  # Optional: log-transform x-axis for clarity
+  theme_enchantr() +
+  facet_wrap(~sample_id, scales = "free_y", ncol = 3) +
+  xlab("Clone size (Sequences per clone)") +
+  ylab("Cumulative Fraction") + 
+  theme(text = element_text(family = "Helvetica"))
+
+clone_size_cdf_plot <- eeplot(clone_size_cdf_plot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('clone-size-cdf-plot'),
+                  caption=caption)
+
+# Step 3: Convert to interactive plot
+ggplotly(clone_size_cdf_plot + 
+           theme(panel.spacing = unit(2, 'lines'), legend.position = "right"),
+         tooltip = "text") %>%
+  layout(font = list(family = "Helvetica"))
+
+
+caption <- clone_size_cdf_plot$enchantr$html_caption
 ```
 
 ```{r, eval=max(clone_sizes[['seq_count']])<=1, results='asis'}
 cat("Only singletons detected: there aren't clones of size>1.\n\n")
 ```
-
 
 # Clonal abundance {#clonal_abundance}
 
@@ -434,7 +565,7 @@ cat("# Mutation frequency\n")
 ```
 
 <div class="introduction_paragraph">
-Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence to the germline reference. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations for each sequence. 
+Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence to the germline reference. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations for each entire sequence. 
 </div>
 
 
@@ -469,6 +600,16 @@ cat("The mutation frequency per sequence is stored in the final dataframes in th
 db_cgene <- db %>% filter(!is.na(c_gene), !(is.na(mu_freq)))
 db_cgene$mu_freq <- as.numeric(db_cgene$mu_freq)
 
+subject_levels <- str_sort(unique(db_cgene$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(db_cgene$sample_id),  numeric = TRUE)
+db_cgene <- db_cgene %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) 
+
+
 if (nrow(db_cgene) > 0) {
     mufreqSample <- ggplot(db_cgene, aes(x=c_gene, y=mu_freq, fill=c_gene)) + 
                     geom_boxplot() +
@@ -492,6 +633,15 @@ if (nrow(db_cgene) > 0) {
 
 db_locus <- db %>% filter(!is.na(locus), !is.na(mu_freq))
 db_locus$mu_freq <- as.numeric(db_locus$mu_freq)
+
+subject_levels <- str_sort(unique(db_locus$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(db_locus$sample_id),  numeric = TRUE)
+db_locus <- db_locus %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) 
 
 if (nrow(db_locus) > 0) {
     mufreqSampleLocus <- ggplot(db_locus, aes(x=locus, y=mu_freq, fill=locus)) + 
