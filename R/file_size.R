@@ -147,6 +147,17 @@ formatConsoleLog <- function(log_file){
 
 #' @export
 consoleLogsAsGraph <- function(logs) {
+    # Mangage duplicated inputs. This is to allow for duplicated input files.
+    # We found situations where the basename is duplicated i.e. multiple folders,
+    # one per sample, and each folder has an airr_rearrangement.tsv file.
+    logs <-  logs %>% group_by(input) %>% mutate(n=n(), n_idx=1:n() ) %>% ungroup()
+    if (any(logs[["n"]] > 1)) {
+        logs <- logs %>%
+        rowwise() %>%
+        mutate(input = ifelse(n>1, paste0(input, " (", output,")"), input))
+        # mutate(input = ifelse(n>1, paste0(input, " (", n_idx,")"), input))
+    }
+
     vertex_size <- bind_rows(
         logs %>% select(input,input_size) %>% rename(vertex=input, num_seqs=input_size),
         logs %>% select(output,output_size)  %>% rename(vertex=output, num_seqs=output_size),
