@@ -54,16 +54,19 @@ formatConsoleLog <- function(log_file){
     # TODO: update for multi input/output
     if ( "RECORDS" %in% log_table[["field"]] == FALSE ) {
         records <- log_table %>%
+            tidyr::extract(field, 
+                           into = c("field", "input_id"), 
+                           regex = "([A-Za-z]+)([0-9]*)$", remove = FALSE) %>%
+            group_by(input_id) %>%
             filter(field %in% c("FAIL","PASS")) %>%
-            select(value) %>%
-            summarize(records=sum(as.numeric(value))) %>%
-            pull(records)
-        records_row <- log_table[1,] %>%
-            mutate(field="RECORDS",
-                   value=as.character(records))
+            summarize(value=as.character(sum(as.numeric(value)))) %>%
+            mutate(field = paste0("RECORDS", input_id),
+                   step=log_table[["step"]][1],
+                   task=log_table[["task"]][1])
+        
         log_table <- bind_rows(
             log_table,
-            records_row
+            records %>% select(-input_id)
         )
         
     }
@@ -147,29 +150,51 @@ formatConsoleLog <- function(log_file){
 
 #' @export
 consoleLogsAsGraph <- function(logs) {
-    # Mangage duplicated inputs. This is to allow for duplicated input files.
+    
+    # .makeUnique is a helper function to mangage duplicated inputs. 
+    # This is to allow for duplicated input files.
     # We found situations where the basename is duplicated i.e. multiple folders,
     # one per sample, and each folder has an airr_rearrangement.tsv file.
-    logs <-  logs %>% group_by(input) %>% mutate(n=n(), n_idx=1:n() ) %>% ungroup()
+    # The log from the rename step in nf-core/airrflow only records the file name
+    # (basename), because that is how Nextflow's path() works.
+    # .makeUnique will add the sample id to the "duplicated" input files in 
+    # the RenameFile tasks. graph_from_data_frame won't work with duplicated node
+    # names.
+    .makeUnique <- function(.data) {
+        if (.data[["task"]] == "RenameFile") {
+            sample_id <- sub("\\.[^\\.]*$","",.data[["output"]])
+            paste0(sample_id,": ", .data[["input"]], collapse="")
+        } else {
+            # We should expect duplicated names only in the initial RenameFile tasks
+            # as downstream processes add modifiers that will make file names unique (sample_id)
+            stop("Unexpected duplicated input names.")
+        }
+    }
+    
+    # Identify duplicated input filenames
+    logs <-  logs %>% 
+        group_by(input) %>% 
+        mutate(n=n(), n_idx=1:n() ) %>% 
+        ungroup()
     if (any(logs[["n"]] > 1)) {
         logs <- logs %>%
         rowwise() %>%
-        mutate(input = ifelse(n>1, paste0(input, " (", output,")"), input))
-        # mutate(input = ifelse(n>1, paste0(input, " (", n_idx,")"), input))
+        mutate(input = ifelse(n>1, .makeUnique(.data), input))
     }
-
+    
+    # Create nodes from the input and output file names 
+    # and nodes' sizes (number of sequences)
+    # Remove duplicated nodes. This happens because outputs of some tasks are
+    # inputs for others tasks, and they have the same size.
     vertex_size <- bind_rows(
         logs %>% select(input,input_size) %>% rename(vertex=input, num_seqs=input_size),
         logs %>% select(output,output_size)  %>% rename(vertex=output, num_seqs=output_size),
     ) %>%
     distinct()
-    # rm duplicate vertex names
+    
     dup_v <- duplicated(vertex_size$vertex)
     if (any(dup_v)) {
-        dup_v_names <- unique(vertex_size$vertex[duplicated(vertex_size$vertex)])
-        rm_me <- vertex_size$vertex %in% dup_v_names &
-            is.na(vertex_size$num_seqs)
-        vertex_size <- vertex_size[!rm_me,,drop=F]
+        stop("Unexpected duplicated vertex names.")
     }
     g <- graph_from_data_frame(logs[,c("input","output", "task")],
                                directed = TRUE,
