@@ -125,6 +125,7 @@ suppressPackageStartupMessages(library("dowser"))
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("ComplexHeatmap"))
 suppressPackageStartupMessages(library("plotly"))
+suppressPackageStartupMessages(library("fastcluster"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive=T)

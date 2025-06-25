@@ -63,7 +63,8 @@ Imports:
     stringi,
     stringr,
     tidyr,
-    xfun
+    xfun,
+    fastcluster
 Suggests:
     optparse,
     testthat
