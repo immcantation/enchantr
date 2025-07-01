@@ -15,19 +15,15 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      #value: "input.tsv"
-      #value: "D:/Yale_Keinstein_lab/Airrflow_report_Improvement/Collapse_duplicate_report_update/rep1_meta-pass_collapse_collapse-pass.tsv"
-      value: "D:/Yale_Keinstein_lab/Airrflow_report_Improvement/Collapse_duplicate_report_update/Upenn_5_samples_meta-pass_two_subjects_collapse_collapse-pass.tsv"
+      value: "input.tsv"
    collapseby:
       label: "`collapseby`"
       input: text
-      #value: "sample_id"   
-      value: "subject_id"
+      value: "sample_id"   
    collapse_count_colname:
       label: "`collapse_count_colname`"
       input: text
-      #value: "collapse_count"
-      value: "sample_count"
+      value: "collapse_count"
    outname:
       label: "`outname`"
       input: text
@@ -35,8 +31,7 @@ params:
    outputby:
       label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
       input: text
-      #value: "sample_id"
-      value: "subject_id"
+      value: "sample_id"
    nproc:
       label: "`nproc`"
       input: numeric
@@ -57,12 +52,10 @@ params:
       label: "mask_imgt_position"
       input: numeric
       value: 0
-      #value: 80
    collapse_filter_threshold:
       label: "collapse_filter_threshold"
       input: numeric
       value: 0
-      #value: 2
    log:
       label: "`log`"
       input: text
