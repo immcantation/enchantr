@@ -143,18 +143,18 @@ findDuplicates <- function (db,
     }
 
     db %>%
-        left_join(db_subset, by="finddups_row_idx") %>%
-        mutate(collapse_pass=finddups_row_idx %in% collapse_pass[['finddups_row_idx']]) %>%
-        left_join(collapse_pass %>% select(any_of(c("finddups_row_idx", "collapse_count"))), by="finddups_row_idx") %>%
-        arrange(finddups_row_idx) %>%
-        select(!any_of(c('collapse_idx', 'finddups_row_idx')))
+      left_join(db_subset %>% select(-any_of(c(text_fields, num_fields, seq_fields))), by="finddups_row_idx") %>%
+      mutate(collapse_pass=finddups_row_idx %in% collapse_pass[['finddups_row_idx']]) %>%
+      left_join(collapse_pass %>% select(any_of(c("finddups_row_idx", "collapse_count",text_fields, num_fields, seq_fields))), by="finddups_row_idx") %>%
+      arrange(finddups_row_idx) %>%
+      select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
 
 #' This is the function to mask a single sequence at a specific IMGT position from 5' end
 #' @export
-mask_single_5_prime_seq <- function(sequence_aligned, imgt_position) {
-  first_part <- substr(sequence_aligned, 1, imgt_position)        
-  rest_part  <- substr(sequence_aligned, imgt_position + 1, nchar(sequence_aligned))  
+mask_single_5_prime_seq <- function(sequence_aligned, mask_imgt_position) {
+  first_part <- substr(sequence_aligned, 1, mask_imgt_position)        
+  rest_part  <- substr(sequence_aligned, mask_imgt_position + 1, nchar(sequence_aligned))  
   first_part <- gsub("[^.]", "N", first_part)
   after_truncate<-paste0(first_part,rest_part)
   return(after_truncate)
@@ -162,7 +162,7 @@ mask_single_5_prime_seq <- function(sequence_aligned, imgt_position) {
 
 #' This is the function to mask all the sequences at a specific IMGT position from 5' end
 #' @export
-mask_5prime_sequence_alignment <- function(db, imgt_position){
+mask_5prime_sequence_alignment <- function(db, mask_imgt_position){
   # check whether columns sequence_id, sequence_alignment, v_germline_end is in db
   required_cols <- c("sequence_id", "sequence_alignment", "v_germline_end")
   missing_cols <- setdiff(required_cols, colnames(db))
@@ -170,18 +170,18 @@ mask_5prime_sequence_alignment <- function(db, imgt_position){
     stop(paste("Missing columns:", paste(missing_cols, collapse = ", ")))
   }
   # Else if all the required column are in db, continue
-  if (imgt_position<0 | imgt_position %% 1 != 0){
+  if (mask_imgt_position<0 | mask_imgt_position %% 1 != 0){
     stop("The IMGT masking position from 5' end should be 0 or a positive integer. ")
-  } else if ( imgt_position > 0 ){
+  } else if ( mask_imgt_position > 0 ){
     min_v_end <- min( db$v_germline_end )
-    # imgt_position must not be greater than the minimum of v_germline_end of all v germlines.
-    if( imgt_position > min_v_end ){
+    # mask_imgt_position must not be greater than the minimum of v_germline_end of all v germlines.
+    if( mask_imgt_position > min_v_end ){
       stop(paste("The IMGT masking position from 5' end should be smaller than the length of the shortest V gene germline: ", min_v_end))
     }
     else{
       db$sequence_alignment_before_mask <- db$sequence_alignment 
       db <- db %>%
-        mutate(sequence_alignment = mask_single_5_prime_seq(sequence_alignment_before_mask, imgt_position))
+        mutate(sequence_alignment = mask_single_5_prime_seq(sequence_alignment_before_mask, mask_imgt_position))
     }
   }
   return(db)
