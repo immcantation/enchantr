@@ -149,9 +149,30 @@ formatConsoleLog <- function(log_file){
 }
 
 #' @export
-consoleLogsAsGraph <- function(logs) {
+consoleLogsAsGraphs <- function(logs, metadata=NULL) {
     
-    # .makeUnique is a helper function to mangage duplicated inputs. 
+    # Add file_0 to metadata to prepare for merge at a later step
+    if (!is.null(metadata)) {
+        if (nrow(metadata)>1) {
+            .makeFile <- function(.data) { paste(.data[["sample_id"]], .data[["filename"]], sep=": ")}
+            metadata <- metadata %>%
+                group_by(filename) %>%
+                mutate(n=n()) %>%
+                ungroup() %>%
+                rowwise() %>%
+                mutate(name = ifelse(n>1, .makeFile(.data) , filename)) %>%
+                select(-n)
+            # >metadata
+            # sample_id filename               file_0                          
+            # <chr>     <chr>                  <chr>                           
+            # 1 sample_x  airr_rearrangement.tsv sample_x: airr_rearrangement.tsv
+            # 2 sample_y  airr_rearrangement.tsv sample_y: airr_rearrangement.tsv            
+        } else {
+            stop("`metadata` is empty. Please update it or use NULL.")
+        }
+    }
+    
+    # .makeVertexName is a helper function to manage duplicated inputs. 
     # This is to allow for duplicated input files.
     # We found situations where the basename is duplicated i.e. multiple folders,
     # one per sample, and each folder has an airr_rearrangement.tsv file.
@@ -160,7 +181,7 @@ consoleLogsAsGraph <- function(logs) {
     # .makeUnique will add the sample id to the "duplicated" input files in 
     # the RenameFile tasks. graph_from_data_frame won't work with duplicated node
     # names.
-    .makeUnique <- function(.data) {
+    .makeVertexName <- function(.data) {
         if (.data[["task"]] == "RenameFile") {
             sample_id <- sub("\\.[^\\.]*$","",.data[["output"]])
             paste0(sample_id,": ", .data[["input"]], collapse="")
@@ -174,43 +195,135 @@ consoleLogsAsGraph <- function(logs) {
     # Identify duplicated input filenames
     logs <-  logs %>% 
         group_by(input) %>% 
-        mutate(n=n(), n_idx=1:n() ) %>% 
+        mutate(n=n(), n_idx=1:n()) %>% 
         ungroup()
-    if (any(logs[["n"]] > 1)) {
-        logs <- logs %>%
+    
+    logs <- logs %>%
         rowwise() %>%
-        mutate(input = ifelse(n>1, .makeUnique(.data), input))
-    }
+        mutate(name = ifelse(n>1, .makeVertexName(.data), input))
     
     # Create nodes from the input and output file names 
     # and nodes' sizes (number of sequences)
     # Remove duplicated nodes. This happens because outputs of some tasks are
     # inputs for others tasks, and they have the same size.
-    vertex_size <- bind_rows(
-        logs %>% select(input,input_size) %>% rename(vertex=input, num_seqs=input_size),
-        logs %>% select(output,output_size)  %>% rename(vertex=output, num_seqs=output_size),
+    vertex_meta <- bind_rows(
+        logs %>% 
+            select(name, input, input_size) %>% 
+            rename(num_seqs=input_size, filename=input),
+        logs %>% 
+            select(output, output_size) %>%
+            mutate(name=output) %>%
+            rename(num_seqs=output_size,filename=output),
     ) %>%
-    distinct()
+        distinct() 
     
-    dup_v <- duplicated(vertex_size$vertex)
+    dup_v <- duplicated(vertex_meta$name)
     if (any(dup_v)) {
         stop("Unexpected duplicated vertex names.")
     }
-    g <- graph_from_data_frame(logs[,c("input","output", "task")],
+    g <- graph_from_data_frame(logs %>% select(name, output, task),
                                directed = TRUE,
-                               vertices = vertex_size)
-    g
+                               vertices = vertex_meta)
+    
+    # Identify graph components, belonging to the different
+    # groups of files that belong to the same original data
+    # source
+    V(g)$component <- igraph::components(g)$membership
+    
+    # Label the root nodes, the original input files
+    g <- igraph::set_vertex_attr(g, "is_input", index = V(g), FALSE)
+    g <- igraph::set_vertex_attr(g, "is_input", index = V(g)[degree(g, mode="in")==0], TRUE)
+    
+    # Add source task as node attribute
+    tasks <- as_long_data_frame(g) %>%
+        select(to_name, task)
+    g <- igraph::set_vertex_attr(g, "task", index = V(g), "input")
+    for (i in 1:nrow(tasks)) {
+        this_task <- tasks[["task"]][i]
+        this_vertex_name <- tasks[["to_name"]][i]
+        v_idx <- V(g)$name == this_vertex_name
+        g <- igraph::set_vertex_attr(g, "task", index = V(g)[v_idx], this_task)
+    }
+    
+    # Propagate metadata and root name through the component  
+    if (!is.null(metadata)) {
+        for (i in unique(V(g)$component)) {
+            c_idx <- V(g)$component == i
+            this_meta <- metadata[metadata$name %in% V(g)$name[c_idx],,drop=FALSE] %>%
+                select(-filename, -name)
+            this_root_name <- igraph::vertex_attr(g, "name")[igraph::vertex_attr(g, "is_input") & c_idx]
+            g <- igraph::set_vertex_attr(g, "root_name", index = V(g)[c_idx], this_root_name)
+            if (nrow(this_meta)!=1 ) { stop("Expecting one row with metadata for this component.") }
+            for ( meta_field in colnames(this_meta)) {
+                g <- igraph::set_vertex_attr(g, meta_field, index = V(g)[c_idx], this_meta[[meta_field]])
+            }
+        }
+    }
+    
+    # Example structure. Note rows 12 and 15.
+    # name is the vertex name, that must be unique.
+    # filename is the original filename
+    # is_input labels the original input files
+    #
+    # > V(g)[[]]
+    # + 20/20 vertices, named, from b2de37a:
+    #                                name                   filename num_seqs component is_input                task                        root_name sample_id
+    # 1         sample_x_productive-T.tsv  sample_x_productive-T.tsv       79         1    FALSE       ParseDb-split sample_x: airr_rearrangement.tsv  sample_x
+    # 2         sample_y_quality-pass.tsv  sample_y_quality-pass.tsv       87         2    FALSE       FilterQuality sample_y: airr_rearrangement.tsv  sample_y
+    # 3                      sample_x.tsv               sample_x.tsv       79         1    FALSE          RenameFile sample_x: airr_rearrangement.tsv  sample_x
+    # 4        sample_y_junction-pass.tsv sample_y_junction-pass.tsv       87         2    FALSE  FilterJunctionMod3 sample_y: airr_rearrangement.tsv  sample_y
+    # 5         sample_x_quality-pass.tsv  sample_x_quality-pass.tsv       79         1    FALSE       FilterQuality sample_x: airr_rearrangement.tsv  sample_x
+    # 6              sample_y_db-pass.tsv       sample_y_db-pass.tsv       87         2    FALSE      MakeDB-igblast sample_y: airr_rearrangement.tsv  sample_y
+    # 7          sample_y_sequences.fasta   sample_y_sequences.fasta       87         2    FALSE     ConvertDb-fasta sample_y: airr_rearrangement.tsv  sample_y
+    # 8            sample_x_meta-pass.tsv     sample_x_meta-pass.tsv       79         1    FALSE         AddMetadata sample_x: airr_rearrangement.tsv  sample_x
+    # 9            sample_y_meta-pass.tsv     sample_y_meta-pass.tsv       87         2    FALSE         AddMetadata sample_y: airr_rearrangement.tsv  sample_y
+    # 10       sample_x_junction-pass.tsv sample_x_junction-pass.tsv       79         1    FALSE  FilterJunctionMod3 sample_x: airr_rearrangement.tsv  sample_x
+    # 11            sample_x_igblast.fmt7      sample_x_igblast.fmt7       79         1    FALSE AssignGenes-igblast sample_x: airr_rearrangement.tsv  sample_x
+    # 12 sample_y: airr_rearrangement.tsv     airr_rearrangement.tsv       87         2     TRUE               input sample_y: airr_rearrangement.tsv  sample_y
+    # 13                     sample_y.tsv               sample_y.tsv       87         2    FALSE          RenameFile sample_y: airr_rearrangement.tsv  sample_y
+    # 14        sample_y_productive-T.tsv  sample_y_productive-T.tsv       87         2    FALSE       ParseDb-split sample_y: airr_rearrangement.tsv  sample_y
+    # 15 sample_x: airr_rearrangement.tsv     airr_rearrangement.tsv       79         1     TRUE               input sample_x: airr_rearrangement.tsv  sample_x
+    # 16             sample_x_db-pass.tsv       sample_x_db-pass.tsv       79         1    FALSE      MakeDB-igblast sample_x: airr_rearrangement.tsv  sample_x
+    # 17         sample_x_sequences.fasta   sample_x_sequences.fasta       79         1    FALSE     ConvertDb-fasta sample_x: airr_rearrangement.tsv  sample_x
+    # 18            sample_y_igblast.fmt7      sample_y_igblast.fmt7       87         2    FALSE AssignGenes-igblast sample_y: airr_rearrangement.tsv  sample_y
+    # 19          sample_x__scqc-pass.tsv    sample_x__scqc-pass.tsv       78         1    FALSE        SingleCellQC sample_x: airr_rearrangement.tsv  sample_x
+    # 20          sample_y__scqc-pass.tsv    sample_y__scqc-pass.tsv       82         2    FALSE        SingleCellQC sample_y: airr_rearrangement.tsv  sample_y
+    
+    g_decomposed <- decompose(g)
+    # return named list
+    names(g_decomposed) <- sapply(g_decomposed, function(g) {
+        if ("sample_id" %in% igraph::vertex_attr_names(g)) {
+            igraph::vertex_attr(g, "sample_id")[igraph::vertex_attr(g, "is_input")]
+        } else {
+            igraph::vertex_attr(g, "name")[igraph::vertex_attr(g, "is_input")]
+        }
+    })
+    list(
+        "by_sample"=g_decomposed,
+        "workflow"=g
+    )
 }
 
-plotLog <- function(g) {
-    root_node <-  V(g)$name[degree(g, mode="in")==0]
-    if ( length(root_node)>1 ) {
-        stop("Multiple root_node candidates found. Can't determine file_0.")
-    }
+
+#' @export
+cleanPlotData <- function(pd) {
+    pd %>%
+        group_by(component) %>%
+        mutate(step = abs(y-max(y))) %>%
+        arrange(step,x) %>%
+        ungroup() %>%
+        select(!any_of(c("x", "y", "component", "circular"))) %>%
+        select(!starts_with(".")) %>%
+        select(step, task , name, filename, num_seqs, everything()) %>%
+        mutate(name = factor(name, levels=unique(name), ordered = T))
+}
+
+#' @export
+plotLogGraph <- function(g) {
     gp <- ggraph(g, layout="tree") +
         #geom_node_point(aes(size = num_seqs), colour = "black") +
         geom_node_label(aes(label=paste0(name,": ", num_seqs, " sequences")),
-                        colour = "black", label.size=0) +
+                        colour = "black", label.size=unit(0.25, 'mm')) +
         geom_edge_link(aes(start_cap = label_rect(node1.name),
                            end_cap = label_rect(node2.name),
                            # colour = factor(task),
@@ -226,10 +339,10 @@ plotLog <- function(g) {
             axis.ticks=element_blank(),
             panel.border = element_blank()
         )
-    gp$data$file_0 <- gp$data$name %in% root_node
     gp
 }
 
+#' @export
 plotWorkflow <- function(g) {
     root_nodes <- which(degree(g, mode = "in") == 0)
     g <- add_vertices(g, 1, attr = list("name"="Input"))
@@ -242,8 +355,10 @@ plotWorkflow <- function(g) {
     g3 <- graph_from_edgelist(unique(as_edgelist(g2)))
     p <- ggraph(g3, layout = "tree") +
     # geom_edge_link0(aes(col=1,edge_width=2), arrow = arrow(length = unit(8, 'mm')))+
-        geom_edge_link(color="darkblue",edge_width=3, arrow = arrow(length = unit(6, 'mm')))+
-        geom_node_point(shape=21,col="white",fill="black",size=5,stroke=1)+
+        geom_edge_link(color="darkblue", edge_width=unit(1, 'mm'), 
+                       arrow = arrow(type = "closed", length = unit(3, 'mm')), 
+                       end_cap = circle(3, 'mm'))+
+        geom_node_point(shape=21,col="white",fill="black",size=5,stroke=0.5) +
         geom_node_label(aes(label = name), repel = FALSE) +
         theme_graph(plot_margin = margin(5, 50, 5, 40)) +
         coord_cartesian(clip = "off") +
@@ -260,37 +375,49 @@ plotWorkflow <- function(g) {
 # log_files <- list.files(system.file("extdata", package="enchantr"), full.names=T)
 #' @param log_files Vector of paths to log files
 #' @export
-getConsoleLogs <- function(log_files) {
+readConsoleLogs <- function(log_files) {
     #log_files <-  strsplit(log_files,"[ ,]")[[1]]
     logs_df <- bind_rows(lapply(log_files, enchantr:::formatConsoleLog))
     logs_df
 }
 
+
 #' @param log_df data.frame of log data
 #' @param style  Style plot. \code{workflow} will plot one figure with
 #'               the pipeline steps. \code{decompose} will plot one figure
 #'               for each starting input file.
-#' @seealso  See also \link{getConsoleLogs}.
+#' @seealso  See also \link{readConsoleLogs}.
 #' @export
-plotConsoleLogs <- function(log_df, style=c("decompose", "workflow")) {
+plotConsoleLogs <- function(log_df, style=c("decompose", "workflow"), metadata=NULL) {
     style <- match.arg(style)
-    logs <- consoleLogsAsGraph(log_df)
+    logs <- consoleLogsAsGraphs(log_df, metadata)
     if (style == "decompose") {
-        gl <- lapply(decompose(logs), enchantr:::plotLog)
-        # return named list
-        names(gl) <- sapply(gl, function(g) {
-            g$data$name[g$data$file_0]
-        })
-        gl
+        logs$by_sample
     } else {
-        plotWorkflow(logs)
+        logs$workflow
     }
 
 }
 
 #' @export
-graphDataFrame <- function(log_df) {
-    as_long_data_frame(consoleLogsAsGraph(log_df)) %>%
-        select(from_name, from_num_seqs, task, to_name, to_num_seqs) %>%
-        mutate(file_0 = NA)
+graphDataFrame <- function(g) {
+    exclude_cols <- c("from", "to",
+                      "from_name", "from_task", "from_component",
+                      "to_task")
+    .fix_from_names <- function(x) {
+        sub("^from_","",x)
+    }
+    as_long_data_frame(g) %>%
+        rename(input=from_filename,
+               output=to_filename,
+               task=task,
+               input_size=from_num_seqs,
+               output_size=to_num_seqs,
+               is_input=from_is_input) %>%
+        select(!any_of(exclude_cols)) %>%
+        select(!starts_with("to_")) %>%
+        rename_with(.fix_from_names) %>%
+        select(any_of(c("sample_id", "input", "input_size", 
+                        "task", "output", "output_size")),
+               everything())
 }
