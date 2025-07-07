@@ -460,6 +460,13 @@ caption <- "Clone size distribution."
 clone_sizes_summary <- clone_sizes %>%
   count(sample_id, seq_count, name = "count")
 
+n_samples <- length(unique(clone_sizes_summary$sample_id))
+if (n_samples==4){
+  n_col <- 2
+}else{
+  n_col <- 3
+}
+
 clone_size_plot<-ggplot(clone_sizes_summary, aes(x=seq_count, y=count,
                                          color=sample_id, 
                                          fill=sample_id, 
@@ -469,7 +476,7 @@ clone_size_plot<-ggplot(clone_sizes_summary, aes(x=seq_count, y=count,
                 geom_bar(stat = "identity") + 
                 scale_y_log10()+
                 theme_enchantr() +
-                facet_wrap(~sample_id, scales = "free_y", ncol=3) +
+                facet_wrap(~sample_id, scales = "free_y", ncol = n_col) +
                 xlab("Clone size (Sequences per clone)") +
                 ylab("Clone counts") + 
   theme(text = element_text(family = "Helvetica"))
@@ -503,6 +510,13 @@ clone_sizes_summary <- clone_sizes %>%
                  "<br>CDF:", signif(cdf, 3))
   )
 
+n_samples <- length(unique(clone_sizes_summary$sample_id))
+if (n_samples==4){
+  n_col <- 2
+}else{
+  n_col <- 3
+}
+
 # Step 2: CDF plot with line and points
 clone_size_cdf_plot <- ggplot(clone_sizes_summary, aes(x = seq_count, y = cdf,
                                                        color = sample_id,
@@ -513,7 +527,7 @@ clone_size_cdf_plot <- ggplot(clone_sizes_summary, aes(x = seq_count, y = cdf,
   scale_y_log10() +
   scale_x_log10() +  # Optional: log-transform x-axis for clarity
   theme_enchantr() +
-  facet_wrap(~sample_id, scales = "free_y", ncol = 3) +
+  facet_wrap(~sample_id, scales = "free_y", ncol = n_col) +
   xlab("Clone size (Sequences per clone)") +
   ylab("Cumulative Fraction") + 
   theme(text = element_text(family = "Helvetica"))
