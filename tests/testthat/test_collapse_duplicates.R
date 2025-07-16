@@ -37,6 +37,27 @@ test_that("findDuplicates", {
 })
 
 
+
+test_that("mask_5prime_sequence_alignment", {
+  # Example data.frame
+  db <- data.frame(sequence_id=c('A'),
+                   sequence_alignment=c(".................................................CCTCAGTGAAGGTCTCCTGCAAGGCTTCTGGAGGCACCTTC............AGCAGCTATGCTATCAGCTGGGTGCGACAGGCCCCCGGACAAGGGCTTGAGTGGATGGGAAGGATCATCCCTATC......CTTGGTATAGCAAACTACGCACAGAAGTTCCAG...GGCAGAGTCACGATTACCGCGGACAAATCCACGAGCACAGCCTACATGGAGCTGAGCAGCCTGAGATCTGAGGACACGGCCGTGTATTACTNTGCGAGTCACTACGATTTTTGGAGTGGTTATCCCCCGGGATACTACTACTACGGTATGGACGTCTGGGGCCAAGGAACCACGGTCACCGTCTCCTCAG"),
+                   v_germline_end=c(317),
+                   stringsAsFactors=FALSE)
+  
+  obs <- mask_5prime_sequence_alignment(db,80)
+  
+  exp <- data.frame(
+    sequence_id=c('A'),
+    sequence_alignment=c(".................................................NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAGGCACCTTC............AGCAGCTATGCTATCAGCTGGGTGCGACAGGCCCCCGGACAAGGGCTTGAGTGGATGGGAAGGATCATCCCTATC......CTTGGTATAGCAAACTACGCACAGAAGTTCCAG...GGCAGAGTCACGATTACCGCGGACAAATCCACGAGCACAGCCTACATGGAGCTGAGCAGCCTGAGATCTGAGGACACGGCCGTGTATTACTNTGCGAGTCACTACGATTTTTGGAGTGGTTATCCCCCGGGATACTACTACTACGGTATGGACGTCTGGGGCCAAGGAACCACGGTCACCGTCTCCTCAG"),
+    v_germline_end=c(317),
+    stringsAsFactors=FALSE
+  )
+  
+  expect_equivalent(obs, exp)
+})
+
+
 #### Collapse Duplicates Report ####
 test_that("Collapse duplicates on sample_id", {
   # Input in one file, output in 4 files.
@@ -53,7 +74,6 @@ test_that("Collapse duplicates on sample_id", {
   suppressWarnings(enchantr_report("collapse_duplicates", report_params = report_params))
   report_dir <- file.path(tmp_dir, "enchantr")
   repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = TRUE)
-  print(repertoires)
   # test number and name of output files, test number of sequence and collapse_count in file S2_collapse_collapse-pass.tsv
   expect_equal(length(repertoires), 4)
   expect_equal(basename(repertoires),c('S1_collapse_collapse-pass.tsv','S2_collapse_collapse-pass.tsv','S3_collapse_collapse-pass.tsv','S4_collapse_collapse-pass.tsv'))
@@ -78,7 +98,6 @@ test_that("Collapse duplicates on subject_id", {
   suppressWarnings(enchantr_report("collapse_duplicates", report_params = report_params))
   report_dir <- file.path(tmp_dir_subject, "enchantr")
   repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = TRUE)
-  print(repertoires)
   # test number of output files, name of output files, number of sequence , collapse_count and consensus count in file Subject_B_collapse_collapse-pass.tsv
   expect_equal(length(repertoires), 2)
   expect_equal(basename(repertoires),c('Subject_A_collapse_collapse-pass.tsv','Subject_B_collapse_collapse-pass.tsv'))

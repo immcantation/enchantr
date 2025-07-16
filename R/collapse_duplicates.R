@@ -181,7 +181,8 @@ mask_5prime_sequence_alignment <- function(db, mask_imgt_position){
     else{
       db$sequence_alignment_before_mask <- db$sequence_alignment 
       db <- db %>%
-        mutate(sequence_alignment = mask_single_5_prime_seq(sequence_alignment_before_mask, mask_imgt_position))
+        mutate(sequence_alignment = mask_single_5_prime_seq(sequence_alignment_before_mask, mask_imgt_position)) %>%
+        select(-c('sequence_alignment_before_mask'))
     }
   }
   return(db)
