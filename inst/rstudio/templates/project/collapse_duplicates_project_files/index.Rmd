@@ -88,10 +88,6 @@ editor_options:
    chunk_output_type: console
 ---
 
-```{r}
-cat("Rendered at: ", Sys.time(), "\n")
-```
-
 ```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                      echo=params$echo,cache=params$cache,
