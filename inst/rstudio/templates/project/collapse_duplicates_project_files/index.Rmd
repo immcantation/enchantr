@@ -19,7 +19,7 @@ params:
    collapseby:
       label: "`collapseby`"
       input: text
-      value: "sample_id"   
+      value: "sample_id"
    collapse_count_colname:
       label: "`collapse_count_colname`"
       input: text
@@ -87,6 +87,10 @@ params:
 editor_options: 
    chunk_output_type: console
 ---
+
+```{r}
+cat("Rendered at: ", Sys.time(), "\n")
+```
 
 ```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
@@ -232,7 +236,11 @@ num_fields <- num_fields[num_fields %in% colnames(db)]
 if (length(num_fields)<1) {num_fields <- NULL}
 
 if (params$collapse_count_colname %in% colnames(db)){
-  warning(paste0("Column ", params$collapse_count_colname, " already exists in the input data. Change the parameter 'collapse_cout_coname' to name the new column for collpased counts. Otherwise,the old one will be overwritten by the new one."))
+    cat(paste0(
+      "⚠️ Column '", params$collapse_count_colname, "' already exists in the input data.\n",
+      "Change the parameter 'collapse_count_colname' to name the new column for collapsed counts.\n",
+      "Otherwise, the old one will be overwritten by the new one.\n"
+       ))
   db <- db %>% select(-all_of(params$collapse_count_colname))
   if ('collapse_pass' %in% colnames(db)){
     db <- db %>%
