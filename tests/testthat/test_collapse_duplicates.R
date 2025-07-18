@@ -58,6 +58,24 @@ test_that("mask_5prime_sequence_alignment", {
 })
 
 
+test_that("mask_3prime_sequence_alignment", {
+  # Example data.frame
+  db <- data.frame(sequence_id=c('A','B'),
+                   sequence_alignment=c(".................................................CCTCAGTGAAGGTCTCCTGCAAGGCTTCTGGAGGCACCTTC............AGCAGCTATGCTATCAGCTGGGTGCGACAGGCCCCCGGACAAGGGCTTGAGTGGATGGGAAGGATCATCCCTATC......CTTGGTATAGCAAACTACGCACAGAAGTTCCAG...GGCAGAGTCACGATTACCGCGGACAAATCCACGAGCACAGCCTACATGGAGCTGAGCAGCCTGAGATCTGAGGACACGGCCGTGTATTACTNTGCGAGTCACTACGATTTTTGGAGTGGTTATCCCCCGGGATACTACTACTACGGTATGGACGTCTGGGGCCAAGGAACCACGGTCACCGTCTCCTCAG", "CCTCAGTGAAGGTCTCCTGCAAGGCTTCTGGAGGCACCTT"),
+                   stringsAsFactors=FALSE)
+  
+  obs <- mask_3prime_sequence_alignment(db,25)
+  
+  exp <- data.frame(
+    sequence_id=c('A','B'),
+    sequence_alignment=c(".................................................CCTCAGTGAAGGTCTCCTGCAAGGCTTCTGGAGGCACCTTC............AGCAGCTATGCTATCAGCTGGGTGCGACAGGCCCCCGGACAAGGGCTTGAGTGGATGGGAAGGATCATCCCTATC......CTTGGTATAGCAAACTACGCACAGAAGTTCCAG...GGCAGAGTCACGATTACCGCGGACAAATCCACGAGCACAGCCTACATGGAGCTGAGCAGCCTGAGATCTGAGGACACGGCCGTGTATTACTNTGCGAGTCACTACGATTTTTGGAGTGGTTATCCCCCGGGATACTACTACTACGGTATGGACGTCTGGGGCCAANNNNNNNNNNNNNNNNNNNNNNNNN","CCTCAGTGAAGGTCTNNNNNNNNNNNNNNNNNNNNNNNNN"),
+    stringsAsFactors=FALSE
+  )
+  
+  expect_equivalent(obs, exp)
+})
+
+
 #### Collapse Duplicates Report ####
 test_that("Collapse duplicates on sample_id", {
   # Input in one file, output in 4 files.
@@ -193,4 +211,28 @@ test_that("Collapse duplicates on sample_id, then collapse duplicates on subject
   expect_equal(db_B$collapse_count, c('1','1','1','2','4'))
   expect_equal(db_B$consensus_count, c(10,11,12,29,64))
   expect_equal(db_B$sample_count, c('1','1','1','2','2'))
+})
+
+
+test_that("Collapse duplicates on sample_id, mask 3 bases to 3 prime end", {
+  # Input in one file, output in 4 files.
+  skip_on_cran()
+  input <- normalizePath(file.path("..", "data-tests", "subj_multiple_files","data_to_test_collapse_duplicates.tsv"))
+  tmp_dir <- file.path(tempdir(),"collapse_duplicates_on_sample_IMGT_masking")
+  report_params <- list(
+    'input' = input,
+    'collapseby' = "sample_id", 'outputby' = "sample_id",
+    'mask_length_to_3end' = 3,
+    'outdir' = tmp_dir,
+    'nproc' = 1,
+    'log' = "test_collapse_duplicate_command_log"
+  )
+  suppressWarnings(enchantr_report("collapse_duplicates", report_params = report_params))
+  report_dir <- file.path(tmp_dir, "enchantr")
+  repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = TRUE)
+  # test number and name of output files, test sequence_alignment in S3_collapse_collapse-pass.tsv
+  expect_equal(length(repertoires), 4)
+  expect_equal(basename(repertoires),c('S1_collapse_collapse-pass.tsv','S2_collapse_collapse-pass.tsv','S3_collapse_collapse-pass.tsv','S4_collapse_collapse-pass.tsv'))
+  db_s3 <- suppressWarnings(read_rearrangement(file.path(report_dir, "repertoires", "S3_collapse_collapse-pass.tsv")))
+  expect_equal(db_s3[['sequence_alignment']], c('CCCCTNNN', 'ACCCTNNN', 'ATCGGNNN', 'CTCGGNNN','NAACTNNN'))
 })

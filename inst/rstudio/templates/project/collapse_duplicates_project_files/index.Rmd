@@ -52,6 +52,10 @@ params:
       label: "mask_imgt_position"
       input: numeric
       value: 0
+   mask_length_to_3end:
+      label: "mask_length_to_3end"
+      input: numeric
+      value: 0
    collapse_filter_threshold:
       label: "collapse_filter_threshold"
       input: numeric
@@ -159,6 +163,16 @@ cat("# Mask sequence alignments from 5' end to a specific IMGT position\n")
 ```{r mask_5prime_sequence_alignment, eval=params$mask_imgt_position!=0}
 print(paste0("Mask sequence alignments from 5' end to IMGT position ", params$mask_imgt_position, "."))
 db <- mask_5prime_sequence_alignment(db, params[["mask_imgt_position"]])
+```
+
+
+```{r eval=params$mask_length_to_3end!=0, results='asis'}
+cat("# Mask customized length to 3' end of the sequence alignments.\n")
+```
+
+```{r mask_3prime_sequence_alignment, eval=params$mask_length_to_3end!=0}
+print(paste0("Mask ", params$mask_length_to_3end, " bases to the 3'end of sequence alignments."))
+db <- mask_3prime_sequence_alignment(db, params[["mask_length_to_3end"]])
 ```
 
 # Homogenize c_call, c_primer and c_region fields containing isotype information
