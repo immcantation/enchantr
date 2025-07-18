@@ -187,3 +187,35 @@ mask_5prime_sequence_alignment <- function(db, mask_imgt_position){
   }
   return(db)
 }
+
+
+#' This is the function to mask the last X bases of a single aligned sequence to 3' end
+#' @export
+mask_single_3_prime_seq <- function(sequence_aligned, mask_length_to_3end) {
+  first_part <- substr(sequence_aligned, 1, nchar(sequence_aligned)-mask_length_to_3end)        
+  rest_part  <- substr(sequence_aligned, nchar(sequence_aligned)-mask_length_to_3end + 1, nchar(sequence_aligned))  
+  rest_part <- strrep("N", nchar(rest_part))
+  after_truncate<-paste0(first_part,rest_part)
+  return(after_truncate)
+}
+
+#' This is the function to mask all the aligned sequences X bases to the 3' end
+#' @export
+mask_3prime_sequence_alignment <- function(db, mask_length_to_3end){
+  # check whether columns sequence_id, sequence_alignment is in db
+  required_cols <- c("sequence_id", "sequence_alignment")
+  missing_cols <- setdiff(required_cols, colnames(db))
+  if (length(missing_cols) > 0) {
+    stop(paste("Missing columns:", paste(missing_cols, collapse = ", ")))
+  }
+  # Else if all the required column are in db, continue
+  if (mask_length_to_3end<0 | mask_length_to_3end %% 1 != 0){
+    stop("The length to mask to the 3' end should be 0 or a positive integer. ")
+  } else if ( mask_length_to_3end > 0 ){
+      db$sequence_alignment_before_mask <- db$sequence_alignment 
+      db <- db %>%
+        mutate(sequence_alignment = mask_single_3_prime_seq(sequence_alignment_before_mask, mask_length_to_3end)) %>%
+        select(-c('sequence_alignment_before_mask'))
+  }
+  return(db)
+}
