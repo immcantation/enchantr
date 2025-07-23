@@ -510,13 +510,6 @@ clone_sizes_summary <- clone_sizes %>%
                  "<br>CDF:", signif(cdf, 3))
   )
 
-n_samples <- length(unique(clone_sizes_summary$sample_id))
-if (n_samples==4){
-  n_col <- 2
-}else{
-  n_col <- 3
-}
-
 # Step 2: CDF plot with line and points
 clone_size_cdf_plot <- ggplot(clone_sizes_summary, aes(x = seq_count, y = cdf,
                                                        color = sample_id,
