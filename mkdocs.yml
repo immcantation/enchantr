@@ -15,6 +15,10 @@ markdown_extensions:
       permalink: True
 extra_javascript:
   - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML
+  - path: js/custom.js
+    defer: true
+extra_css:
+  - css/custom.css
 nav:
   - 'Immcantation Portal': https://immcantation.readthedocs.io/
   - 'About':
