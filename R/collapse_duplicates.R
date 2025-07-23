@@ -3,7 +3,28 @@
 #' From RStudio, use the New Project wizard: File > New Project >
 #' New Directory > then select  Immcantation ...
 #' to create the skeleton of an Immcantation ... project
+#' 
 #' @param  path path to the directory where the project will be created
+#' 
+#' @param input Path to repertoires file. (index.Rmd: input)
+#' @param collapseby Name of the column(s) in the input data that will be used to group sequences for collapsing. (index.Rmd: collapseby)
+#' @param collapse_count_colname Name of the column to store the collapsed count. (index.Rmd: collapse_count_colname)
+#' @param outname Output file name prefix. (index.Rmd: outname)
+#' @param outputby Name of the column in input that contains sample identifiers used to split the output db. (index.Rmd: outputby)  
+#' @param nproc Number of processors to use for parallel processing. (index.Rmd: nproc)
+#' @param c_primer_column Name of the column containing c_primer information. (index.Rmd: c_primer_column)
+#' @param c_region_column Name of the column containing c_region information. (index.Rmd: c_region_column)
+#' @param locus Locus type, e.g., "IG" or "TR". (index.Rmd: locus)
+#' @param mask_imgt_position Mask sequence alignments from 5' end to a specific IMGT position. (index.Rmd: mask_imgt_position)
+#' @param mask_length_to_3end Mask a specified number of bases at the 3' end of sequence alignments. (index.Rmd: mask_length_to_3end)
+#' @param collapse_filter_threshold Filter threshold for the collapsed count; sequences with counts below this value are removed. (index.Rmd: collapse_filter_threshold)
+#' @param log Name of the log file to write command log. (index.Rmd: log)
+#' @param outdir Output directory for results. (index.Rmd: outdir)
+#' @param date Run date. (index.Rmd: date)
+#' @param logo Path to report logo. (index.Rmd: logo)
+#' @param logolink URL to be added to the logo. (index.Rmd: logolink)
+#' @param echo Logical; show code in the report. (index.Rmd: echo)
+#' @param cache Logical; use cached results. (index.Rmd: cache)
 collapse_duplicates_project <- function(path,...) {
     skeleton_dir <- file.path(system.file(package = "enchantr"), "rstudio",
                                 "templates", "project",
@@ -16,7 +37,6 @@ collapse_duplicates_project <- function(path,...) {
     project_files <- list.files(skeleton_dir, full.names = TRUE)
     file.copy(project_files, project_dir, recursive = TRUE)
 }
-
 
 #' @export
 findDuplicates <- function (db, 
