@@ -43,6 +43,7 @@ Imports:
     dowser (>= 1.2.0),
     dplyr,
     DT,
+    fastcluster,
     foreach,
     ggraph,
     ggplot2 (>= 3.4.0),
@@ -63,8 +64,7 @@ Imports:
     stringi,
     stringr,
     tidyr,
-    xfun,
-    fastcluster
+    xfun
 Suggests:
     optparse,
     testthat
