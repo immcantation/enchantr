@@ -3,7 +3,28 @@
 #' From RStudio, use the New Project wizard: File > New Project >
 #' New Directory > then select  Immcantation ...
 #' to create the skeleton of an Immcantation ... project
+#' 
 #' @param  path path to the directory where the project will be created
+#' 
+#' @param input Path to repertoires file. (index.Rmd: input)
+#' @param collapseby Name of the column(s) in the input data that will be used to group sequences for collapsing. (index.Rmd: collapseby)
+#' @param collapse_count_colname Name of the column to store the collapsed count. (index.Rmd: collapse_count_colname)
+#' @param outname Output file name prefix. (index.Rmd: outname)
+#' @param outputby Name of the column in input that contains sample identifiers used to split the output db. (index.Rmd: outputby)  
+#' @param nproc Number of processors to use for parallel processing. (index.Rmd: nproc)
+#' @param c_primer_column Name of the column containing c_primer information. (index.Rmd: c_primer_column)
+#' @param c_region_column Name of the column containing c_region information. (index.Rmd: c_region_column)
+#' @param locus Locus type, e.g., "IG" or "TR". (index.Rmd: locus)
+#' @param mask_imgt_position Mask sequence alignments from 5' end to a specific IMGT position. (index.Rmd: mask_imgt_position)
+#' @param mask_length_to_3end Mask a specified number of bases at the 3' end of sequence alignments. (index.Rmd: mask_length_to_3end)
+#' @param collapse_filter_threshold Filter threshold for the collapsed count; sequences with counts below this value are removed. (index.Rmd: collapse_filter_threshold)
+#' @param log Name of the log file to write command log. (index.Rmd: log)
+#' @param outdir Output directory for results. (index.Rmd: outdir)
+#' @param date Run date. (index.Rmd: date)
+#' @param logo Path to report logo. (index.Rmd: logo)
+#' @param logolink URL to be added to the logo. (index.Rmd: logolink)
+#' @param echo Logical; show code in the report. (index.Rmd: echo)
+#' @param cache Logical; use cached results. (index.Rmd: cache)
 collapse_duplicates_project <- function(path,...) {
     skeleton_dir <- file.path(system.file(package = "enchantr"), "rstudio",
                                 "templates", "project",
@@ -16,7 +37,6 @@ collapse_duplicates_project <- function(path,...) {
     project_files <- list.files(skeleton_dir, full.names = TRUE)
     file.copy(project_files, project_dir, recursive = TRUE)
 }
-
 
 #' @export
 findDuplicates <- function (db, 
@@ -143,18 +163,18 @@ findDuplicates <- function (db,
     }
 
     db %>%
-        left_join(db_subset, by="finddups_row_idx") %>%
-        mutate(collapse_pass=finddups_row_idx %in% collapse_pass[['finddups_row_idx']]) %>%
-        left_join(collapse_pass %>% select(any_of(c("finddups_row_idx", "collapse_count"))), by="finddups_row_idx") %>%
-        arrange(finddups_row_idx) %>%
-        select(!any_of(c('collapse_idx', 'finddups_row_idx')))
+      left_join(db_subset %>% select(-any_of(c(text_fields, num_fields, seq_fields))), by="finddups_row_idx") %>%
+      mutate(collapse_pass=finddups_row_idx %in% collapse_pass[['finddups_row_idx']]) %>%
+      left_join(collapse_pass %>% select(any_of(c("finddups_row_idx", "collapse_count",text_fields, num_fields, seq_fields))), by="finddups_row_idx") %>%
+      arrange(finddups_row_idx) %>%
+      select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
 
 #' This is the function to mask a single sequence at a specific IMGT position from 5' end
 #' @export
-mask_single_5_prime_seq <- function(sequence_aligned, imgt_position) {
-  first_part <- substr(sequence_aligned, 1, imgt_position)        
-  rest_part  <- substr(sequence_aligned, imgt_position + 1, nchar(sequence_aligned))  
+mask_single_5_prime_seq <- function(sequence_aligned, mask_imgt_position) {
+  first_part <- substr(sequence_aligned, 1, mask_imgt_position)        
+  rest_part  <- substr(sequence_aligned, mask_imgt_position + 1, nchar(sequence_aligned))  
   first_part <- gsub("[^.]", "N", first_part)
   after_truncate<-paste0(first_part,rest_part)
   return(after_truncate)
@@ -162,7 +182,7 @@ mask_single_5_prime_seq <- function(sequence_aligned, imgt_position) {
 
 #' This is the function to mask all the sequences at a specific IMGT position from 5' end
 #' @export
-mask_5prime_sequence_alignment <- function(db, imgt_position){
+mask_5prime_sequence_alignment <- function(db, mask_imgt_position){
   # check whether columns sequence_id, sequence_alignment, v_germline_end is in db
   required_cols <- c("sequence_id", "sequence_alignment", "v_germline_end")
   missing_cols <- setdiff(required_cols, colnames(db))
@@ -170,19 +190,52 @@ mask_5prime_sequence_alignment <- function(db, imgt_position){
     stop(paste("Missing columns:", paste(missing_cols, collapse = ", ")))
   }
   # Else if all the required column are in db, continue
-  if (imgt_position<0 | imgt_position %% 1 != 0){
+  if (mask_imgt_position<0 | mask_imgt_position %% 1 != 0){
     stop("The IMGT masking position from 5' end should be 0 or a positive integer. ")
-  } else if ( imgt_position > 0 ){
+  } else if ( mask_imgt_position > 0 ){
     min_v_end <- min( db$v_germline_end )
-    # imgt_position must not be greater than the minimum of v_germline_end of all v germlines.
-    if( imgt_position > min_v_end ){
+    # mask_imgt_position must not be greater than the minimum of v_germline_end of all v germlines.
+    if( mask_imgt_position > min_v_end ){
       stop(paste("The IMGT masking position from 5' end should be smaller than the length of the shortest V gene germline: ", min_v_end))
     }
     else{
       db$sequence_alignment_before_mask <- db$sequence_alignment 
       db <- db %>%
-        mutate(sequence_alignment = mask_single_5_prime_seq(sequence_alignment_before_mask, imgt_position))
+        mutate(sequence_alignment = mask_single_5_prime_seq(sequence_alignment_before_mask, mask_imgt_position)) %>%
+        select(-c('sequence_alignment_before_mask'))
     }
+  }
+  return(db)
+}
+
+
+#' This is the function to mask the last X bases of a single aligned sequence to 3' end
+#' @export
+mask_single_3_prime_seq <- function(sequence_aligned, mask_length_to_3end) {
+  first_part <- substr(sequence_aligned, 1, nchar(sequence_aligned)-mask_length_to_3end)        
+  rest_part  <- substr(sequence_aligned, nchar(sequence_aligned)-mask_length_to_3end + 1, nchar(sequence_aligned))  
+  rest_part <- strrep("N", nchar(rest_part))
+  after_truncate<-paste0(first_part,rest_part)
+  return(after_truncate)
+}
+
+#' This is the function to mask all the aligned sequences X bases to the 3' end
+#' @export
+mask_3prime_sequence_alignment <- function(db, mask_length_to_3end){
+  # check whether columns sequence_id, sequence_alignment is in db
+  required_cols <- c("sequence_id", "sequence_alignment")
+  missing_cols <- setdiff(required_cols, colnames(db))
+  if (length(missing_cols) > 0) {
+    stop(paste("Missing columns:", paste(missing_cols, collapse = ", ")))
+  }
+  # Else if all the required column are in db, continue
+  if (mask_length_to_3end<0 | mask_length_to_3end %% 1 != 0){
+    stop("The length to mask to the 3' end should be 0 or a positive integer. ")
+  } else if ( mask_length_to_3end > 0 ){
+      db$sequence_alignment_before_mask <- db$sequence_alignment 
+      db <- db %>%
+        mutate(sequence_alignment = mask_single_3_prime_seq(sequence_alignment_before_mask, mask_length_to_3end)) %>%
+        select(-c('sequence_alignment_before_mask'))
   }
   return(db)
 }
