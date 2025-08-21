@@ -27,7 +27,7 @@ Reports
 + [collapse_duplicates_project](collapse_duplicates_project.md): Create an Immcantation Collapse duplicates project
 + [contamination_project](contamination_project.md):       Create an Immcantation Detect contamination project
 + [find_threshold_project](find_threshold_project.md):      Create an Find threshold project
-+ [define_clones_project](define_clones_project.md):       Create an Immcantation Define clones project
++ [clonal_assignment_project](clonal_assignment_project.md):       Create an Immcantation Clonal assignment project
 + [convergence_project](convergence_project.md):         Create an Immcantation Convergence project
 + [dowser_lineage_project](dowser_lineage_project.md):      Create an Immcantation Dowser project
 + [single_cell_qc_project](single_cell_qc_project.md):      Create an Immcantation sc QC project

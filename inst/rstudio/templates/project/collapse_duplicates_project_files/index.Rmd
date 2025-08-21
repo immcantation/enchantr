@@ -19,11 +19,19 @@ params:
    collapseby:
       label: "`collapseby`"
       input: text
-      value: "sample_id"      
+      value: "sample_id"
+   collapse_count_colname:
+      label: "`collapse_count_colname`"
+      input: text
+      value: "collapse_count"
    outname:
       label: "`outname`"
       input: text
       value: "collapse"
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      input: text
+      value: "sample_id"
    nproc:
       label: "`nproc`"
       input: numeric
@@ -40,6 +48,18 @@ params:
       label: "`locus`"
       input: text
       value: "IG"
+   mask_imgt_position:
+      label: "mask_imgt_position"
+      input: numeric
+      value: 0
+   mask_length_to_3end:
+      label: "mask_length_to_3end"
+      input: numeric
+      value: 0
+   collapse_filter_threshold:
+      label: "collapse_filter_threshold"
+      input: numeric
+      value: 0
    log:
       label: "`log`"
       input: text
@@ -87,6 +107,8 @@ suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("alakazam"))
 suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("rlang"))
 
 if (!dir.exists(params[['outdir']])) {
    dir.create(params[['outdir']], recursive = T)
@@ -118,12 +140,44 @@ input_sizes <- db %>%
    summarize(input_size=n())
 input_size <- nrow(db)
 
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+    group_by(!!!rlang::syms(unique(params$outputby))) %>%
+    mutate(
+        num_input_files = length(unique(input_file)),
+        input_files = paste(unique(input_file), collapse=",")
+    ) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(unique(c(params$outputby, "input_file", "num_input_files", "input_files")))) %>%
+    summarize(
+        input_size = n()
+    )
+
+```
+
+```{r eval=params$mask_imgt_position!=0, results='asis'}
+cat("# Mask sequence alignments from 5' end to a specific IMGT position\n")
+```
+
+```{r mask_5prime_sequence_alignment, eval=params$mask_imgt_position!=0}
+print(paste0("Mask sequence alignments from 5' end to IMGT position ", params$mask_imgt_position, "."))
+db <- mask_5prime_sequence_alignment(db, params[["mask_imgt_position"]])
 ```
 
 
+```{r eval=params$mask_length_to_3end!=0, results='asis'}
+cat("# Mask customized length to 3' end of the sequence alignments.\n")
+```
+
+```{r mask_3prime_sequence_alignment, eval=params$mask_length_to_3end!=0}
+print(paste0("Mask ", params$mask_length_to_3end, " bases to the 3'end of sequence alignments."))
+db <- mask_3prime_sequence_alignment(db, params[["mask_length_to_3end"]])
+```
+
 # Homogenize c_call, c_primer and c_region fields containing isotype information
 
-```{r eval="c_call" %in% colnames(db)}
+```{r eval= "c_call" %in% colnames(db)}
 
 match_isotype <- function(x, regex) {
                      match <- stringr::str_match(x, regex)
@@ -186,10 +240,37 @@ Duplicated `sequence_alignment` (exact character string):
 table(duplicated(db[['sequence_alignment']]))
 ```
 
-```{r findDuplicates}
+```{r findDuplicates, warning=TRUE}
 num_fields <- c("consensus_count","duplicate_count")
 num_fields <- num_fields[num_fields %in% colnames(db)]
 if (length(num_fields)<1) {num_fields <- NULL}
+
+if (params$collapse_count_colname %in% colnames(db)){
+    cat(paste0(
+      "⚠️ Column '", params$collapse_count_colname, "' already exists in the input data.\n",
+      "Change the parameter 'collapse_count_colname' to name the new column for collapsed counts.\n",
+      "Otherwise, the old one will be overwritten by the new one.\n"
+       ))
+  db <- db %>% select(-all_of(params$collapse_count_colname))
+  if ('collapse_pass' %in% colnames(db)){
+    db <- db %>%
+      rename(original_collapse_pass = collapse_pass)
+  }
+}
+
+if (params$collapseby=='subject_id'){
+  if ('collapse_count' %in% colnames(db)){
+      db <- db[!is.na(db$collapse_count), ]
+      db$collapse_count <- as.numeric(db$collapse_count)
+      db <- db %>%
+      rename(original_collapse_count = collapse_count) 
+      num_fields <- c(num_fields, 'original_collapse_count')
+  }
+  if ('collapse_pass' %in% colnames(db)){
+    db <- db %>%
+      rename(original_collapse_pass = collapse_pass)
+  }
+}
 
 db <- findDuplicates(db, 
                groups=params$collapseby, 
@@ -197,12 +278,33 @@ db <- findDuplicates(db,
                num_fields=num_fields,
                seq_fields=NULL,
                nproc=params[['nproc']])
+
+db <- db %>%
+      rename(!!sym(params$collapse_count_colname) := collapse_count) 
+
+if ("original_collapse_count" %in% colnames(db)){
+    db <- db %>%
+      rename(collapse_count = original_collapse_count)
+}
+ 
+
 ```
 
-# Remove duplicate sequences
+# Remove duplicate sequences and filter sequence on collapse count threshold
 
 ```{r dbpass}
 pass <- db[['collapse_pass']]
+db <- db[pass,] 
+
+before_filter_nrow <- nrow(db)
+db <- db %>% filter(!!rlang::sym(params$collapse_count_colname) >= params$collapse_filter_threshold)
+after_filter_nrow <- nrow(db)
+
+if(params$collapse_filter_threshold > 1){
+  print(paste0("Filter out sequence with less than ", params$collapse_filter_threshold, " ", params$rename_collapse_count,"."))
+  print(paste0("Before filtering, there are ", before_filter_nrow, " sequences."))
+  print(paste0("After filtering, there are ", after_filter_nrow, " sequences."))
+}
 
 if (!is.null(params$outname)) {
    output_fn <- paste0(params$outname,"_collapse-pass.tsv")
@@ -216,28 +318,40 @@ if (!is.null(params$log)) {
    log_fn <- sub("_collapse-pass.tsv$", "_command_log.txt", basename(output_fn))
 }
 
-output_groups <- db[pass,] %>%
-   ungroup() %>%
-   group_by(input_file) %>%
-   summarize(output_size=n()) %>%
-   left_join(input_sizes)
-
+input_sizes_byoutput <- input_sizes_byoutput %>%
+    select(-input_files) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarise(across(everything(), function(x) {paste(x, collapse = ",")} ))
+    
+output_groups <- db %>%
+    ungroup() %>%
+    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarize(output_size = n()) %>%
+    right_join(input_sizes_byoutput) %>%
+    select(input_size, output_size, everything()) 
 
 output_files <- c()
 output_sizes <- c()
-dir.create(file.path(params$outdir,"repertoires"))
+input_sizes <- c()
+dir.create(file.path(params$outdir,"repertoires")) 
 for (i in 1:nrow(output_groups))  {
-   group_db <- right_join(db[pass,],
-                           output_groups[i,,drop=F],
-                           by="input_file")
-   group_db_label <- gsub("^id_","",makeLabel(group_db, fields= "input_file"))
-   group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
-   output_files <- c(output_files, group_fn)
-   output_sizes <- c(output_sizes, nrow(group_db))
-   write_rearrangement(group_db %>% select(!any_of(c("input_file", "input_size", "output_size"))), file=group_fn)
-   cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
+    group_db <- left_join( output_groups[i,params$outputby,drop=F],
+                           db,
+                           by=c(params$outputby))
+    
+    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
+    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
+    output_files <- c(output_files, group_fn)
+    output_sizes <- c(output_sizes, nrow(group_db))
+    i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
+    input_sizes <- c(input_sizes, i_input_size)
+    write_rearrangement(group_db %>% select(-input_file), file=group_fn)
+    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
 ```
+
 
 ```{r log}
 cat("START> CollapseDuplicates", file=log_fn, append=F)
@@ -245,7 +359,7 @@ for (i in 1:nrow(output_groups)) {
    cat(paste0("\nFILE",i,"> ",output_groups[['input_file']][i]), file=log_fn, append=T)
    cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
    cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
-   cat(paste0("\nFAIL",i,"> ",output_groups[['input_size']][i]-output_sizes[i]), file=log_fn, append=T)    
+   cat(paste0("\nFAIL",i,"> ",input_sizes[i]-output_sizes[i]), file=log_fn, append=T)    
 }
 ```
 

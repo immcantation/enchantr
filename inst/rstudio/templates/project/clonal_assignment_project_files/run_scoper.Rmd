@@ -1,7 +1,5 @@
 Clonal assignment performed with `scoper::hierarchicalClones`, version `r v <- packageVersion("scoper"); v` within `r paste(params$cloneby, collapse=", ")`.
 
-To know more details about the method, visit the documentation website [https://scoper.readthedocs.io/en/](https://scoper.readthedocs.io/en/`r v`/topics/hierarchicalClones/)
-
 ```{r, warning=TRUE}
 if (sum(heavy_chains)>0) {
     if (params$model == "hierarchical") {
@@ -51,25 +49,15 @@ have `clone_id==NA`.
 dowser_v <- packageVersion("dowser")
 ```
 
+<div class="introduction_paragraph">
+Identification of the V(D)J germline sequences from which the observed 
+sequences are derived is performed with function<a href="https://dowser.readthedocs.io/en/latest/topics/createGermlines/" target="_blank">`createGermlines`</a> from immcantation package <a href="https://dowser.readthedocs.io/en/latest/" target="_blank">Dowser</a>. These reconstructed germlines will be used in downstream analysis to infer somatic mutations and reconstruct lineages. 
 
-Identification of the V(D)J germline sequences from which each of the observed 
-sequences is derived is performed with `dowser::createGermlines`, version `r dowser_v`.
-These reconstructed germlines will be used in downstream analysis to infer somatic 
-mutations and reconstruct lineages. 
+Function `createGermlines` takes the alignment information in the rearrangement file as well as the reference database used by the alignment software and generates a germline sequence for each individual observed sequence. As clonal relations have already been inferred, the function assigns the same germline to all sequences belonging to the same clone. 
 
-`dowser::createGermlines` takes the alignment information 
-in the rearrangement file as well as the reference database used by the 
-alignment software and generates a germline sequence for each individual observed sequence.
-Because clonal relations have already been inferred, the function assigns the 
-same germline to all sequences belonging to the same clone. 
-
-Two types of germlines
-are created, `germline_alignment` and `germline_alignment_d_mask`. The last one
-has the D region masked, meaning that all nucleotides in the N/P and D-segments
-are replaced with N's. This is often done because the germline base calls from 
-this region are unreliable for B cell receptor alignments.
-
-Documentation for `dowser::createGermlines` is available here: [https://dowser.readthedocs.io/en/latest/topics/createGermlines](https://dowser.readthedocs.io/en/latest/topics/createGermlines/).
+Two types of germlines are created, `germline_alignment` and `germline_alignment_d_mask`. The latter one has the D region masked, meaning that all nucleotides in the N/P and D-segments
+are replaced with N's. This is often done because the germline base calls from this region are unreliable for B cell receptor alignments.
+</div>
 
 ```{r}
 pre_germ_size <- nrow(db)
