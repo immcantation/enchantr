@@ -5,7 +5,7 @@
 ####
 # Add here Bioconductor dependencies that 
 # are not installed in the immcantation/test container
-bioconductor_deps <- c("ComplexHeatmap")
+bioconductor_deps <- NULL
 ####
 
 library(devtools)
@@ -83,6 +83,11 @@ d <- read.dcf("DESCRIPTION", fields="Imports")
 d <- sub("^\\n", "", d)
 imports <- strsplit(d, ",\n")[[1]]
 
+# Install bioconductor packages
+if (!is.null(bioconductor_deps)) {
+    BiocManager::install(bioconductor_deps)
+}
+
 # Install immcantation packages first
 immcantation <- unlist(sapply(immcantation_packages, grep, imports))
 imports <- imports[unique(c(immcantation, 1:length(imports)))]
@@ -95,6 +100,3 @@ for (i in 1:length(imports)) {
     this_import <- imports[i]
     installDep(this_import, devel_mode)
 }
-
-# Install bioconductor packages
-BiocManager::install(bioconductor_deps)
