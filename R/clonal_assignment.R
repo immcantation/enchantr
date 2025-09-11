@@ -4,10 +4,10 @@
 #' New Directory > then select  Immcantation ...
 #' to create the skeleton of an Immcantation ... project
 #' @param  path path to the directory where the project will be created
-define_clones_project <- function(path,...) {
+clonal_assignment_project <- function(path,...) {
     skeleton_dir <- file.path(system.file(package = "enchantr"), "rstudio",
                               "templates", "project",
-                              "define_clones_project_files")
+                              "clonal_assignment_project_files")
     project_dir <- path
     if (!dir.exists(project_dir)) {
         message("Creating project_dir ", project_dir)
@@ -203,7 +203,7 @@ plotDbOverlap <- function(db, group="sample",
         }
     }
 
-    # define clone overlap matrices to be plotted
+    # clonal assignment overlap matrices to be plotted
     overlap_perc_matrix = matrix(0, group_tables[[1]]$num_groups, group_tables[[length(group_tables)]]$num_groups)
     dimnames(overlap_perc_matrix) = list(group_tables[[1]]$description$GROUP_NAME,
                                          group_tables[[length(group_tables)]]$description$GROUP_NAME )

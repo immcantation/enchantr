@@ -85,6 +85,7 @@ save(params, file=file.path(params$outdir,"params.RData"))
 
 ```{r}
 log_files <- read.delim(params[['input']], header=F)[[1]]
+log_data <- readConsoleLogs(log_files)
 ```
 ```{r echo=FALSE, results='asis'}
 for (x in sort(log_files)) {
@@ -105,12 +106,11 @@ if (!is.null(params$metadata)) {
 }
 ```
 
-
 # Workflow
 
-```{r, echo=FALSE}
-log_data <- getConsoleLogs(log_files)
-p_workflow <- plotConsoleLogs(log_data, "workflow")
+```{r, echo=FALSE,fig.width=8,fig.height=5}
+log_data_graphs <- consoleLogsAsGraphs(log_data, metadata)
+p_workflow <- plotWorkflow(log_data_graphs[["workflow"]])
 p_workflow
 ```
 
@@ -120,48 +120,50 @@ cat("\n\n")
 
 # File processing 
 
-```{r, results="asis", echo=FALSE, fig.width=8,fig.height=5}
-plot_list <- plotConsoleLogs(log_data, "decompose")
-log_data <- graphDataFrame(log_data)
-for (i in 1:length(plot_list)) {
-    plot_data <- plot_list[[i]]$data
-    input_filename <- plot_data[['name']][which(plot_data[[".ggraph.index"]] == 1)]
-    cat(paste0("## ",input_filename,"\n\n"))
-    cat("### Data flow \n\nNumber of sequences at each processing step of `", input_filename,"`.", sep="")
-    print(plot_list[[i]])
-    plot_table <- plot_data %>%
-        mutate(step = abs(y-max(y))) %>%
-        arrange(step,x) %>%
-        select(step ,name, num_seqs) %>%
-        mutate(file_0=input_filename) %>%
-        mutate(name = factor(name, levels=unique(name), ordered = T))
+```{r, results="asis", echo=FALSE, fig.width=8,fig.height=6}
+ids <- names(log_data_graphs$by_sample)
+for (i in order(ids)) {
+    this_id <- ids[i]
     
-    idx <- which(log_data[["from_name"]] %in% plot_table[['name']])
-    if (length(idx)>0) {
-        log_data[["file_0"]][idx] <- input_filename
-    }
+    log_plot <- plotLogGraph(log_data_graphs$by_sample[[i]])
+    
+    # get node info from the graph
+    plot_data <- log_plot$data
 
-    out_filename <- sub("\\.[^\\.]*$","",input_filename)
+    # name is the vertex name, filename the original filename
+    this_root_filename <- plot_data$filename[plot_data$is_input]
+    this_root_name <- unique(plot_data$root_name)
+    
+    cat(paste0("## ",this_id,"\n\n"))
+    cat("### Data flow \n\nNumber of sequences at each processing step of `", this_id,"`.", sep="")
+    
+    print(log_plot)
+    
+    plot_table <- cleanPlotData(plot_data)
+
+    out_filename <- sub("\\.[^\\.]*$","",this_root_name)
+    out_filename <- sub(": ", "_", out_filename)
     
     cat("\n\n### Barplot \n\n")
-    caption <- paste0("Number of reads at different stages of the processing of ",input_filename)
+    caption <- paste0("Number of reads at different stages of the processing of ",this_id)
     tab <- eetable(plot_table, 
                    caption=caption,
                    outdir = params$outdir, 
                    file=out_filename)
     
     p <- ggplot(plot_table, 
-           aes(x=name, y=num_seqs, group=name)) +
+           aes(x=filename, y=num_seqs, group=name)) +
         geom_bar(stat="identity") +
         theme_enchantr() +
         theme(
             axis.text.x = element_text(angle = 90, hjust=0.5, vjust=0)
         ) +
-        labs(x="File", y="Number of sequences") +
-        scale_x_discrete(labels= function(x) { gsub("(.*_)([^_]*$)","\\2",x)} )
+        labs(x="File", y="Number of sequences") # +
+        # scale_x_discrete(labels= function(x) { gsub("(.*_)([^_]*$)","\\2",x)} ) # Do we need this for shorter x-axis labels?
+        
     cat(tab$caption)
     p <- eeplot(p,outdir=params$outdir,
-           file=strsplit(input_filename,"\\.")[[1]][1],
+           file=strsplit(out_filename,"\\.")[[1]][1],
            caption="")
     print(p)
     cat(p$enchantr$html_caption)
@@ -172,21 +174,8 @@ for (i in 1:length(plot_list)) {
 # Final table
 
 ```{r, echo=F, results='asis'}
-# Add sample_id
-if (nrow(metadata)>0) {
-    log_data <- log_data %>% 
-        left_join(metadata, by=c("file_0"="filename")) %>%
-        select(sample_id, file_0, everything())
-    if (any(is.na(log_data$sample_id))) {
-        id_col <- "file_0"
-    } else {
-       id_col <- "sample_id"
-    }
-} else {
-    log_data <- log_data %>% 
-        select(file_0, everything())
-    id_col <- "file_0"
-}
+# Get log_data from the graphs. It has the metadata.
+log_data <- graphDataFrame(log_data_graphs$workflow)
 ```
 
 ```{r fig.width=7, fig.height=4, fig.cap=caption}
@@ -201,7 +190,10 @@ if (!all(log_data$task %in% ordered)) {
 
 log_data$task <- factor(log_data$task, levels=ordered , ordered = T)
 
-sequence_count_plot <- ggplot(log_data, aes(x=task, y=to_num_seqs, fill=!!rlang::sym(id_col))) +
+id_col <- c("sample_id", "root_name")
+id_col <- intersect(id_col, colnames(log_data))[1]
+
+sequence_count_plot <- ggplot(log_data, aes(x=task, y=input_size, fill=!!rlang::sym(id_col))) +
     geom_bar(stat="identity", width=.5, position = "dodge") +
     scale_x_discrete(limits=ordered) +
     theme_enchantr() +
@@ -210,6 +202,7 @@ sequence_count_plot <- ggplot(log_data, aes(x=task, y=to_num_seqs, fill=!!rlang:
         legend.position = "bottom"
     ) +
     labs(x="Step", y="Number of sequences", fill="")
+
 sequence_count_plot <- eeplot(sequence_count_plot,
                               outdir = params$outdir,
                               file="sequence_count_plot", 
@@ -219,7 +212,7 @@ ggplotly(sequence_count_plot)
 ```
 
 ```{r echo=F, results='asis'}
-tab <- eetable(log_data, caption="Table showing the number of sequences at each processing step. `file_0` is the first file for each sample analysis tree.", outdir = params$outdir, file="log_data")
+tab <- eetable(log_data, caption="Table showing the number of sequences at each processing step. `is_input` indicates whether the file `input` is an input file that is at the root of the analysis process. `root_name` contains the filename of this root file, with the added text 'sample_id: ' in situations where the name is not unique..", outdir = params$outdir, file="log_data")
 tab$table
 ```
 ```{r echo=FALSE,results='asis'}
