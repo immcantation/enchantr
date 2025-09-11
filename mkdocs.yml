@@ -24,6 +24,7 @@ nav:
   - 'About':
     - 'Introduction': index.md
     - 'Download & Installation': install.md
+    - 'Contributing': contributing.md
     - 'Package Overview': topics/enchantr.md
     - 'Release Notes': news.md
     - 'Related Projects': projects.md
@@ -36,6 +37,6 @@ nav:
       - topics/contamination_project.md
       - topics/single_cell_qc_project.md
       - topics/find_threshold_project.md
-      - topics/define_clones_project.md
+      - topics/clonal_assignment_project.md
       - topics/dowser_lineage_project.md
 
