@@ -1,5 +1,15 @@
 # Release Notes
 
+Version 0.1.22: September 11, 2025
+-----------------------------------
+
+General:
+
++ Improvements in define clones report
++ Some report file sizes bugfixes
++ Added filtering options in collapseDuplicates report
++ Added option to mask positions 5' and 3' in the sequence_alignment as part of the collapse duplicates report
+
 Version 0.1.21: April 3, 2025
 -------------------------------------------------------------------------------
 
