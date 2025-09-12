@@ -1,0 +1,242 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Novel allele inference"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr clonal assignment"
+output: enchantr::immcantation
+#TODO: add here all necessary parameters to run the notebook and update existing ones if necessary.
+params:
+   input: 
+      label: "`input`: Path to repertoires files"
+      input: file
+      value: "#TODO add zenodo link to test dataset for this process."
+   imgt_db:
+      label: "`imgt_db`: Path to IMGT reference  database."
+      input: file
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+   species:
+      label: "`species`"
+      input: text
+      value: "human"          
+   outname:
+      label: "`outname`"
+      input: text
+      value: "novel-allele-inference"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1      
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: TRUE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: console
+---
+
+<div class="introduction_paragraph">
+Report of clonal assignment, clone size distribution, clonal abundance, diversity and mutation frequency created by Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">  enchantR</a>. Immcantation package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> is used to assign clones. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
+</div>
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+#TODO: Update library imports
+# Libraries
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("scoper"))
+suppressPackageStartupMessages(library("dowser"))
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("ComplexHeatmap"))
+suppressPackageStartupMessages(library("plotly"))
+suppressPackageStartupMessages(library("fastcluster"))
+
+if (!dir.exists(params[['outdir']])) {
+    dir.create(params[['outdir']], recursive=T)
+}
+
+file.copy(params$logo,
+          file.path(params$outdir,"assets", "logo.png"),
+          recursive=T, overwrite=T)
+
+```
+
+
+# Input parameters
+
+```{r input-parameters, results='asis'}
+printParams(params)
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="input", text="Input parameters.")
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoires
+<div class="introduction_paragraph">
+Tables summarizing number of sequences in the provided repertoires according to different characteristics.
+</div>
+#TODO: read input AIRR formated file
+
+```{r}
+# Read repertoire
+db <- readInput(params[['input']], col_select = NULL)
+
+if (params$species =="auto") {
+    if ("species" %in% colnames(db)) {
+        species <- unique(db[['species']])
+        if (length(species)>1) {
+            stop("Multiple species detected. Only one allowed.")
+        }
+    } else  {
+        stop("Can't detect species. The column `species` does not exist in `db`.")
+    }
+} else {
+    species <- params$species
+}
+
+# Check for single cell label
+if (!is.null(singlecell)) {
+    if (singlecell %in% colnames(db)) {
+         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
+    } else {
+        stop("`",singlecell, "` is not a valid field in `db`.")
+    }
+} else {
+   singlecell <- "single_cell"
+   db[[singlecell]] <- F
+   if ("cell_id" %in% colnames(db)) {
+       message("Setting `singlecell` using `cell_id`.") 
+       db[[singlecell]][!db[['cell_id']] %in% c(NA, '')] <- T
+   }
+
+}
+
+if (!"locus" %in% colnames(db)) {
+    db[['locus']] <- getLocus(db[['v_call']])
+}
+heavy_chains <- isHeavyChain(db[['locus']])
+
+if ("clone_id" %in% colnames(db)) {
+    if (params$force) {
+        # Reset if force
+        warning("Overwritting clone_id.")
+        db$clone_id <- NULL
+    }   
+    # Reset always if clone_id exists
+    if ("clone_size_count" %in% colnames(db)) {    
+        warning("Overwritting clone_size_count.")    
+        db$clone_size_count <- NULL
+    }
+    if ("clone_size_freq" %in% colnames(db)) {    
+        warning("Overwritting clone_size_freq.")    
+        db$clone_size_freq <- NULL
+    }
+}
+
+subject_levels <- str_sort(unique(db$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(db$sample_id),  numeric = TRUE)
+db <- db %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) 
+```
+
+```{r}
+input_size <- nrow(db)
+input_sizes <- db %>%
+    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+    summarize(input_size=n())
+
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+    group_by(!!!rlang::syms(unique(params$outputby))) %>%
+    mutate(
+        num_input_files = length(unique(input_file)),
+        input_files = paste(unique(input_file), collapse=",")
+    ) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(unique(c(params$outputby, "input_file", "num_input_files", "input_files")))) %>%
+    summarize(
+        input_size = n()
+    )
+
+```
+
+
+Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r sum(heavy_chains, na.rm=T)`.
+
+```{r inputsamplesumary, results='asis', eval="tissue" %in% colnames(db)}
+input_samples_summary <- db %>%
+   group_by(sample_id, subject_id, tissue) %>%
+   summarize(size = n()) 
+
+subject_levels <- str_sort(unique(input_samples_summary$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(input_samples_summary$sample_id),  numeric = TRUE)
+input_samples_summary <- input_samples_summary %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id,tissue) %>%
+  mutate(
+    subject_id = as.character(subject_id),
+    sample_id  = as.character(sample_id)
+  )
+
+eetable(input_samples_summary)$table
+```
+```{r echo=FALSE, results='asis', eval="tissue" %in% colnames(db)}
+print_table_caption(tag="input_samples_summary", text="Input samples summary.")
+```
+
+#TODO: add here novel allele inference steps
+
+
+```{r, child=c('versions.Rmd')}
+```
