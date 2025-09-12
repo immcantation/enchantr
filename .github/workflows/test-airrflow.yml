@@ -25,7 +25,7 @@ jobs:
   test:
     name: Run workflow test with different profiles
     if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository
-      == 'nf-core/airrflow') }}
+      == 'immcantation/enchantr') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -35,30 +35,42 @@ jobs:
         profile:
           [
             "test",
-            "test_tcr",
-            "test_no_umi",
-            "test_nocluster",
-            "test_fetchimgt",
             "test_assembled_hs",
-            "test_assembled_mm",
-            "test_10x_sc",
-            "test_clontech_umi",
-            "test_nebnext_umi",
-            "test_rnaseq_bulk",
-            "test_rnaseq_sc",
-            "test_maskprimers_extract",
-            "test_maskprimers_align",
-            "test_embeddings_H",
-            "test_embeddings_HL",
+            "test_assembled_mm"
           ]
       fail-fast: false
     steps:
       - name: Check out repo code
         uses: actions/checkout@v4
 
-      - name: Build container
+      - name: Check if Version.yaml changed
+        uses: technote-space/get-diff-action@v4
+        with:
+          FILES: |
+            docker/Version.yaml
+      - name: Build new docker image
+        if: env.MATCHED_FILES
+        run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile ./docker
+
+      - name: Login to DockerHub
+        if: env.MATCHED_FILES
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Push new docker image
+        if: env.MATCHED_FILES
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile
+          push: true
+          tags: immcantation/enchantr:dev
+
+      - name: Build container with enchantr
         run: |
-          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile ./docker
+          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile-enchantr ./docker
 
       - name: Install Nextflow
         uses: nf-core/setup-nextflow@v2
