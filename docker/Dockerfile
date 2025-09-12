@@ -80,10 +80,6 @@ RUN IGPHYML=$(versions get -n igphyml) \
 # Setup environment
 ENV PATH="${PATH}:/usr/local/share/igphyml/src"
 
-# Install enchantr
-RUN ENCHANTR_VER=$(versions get -n enchantr) \
-    && Rscript -e "devtools::install_github('immcantation/enchantr', ref='${ENCHANTR_VER}', quiet=FALSE)"
-
 # Set commands
 CMD echo -e " Version information:\n"\
             "  versions report\n"\
