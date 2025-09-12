@@ -1,0 +1,81 @@
+name: nf-core CI
+# This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  NXF_ANSI_LOG: false
+  NXF_SINGULARITY_CACHEDIR: ${{ github.workspace }}/.singularity
+  NXF_SINGULARITY_LIBRARYDIR: ${{ github.workspace }}/.singularity
+  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref
+    }}"
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run workflow test with different profiles
+    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository
+      == 'nf-core/airrflow') }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        NXF_VER:
+          - 24.10.5
+          - latest-everything
+        profile:
+          [
+            "test",
+            "test_tcr",
+            "test_no_umi",
+            "test_nocluster",
+            "test_fetchimgt",
+            "test_assembled_hs",
+            "test_assembled_mm",
+            "test_10x_sc",
+            "test_clontech_umi",
+            "test_nebnext_umi",
+            "test_rnaseq_bulk",
+            "test_rnaseq_sc",
+            "test_maskprimers_extract",
+            "test_maskprimers_align",
+            "test_embeddings_H",
+            "test_embeddings_HL",
+          ]
+      fail-fast: false
+    steps:
+      - name: Check out repo code
+        uses: actions/checkout@v4
+
+      - name: Build container
+        run: |
+          docker build --no-cache ./docker/Dockerfile -t immcantation/airrflow:dev
+
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: "${{ matrix.NXF_VER }}"
+
+      - name: Run pipeline with test data
+        run: |
+          nextflow run nf-core/airrflow -profile ${{ matrix.profile }},docker --outdir ./results -c .github/workflows/airrflow.config
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.profile }}
+          path: |
+            /home/runner/.nextflow.log
+            /home/runner/work
+            !/home/runner/work/conda
+            !/home/runner/work/singularity
