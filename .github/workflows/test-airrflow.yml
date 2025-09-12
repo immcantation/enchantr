@@ -58,7 +58,7 @@ jobs:
 
       - name: Build container
         run: |
-          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile .
+          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile ./docker
 
       - name: Install Nextflow
         uses: nf-core/setup-nextflow@v2
