@@ -79,7 +79,7 @@ jobs:
 
       - name: Run pipeline with test data
         run: |
-          nextflow run nf-core/airrflow -profile ${{ matrix.profile }},docker --outdir ./results -c .github/workflows/airrflow.config
+          nextflow run nf-core/airrflow -r dev -profile ${{ matrix.profile }},docker --outdir ./results -c .github/workflows/airrflow.config
 
       - name: Upload logs on failure
         if: failure()
