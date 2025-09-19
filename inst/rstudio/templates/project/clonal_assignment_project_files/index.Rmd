@@ -278,7 +278,7 @@ print_table_caption(tag="input_samples_summary", text="Input samples summary.")
 
 ```{r inputlocussumary, results='asis'}
 input_locus_summary <- db %>%
-   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "locus")))) %>%
+   group_by(!!!rlang::syms(unique(c("sample_id", "subject_id", params$cloneby, "locus")))) %>%
    summarize(n=n(), .groups="drop") %>%
    pivot_wider(names_from=locus, values_from=n) %>%
    rowwise() %>%
