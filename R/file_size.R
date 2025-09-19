@@ -65,7 +65,15 @@ file_size_project <- function(path,...) {
 #' }
 #'
 formatConsoleLog <- function(log_file){
-    log_table <- loadConsoleLog(log_file)
+    
+    # allow passing either a path to a log file or 
+    # a data.frame (for testthat tests)
+    if (is.character(log_file)) {
+        log_table <- loadConsoleLog(log_file)
+    } else {
+        log_table <- log_file
+    }
+
     task <- unique(log_table[['task']])
 
     if (length(task)>1) {
