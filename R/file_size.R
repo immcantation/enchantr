@@ -67,10 +67,11 @@ file_size_project <- function(path,...) {
 formatConsoleLog <- function(log_file){
     
     # allow passing either a path to a log file or 
-    # a data.frame (for testthat tests)
+    # log contents (for testthat tests)
     if (is.character(log_file)) {
-        log_table <- loadConsoleLog(log_file)
+            log_table <- loadConsoleLog(log_file)
     } else {
+        # log content passed as data.frame
         log_table <- log_file
     }
 

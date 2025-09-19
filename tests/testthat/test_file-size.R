@@ -56,4 +56,28 @@ test_that("file size report issue 49", {
 
 })
 
+test_that("makedb igblast parses OUTPUT>", {
 
+    log_text <- c("         START> MakeDB", "       COMMAND> igblast", "  ALIGNER_FILE> BLOD_AM1_2_A1_igblast.fmt7", 
+                    "      SEQ_FILE> BLOD_AM1_2_A1_parse-select_sequences.fasta", 
+                    "       ASIS_ID> False", "    ASIS_CALLS> False", "      VALIDATE> strict", 
+                    "      EXTENDED> True", "INFER_JUNCTION> False", "PROGRESS> 09:59:31 |Loading files       | 0.0 min", 
+                    "PROGRESS> 09:59:35 |Done                | 0.1 min", "PROGRESS> 09:59:35 |                    |   0% (      0) 0.0 min", 
+                    "PROGRESS> 09:59:43 |#                   |   5% (  9,013) 0.1 minOUTPUT> BLOD_AM1_2_A1_db-pass.tsv", 
+                    "  PASS> 13353", "  FAIL> 38", "   END> MakeDb")
+    out_log <- loadConsoleLog(log_text)
+    expected_log <- data.frame(
+        step = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+        task = c("MakeDB-igblast", "MakeDB-igblast", "MakeDB-igblast", "MakeDB-igblast", 
+                 "MakeDB-igblast", "MakeDB-igblast", "MakeDB-igblast", "MakeDB-igblast", 
+                 "MakeDB-igblast", "MakeDB-igblast"),
+        field = c("ALIGNER_FILE", "SEQ_FILE", "ASIS_ID", "ASIS_CALLS", "VALIDATE", 
+                  "EXTENDED", "INFER_JUNCTION", "PASS", "FAIL", "OUTPUT"),
+        value = c("BLOD_AM1_2_A1_igblast.fmt7", "BLOD_AM1_2_A1_parse-select_sequences.fasta",
+                  "False", "False", "strict", "True", "False", "13353", "38", 
+                  "BLOD_AM1_2_A1_db-pass.tsv"),
+        stringsAsFactors = FALSE
+    )
+    expect_equivalent(as.matrix(out_log), as.matrix(expected_log))
+    
+})
