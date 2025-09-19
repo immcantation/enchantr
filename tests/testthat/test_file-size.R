@@ -42,16 +42,13 @@ test_that("file size report issue 49", {
                        "92", "2", "3", "89")), 
         class = "data.frame", 
         row.names = 3:11)
-    out_log <-     formatConsoleLog(log_table)
-    expeted_log <- structure(
-        list(
+    out_log <- formatConsoleLog(log_table)
+    expeted_log <- data.frame(
             input = c("Sample8_quality-pass.tsv", "Sample8_quality-pass.tsv"), 
             output = c("Sample8_productive-F.tsv", "Sample8_productive-T.tsv"),
             task = structure(c(1L, 1L), class = "factor", levels = "ParseDb-split"), 
             input_size = c(92, 92), 
-            output_size = c(3, 89)), 
-            row.names = c(NA, -2L), 
-            class = "data.frame")
+            output_size = c(3, 89))
     expect_equal(out_log, expeted_log)
 
 })
