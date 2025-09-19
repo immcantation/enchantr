@@ -18,7 +18,52 @@ file_size_project <- function(path,...) {
 }
 
 
-# consoleLogNetwork(log_file)
+#' Format Console Log Table for File Size Tracking
+#'
+#' formatConsoleLog processes a console log file or a data frame containing log information,
+#' and formats it to extract and summarize input/output file names and their corresponding
+#' record and size information for downstream analysis.
+#'
+#' @param log_file Character string specifying the path to a log file, or a data.frame
+#'   containing log information (for testing purposes).
+#'
+#' @return A data.frame with columns:
+#'   \describe{
+#'     \item{input}{Input file name(s)}
+#'     \item{output}{Output file name(s)}
+#'     \item{task}{Task name}
+#'     \item{input_size}{Number of input records (numeric)}
+#'     \item{output_size}{Number of output records (numeric)}
+#'   }
+#'
+#' @details
+#' The function supports logs from different tasks (e.g., "ParseDb-split", "MakeDB-igblast"),
+#' handles multiple input/output files, and computes record counts for each file.
+#' It also normalizes field names and merges related log entries for easier downstream use.
+#'
+#' @import dplyr
+#' @import tidyr
+#'
+#' @examples
+#' \dontrun{
+#' # Using a log file path
+#' formatConsoleLog("path/to/log_file.log")
+#'
+#' # Using a data.frame
+#' log_df <- structure(
+#'    list(step = c(1, 1, 1, 1, 1, 1, 1, 1, 1), 
+#'          task = structure(c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L), 
+#'                           levels = "ParseDb-split", class = "factor"), 
+#'          field = c("FILE", "FIELD", "NUM_SPLIT", "OUTPUT1", "OUTPUT2", 
+#'                    "RECORDS", "PARTS", "SIZE1", "SIZE2"), 
+#'          value = c("Sample8_quality-pass.tsv", "productive", "None", 
+#'                    "Sample8_productive-F.tsv", "Sample8_productive-T.tsv", 
+#'                    "92", "2", "3", "89")), 
+#'     class = "data.frame", 
+#'     row.names = 3:11)
+#' formatConsoleLog(log_df)
+#' }
+#'
 formatConsoleLog <- function(log_file){
     log_table <- loadConsoleLog(log_file)
     task <- unique(log_table[['task']])
