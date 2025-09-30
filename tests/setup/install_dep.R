@@ -61,7 +61,7 @@ installDep <- function(pkg, devel_mode, immcantation=immcantation_packages,
                              # available from CRAN
                              cat(e, "\n")
                              message("Installing ",pkg," from GitHub\n ")
-                             install_github(paste0("immcantation/", pkg_name, "@",pkg_version))
+                             install_github(paste0("immcantation/", pkg_name, "@",pkg_version), upgrade = "never")
                          })
             }
         } else {
