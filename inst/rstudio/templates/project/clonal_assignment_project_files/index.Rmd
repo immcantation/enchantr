@@ -386,7 +386,12 @@ Summary of the number of clones based on heavy chain sequences, and clone size p
 ```{r clone_sizes_table}
 # Add clone_size
 clone_sizes <- countClones(
-  db %>% filter(isHeavyChain(locus)), # Keep heavy chains only
+  db %>%
+    mutate(
+      subject_id = as.character(subject_id),
+      sample_id = as.character(sample_id)
+    ) %>%
+    filter(isHeavyChain(locus)), # Keep heavy chains only
   groups = unique(c("sample_id", "subject_id", params$cloneby))
 )
 
@@ -559,10 +564,14 @@ a <- new("AbundanceCurve")
 
 ```{r abundancebysample, results='asis', eval=any(isHeavyChain(db$locus))}
 # calculate the rank-abundance curve
-a <- estimateAbundance(db %>% filter(isHeavyChain(locus)),
-                       group = "sample_id", min_n = params$min_n)
-if (nrow(a@abundance)==0) {
-    cat("\nAll groups failed to pass the threshold min_n=",params$min_n,". Skipping clonal abundance report.\n\n")
+a <- estimateAbundance(
+  db %>%
+    mutate(sample_id = as.character(sample_id)) %>%
+    filter(isHeavyChain(locus)),
+  group = "sample_id", min_n = params$min_n
+)
+if (nrow(a@abundance) == 0) {
+  cat("\nAll groups failed to pass the threshold min_n=", params$min_n, ". Skipping clonal abundance report.\n\n")
 }
 ```
 
@@ -727,20 +736,21 @@ output_groups <- db %>%
 output_files <- c()
 output_sizes <- c()
 input_sizes <- c()
-dir.create(file.path(params$outdir,"repertoires")) 
-for (i in 1:nrow(output_groups))  {
-    group_db <- left_join( output_groups[i,params$outputby,drop=F],
-                           db,
-                           by=c(params$outputby))
-    
-    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
-    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
-    output_files <- c(output_files, group_fn)
-    output_sizes <- c(output_sizes, nrow(group_db))
-    i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
-    input_sizes <- c(input_sizes, i_input_size)
-    write_rearrangement(group_db %>% select(-input_file), file=group_fn)
-    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
+dir.create(file.path(params$outdir, "repertoires"))
+for (i in 1:nrow(output_groups)) {
+  group_db <- left_join(output_groups[i, params$outputby, drop = F],
+    db,
+    by = c(params$outputby)
+  )
+
+  group_db_label <- gsub("^id_", "", makeLabel(group_db, fields = params$outputby))
+  group_fn <- file.path(params$outdir, "repertoires", paste0(group_db_label, "_", output_fn))
+  output_files <- c(output_files, group_fn)
+  output_sizes <- c(output_sizes, nrow(group_db))
+  i_input_size <- sum(as.numeric(strsplit(as.character(output_groups[["input_size"]][i]), ",")[[1]]))
+  input_sizes <- c(input_sizes, i_input_size)
+  write_rearrangement(group_db %>% select(-input_file), file = group_fn)
+  cat("- [", group_db_label, "](", file.path("repertoires", basename(group_fn)), ")\n", sep = "")
 }
 ```
 
