@@ -387,10 +387,6 @@ Summary of the number of clones based on heavy chain sequences, and clone size p
 # Add clone_size
 clone_sizes <- countClones(
   db %>%
-    mutate(
-      subject_id = as.character(subject_id),
-      sample_id = as.character(sample_id)
-    ) %>%
     filter(isHeavyChain(locus)), # Keep heavy chains only
   groups = unique(c("sample_id", "subject_id", params$cloneby))
 )
@@ -566,7 +562,6 @@ a <- new("AbundanceCurve")
 # calculate the rank-abundance curve
 a <- estimateAbundance(
   db %>%
-    mutate(sample_id = as.character(sample_id)) %>%
     filter(isHeavyChain(locus)),
   group = "sample_id", min_n = params$min_n
 )
