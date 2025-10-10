@@ -1,0 +1,6 @@
+# Software versions
+
+```{r}
+sessionInfo()
+```
+
