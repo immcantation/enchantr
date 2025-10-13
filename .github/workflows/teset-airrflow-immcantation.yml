@@ -1,0 +1,30 @@
+name: Immcantation CI
+description: |
+  Run nf-core/airrflow -r dev in
+  immcantation/suite:devel after updating enchantr.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-airrflow-immcantation:
+    name: Run enchantr and nf-core/airrflow -r dev in immcantation/suite:devel
+    runs-on: ubuntu-latest
+    container:
+      image: immcantation/suite:devel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install enchantr
+        run: |
+          devtools::install(upgrade="never")
+        shell: Rscript {0}
+      - name: Set up airrflow environment
+        run: |
+          dnf install -y java-21-openjdk
+          update-alternatives --install  /usr/bin/python python /usr/bin/python3 1
+          export PYTHONPATH=/usr/local/lib/python3.11/site-packages
+          wget -qO- https://get.nextflow.io | bash && chmod +x nextflow
+      - name: Run nf-core/airrflow test command
+        run: |
+          ./nextflow run nf-core/airrflow -r dev -c .github/workflows/immcantation.config --outdir ./results
