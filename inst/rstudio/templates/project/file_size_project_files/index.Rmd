@@ -184,8 +184,9 @@ ordered <- p_workflow$data %>%
     pull(name) %>%
     unique()
 ordered <- ordered[ordered %in% log_data$task]
-if (!all(log_data$task %in% ordered)) {
-    stop("Task missing in worklow")
+missing_tasks <- setdiff(log_data$task, ordered)
+if (length(missing_tasks)>0) {
+    stop("Task(s) missing in worklow", paste(missing_tasks,collapse=", "))
 }
 
 log_data$task <- factor(log_data$task, levels=ordered , ordered = T)
