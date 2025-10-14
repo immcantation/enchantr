@@ -1,4 +1,4 @@
---- 
+---
 title: "Immcantation - enchantR"
 subtitle: "Novel allele inference"
 author: ""
@@ -11,12 +11,11 @@ biblio-style: apalike
 link-citations: yes
 description: "enchantr clonal assignment"
 output: enchantr::immcantation
-#TODO: add here all necessary parameters to run the notebook and update existing ones if necessary.
 params:
-   input: 
+   input:
       label: "`input`: Path to repertoires files"
       input: file
-      value: "#TODO add zenodo link to test dataset for this process."
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
    imgt_db:
       label: "`imgt_db`: Path to IMGT reference  database."
       input: file
@@ -24,25 +23,89 @@ params:
    species:
       label: "`species`"
       input: text
-      value: "human"          
+      value: "human"
+   germline_min:
+      label: "`germline_min`"
+      input: numeric
+      value: 200
+   min_seqs:
+      label: "`min_seqs`"
+      input: numeric
+      value: 50
+   auto_mutrange:
+      label: "`auto_mutrange`"
+      input: checkbox
+      value: TRUE
+   mut_range:
+      label: "`mut_range`"
+      input: text
+      value: "1:10"
+   pos_range:
+      label: "`pos_range`"
+      input: text
+      value: "1:312"
+   pos_range_max:
+      label: "`pos_range_max`"
+      input: numeric
+      value: NULL
+   y_intercept:
+      label: "`y_intercept`"
+      input: numeric
+      value: 0.125
+   alpha:
+      label: "`alpha`"
+      input: numeric
+      value: 0.05
+   j_max:
+      label: "`j_max`"
+      input: numeric
+      value: 0.15
+   min_frac:
+      label: "`min_frac`"
+      input: numeric
+      value: 0.75
+   v_call:
+      label: "`v_call`: Column name for V gene calls"
+      input: text
+      value: "v_call"
+   j_call:
+      label: "`j_call`: Column name for J gene calls"
+      input: text
+      value: "j_call"
+   seq:
+      label: "`seq`: Column name for sequence alignment"
+      input: text
+      value: "sequence_alignment"
+   junction:
+      label: "`junction`: Column name for junction sequence"
+      input: text
+      value: "junction"
+   junction_length:
+      label: "`junction_length`: Column name for junction length"
+      input: text
+      value: "junction_length"
+   reassign:
+      label: "`reassign`: Reassign sequences to personal genotype"
+      input: checkbox
+      value: FALSE
    outname:
       label: "`outname`"
       input: text
-      value: "novel-allele-inference"
+      value: "tigger"
    nproc:
       label: "`nproc`"
       input: numeric
-      value: 1      
+      value: 1
    log:
       label: "`log`"
       input: text
       value: "command_log"
    outdir:
-      label: '`outdir`: Output directory'
+      label: "`outdir`: Output directory"
       input: text
       value: !r file.path(getwd(),'enchantr')
-   date: 
-      label: '`date`: Run date'
+   date:
+      label: "`date`: Run date"
       input: date
       value: !r format(Sys.time(), "%Y-%m-%d")
    logo:
@@ -53,20 +116,20 @@ params:
       label: "`logolink`: URL to be added to the logo"
       input: text
       value: "immcantation.org"
-   echo: 
-      label: '`echo`: Show code in the report.'
+   echo:
+      label: "`echo`: Show code in the report."
       input: checkbox
       value: TRUE
    cache:
-      label: '`cache`: Use cached results'
+      label: "`cache`: Use cached results"
       input: checkbox
       value: FALSE
-editor_options: 
-  chunk_output_type: console
+editor_options:
+   chunk_output_type: console
 ---
 
 <div class="introduction_paragraph">
-Report of clonal assignment, clone size distribution, clonal abundance, diversity and mutation frequency created by Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">  enchantR</a>. Immcantation package <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> is used to assign clones. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
+Novel Allele inference created by TIgGER.
 </div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -77,21 +140,13 @@ knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       out_dir=params$outdir,
                       eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
 
-#TODO: Update library imports
 # Libraries
-suppressPackageStartupMessages(library("DT"))
 suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("stringr"))
 suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
-suppressPackageStartupMessages(library("alakazam"))
-suppressPackageStartupMessages(library("shazam"))
-suppressPackageStartupMessages(library("scoper"))
-suppressPackageStartupMessages(library("dowser"))
 suppressPackageStartupMessages(library("enchantr"))
-suppressPackageStartupMessages(library("ComplexHeatmap"))
-suppressPackageStartupMessages(library("plotly"))
-suppressPackageStartupMessages(library("fastcluster"))
+suppressPackageStartupMessages(library("tigger"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive=T)
@@ -100,6 +155,45 @@ if (!dir.exists(params[['outdir']])) {
 file.copy(params$logo,
           file.path(params$outdir,"assets", "logo.png"),
           recursive=T, overwrite=T)
+
+```
+
+
+```{r helper-functions, include=FALSE, cache=FALSE}
+
+# Helper for light chain inference by gene range
+infer_novel_light_chain <- function(db, germline_db, params) {
+  gene_range <- tigger_upper_bound(db)
+  purrr::map_dfr(seq_along(gene_range), function(i) {
+    upper_range <- as.numeric(names(gene_range)[i])
+    genes <- gene_range[i]
+    sub_db <- db[stringi::stri_detect_regex(db[[params$v_call]], genes), ]
+    if (nrow(sub_db) == 0) return(NULL)
+    low_range <- min(sub_db$v_germline_start)
+    novel_df <- try(findNovelAlleles(
+      data = sub_db,
+      germline_db = germline_db,
+      pos_range = low_range:upper_range,
+      v_call = params$v_call,
+      j_call = params$j_call,
+      seq = params$seq,
+      junction = params$junction,
+      junction_length = params$junction_length,
+      nproc = params$nproc,
+      germline_min = params$germline_min,
+      min_seqs = params$min_seqs,
+      y_intercept = params$y_intercept,
+      alpha = params$alpha,
+      j_max = params$j_max,
+      min_frac = params$min_frac,
+      auto_mutrange = params$auto_mutrange,
+      mut_range = params$mut_range
+    ))
+    if (inherits(novel_df, "try-error")) return(NULL)
+    novel_df
+  })
+}
+
 
 ```
 
@@ -115,128 +209,184 @@ save(params, file=file.path(params$outdir,"params.RData"))
 ```
 
 # Read repertoires
-<div class="introduction_paragraph">
-Tables summarizing number of sequences in the provided repertoires according to different characteristics.
-</div>
-#TODO: read input AIRR formated file
 
-```{r}
+```{r read-input}
 # Read repertoire
-db <- readInput(params[['input']], col_select = NULL)
 
-if (params$species =="auto") {
-    if ("species" %in% colnames(db)) {
-        species <- unique(db[['species']])
-        if (length(species)>1) {
-            stop("Multiple species detected. Only one allowed.")
-        }
-    } else  {
-        stop("Can't detect species. The column `species` does not exist in `db`.")
-    }
-} else {
-    species <- params$species
-}
+cols_to_read <- unique(c("sequence_id", "productive", 
+                         params$seq, params$v_call, params$j_call, 
+                         params$junction, params$junction_length))
 
-# Check for single cell label
-if (!is.null(singlecell)) {
-    if (singlecell %in% colnames(db)) {
-         db[[ singlecell ]] <- as.logical(db[[ singlecell ]] )   
-    } else {
-        stop("`",singlecell, "` is not a valid field in `db`.")
-    }
-} else {
-   singlecell <- "single_cell"
-   db[[singlecell]] <- F
-   if ("cell_id" %in% colnames(db)) {
-       message("Setting `singlecell` using `cell_id`.") 
-       db[[singlecell]][!db[['cell_id']] %in% c(NA, '')] <- T
-   }
-
-}
+db <- read_rearrangement(params[['input']], col_select = cols_to_read)
 
 if (!"locus" %in% colnames(db)) {
-    db[['locus']] <- getLocus(db[['v_call']])
-}
-heavy_chains <- isHeavyChain(db[['locus']])
-
-if ("clone_id" %in% colnames(db)) {
-    if (params$force) {
-        # Reset if force
-        warning("Overwritting clone_id.")
-        db$clone_id <- NULL
-    }   
-    # Reset always if clone_id exists
-    if ("clone_size_count" %in% colnames(db)) {    
-        warning("Overwritting clone_size_count.")    
-        db$clone_size_count <- NULL
-    }
-    if ("clone_size_freq" %in% colnames(db)) {    
-        warning("Overwritting clone_size_freq.")    
-        db$clone_size_freq <- NULL
-    }
+    db[['locus']] <- getLocus(db[[params$v_call]])
 }
 
-subject_levels <- str_sort(unique(db$subject_id), numeric = TRUE)
-sample_levels  <- str_sort(unique(db$sample_id),  numeric = TRUE)
-db <- db %>%
-  mutate(
-    subject_id = factor(subject_id, levels = subject_levels),
-    sample_id  = factor(sample_id,  levels = sample_levels)
-  ) %>%
-  arrange(subject_id, sample_id) 
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_novel-pass.tsv.gz")
+    report_output_fn <- paste0(params$outname,"_novel_report.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_novel-pass.tsv", basename(params$input))
+    report_output_fn <- sub(".tsv$", "_novel_report.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log,".txt")
+} else {
+    log_fn <- sub("_novel-pass.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+db <- db %>% dplyr::filter(.data[['productive']] == TRUE)
 ```
 
-```{r}
-input_size <- nrow(db)
-input_sizes <- db %>%
-    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
-    summarize(input_size=n())
+# Read Germline database
 
-# Track input size of the expected output groups, for the
-# end of report summary
-input_sizes_byoutput <- db %>%
-    group_by(!!!rlang::syms(unique(params$outputby))) %>%
-    mutate(
-        num_input_files = length(unique(input_file)),
-        input_files = paste(unique(input_file), collapse=",")
-    ) %>%
-    ungroup() %>%
-    group_by(!!!rlang::syms(unique(c(params$outputby, "input_file", "num_input_files", "input_files")))) %>%
-    summarize(
-        input_size = n()
-    )
+```{r read-germline}
+# If it is a zip file or URL, run prepareIMGT; else use as is
+if (grepl("\\.zip$", params$imgt_db) || grepl("^https?://", params$imgt_db)) {
+   imgt_db <- prepareIMGT(params$imgt_db)
+} else {
+   imgt_db <- params$imgt_db
+}
+
+germline_db <- dowser::readIMGT(file.path(imgt_db,
+                                params$species, "vdj"),
+                               quiet=TRUE)
+## filter the germline database to include only alleles of params$v_call
+call_tag <- paste0(unique(db[['locus']]), toupper(substr(params$v_call, 1, 1)))
+ref_output_fn <- paste0(params$species,"_",call_tag,"_novel.fasta")
+
+germline_db <- germline_db[grepl(call_tag, names(germline_db))]
+```
+
+```{r log}
+cat("START> InferNovelAlleles", file=log_fn, append=F)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+```
+
+# Infer Novel alleles
+
+In this section, novel alleles are inferred by identifying positions with unexpectedly high mutation frequencies compared to the germline reference. 
+
+Additional filters are applied to reduce false positives from clonally-related sequences.
+
+```{r infer-novel-alleles}
+
+# Run TIgGER novel allele inference
+if (all(db$locus == "IGH")) {
+   # Heavy chain: run as usual
+   novel <- try(findNovelAlleles(
+      data = db,
+      germline_db = germline_db,
+      v_call = params$v_call,
+      j_call = params$j_call,
+      seq = params$seq,
+      junction = params$junction,
+      junction_length = params$junction_length,
+      germline_min = params$germline_min,
+      min_seqs = params$min_seqs,
+      y_intercept = params$y_intercept,
+      alpha = params$alpha,
+      j_max = params$j_max,
+      min_frac = params$min_frac,
+      auto_mutrange = params$auto_mutrange,
+      mut_range = params$mut_range,
+      pos_range = params$pos_range,
+      nproc = params$nproc
+   ))
+} else {
+   # Light chain: run per gene-range
+   novel <- infer_novel_light_chain(db, germline_db, params)
+}
+```
+
+# Clean up novel allele inference results
+
+```{r clean-up}
+
+if (!inherits(novel, 'try-error') && nrow(novel) > 0) {
+  novel <- tigger::selectNovel(novel) %>%
+    dplyr::distinct(novel_imgt, .keep_all = TRUE) %>%
+    dplyr::filter(!is.na(novel_imgt), nt_substitutions != '') %>%
+    dplyr::mutate(gene = alakazam::getGene(germline_call, strip_d = FALSE)) %>%
+    dplyr::group_by(gene) %>% dplyr::top_n(n = 2, wt = novel_imgt_count)
+
+  SNP_XXXX <- check_repeated_snp_patterns(novel)
+  novel <- novel[!SNP_XXXX, ]
+  novel <- novel[!duplicated(novel[['polymorphism_call']]), ]
+}
+
+```
+
+# Build new germline database with novel alleles
+
+```{r build-reference}
+
+if (nrow(novel) > 0) {
+    # Build novel reference database
+    novel_germline <- setNames(gsub('-', '.', novel[['novel_imgt']], fixed = TRUE), novel[['polymorphism_call']])
+    germline_db <- c(germline_db, novel_germline)
+}
+
+```
+
+# Reassign sequences to novel alleles (optional)
+
+```{r reassign, eval=params$reassign}
+if (params$reassign & !all(is.na(germline_db))) {
+   # Read rearrangement data with all columns
+   db <- read_rearrangement(params[['input']])
+
+   # Reassign sequences to novel alleles. Only do it if novel alleles were found
+   if (nrow(novel) > 0) {
+        # TODO: check to add the option of path to aligner, and keep_gene
+        # Using default params for now
+        db <- reassignAlleles(db, 
+                                germline_db = germline_db,
+                                call = call_col, 
+                                seq = params$seq_column)
+   }
+   
+}
+```
+
+# Save results
+
+```{r save-results}
+
+# Save novel report (optional)
+
+if(exists("novel") && nrow(novel) > 0) {
+   write.table(novel, file = file.path(params$outdir, report_output_fn), row.names = FALSE, quote = FALSE, sep = '\t')
+}
+
+# Save personal reference if generated
+if (!all(is.na(germline_db)) && exists("germline_db")) {
+    tigger::writeFasta(germline_db,
+                      file = file.path(params$outdir, ref_output_fn))
+}
+
+# Save reassigned database if generated
+if (params$reassign & exists("db")) {
+   write_rearrangement(db, 
+                       file = file.path(params$outdir, output_fn))
+}
 
 ```
 
 
-Number of sequences loaded: `r input_size`. Number of heavy chain sequences loaded: `r sum(heavy_chains, na.rm=T)`.
-
-```{r inputsamplesumary, results='asis', eval="tissue" %in% colnames(db)}
-input_samples_summary <- db %>%
-   group_by(sample_id, subject_id, tissue) %>%
-   summarize(size = n()) 
-
-subject_levels <- str_sort(unique(input_samples_summary$subject_id), numeric = TRUE)
-sample_levels  <- str_sort(unique(input_samples_summary$sample_id),  numeric = TRUE)
-input_samples_summary <- input_samples_summary %>%
-  mutate(
-    subject_id = factor(subject_id, levels = subject_levels),
-    sample_id  = factor(sample_id,  levels = sample_levels)
-  ) %>%
-  arrange(subject_id, sample_id,tissue) %>%
-  mutate(
-    subject_id = as.character(subject_id),
-    sample_id  = as.character(sample_id)
-  )
-
-eetable(input_samples_summary)$table
+```{r log-end}
+cat("END> InferNovelAlleles", file=log_fn, append=T)
+if(params$reassign && exists("db")){
+   cat(paste0("\nOUTPUT> ", output_fn), file=log_fn, append=T)
+}
+if(exists("novel") && nrow(novel) > 0){
+    cat(paste0("\nOUTPUT> ", report_output_fn), file=log_fn, append=T)
+}
+cat(paste0("\nOUTPUT> ",basename(ref_output_fn)), file=log_fn, append=T)
+cat(paste0("\nNOVEL-ALLELES-DETECTED> ",nrow(novel)), file=log_fn, append=T)
 ```
-```{r echo=FALSE, results='asis', eval="tissue" %in% colnames(db)}
-print_table_caption(tag="input_samples_summary", text="Input samples summary.")
-```
-
-#TODO: add here novel allele inference steps
-
 
 ```{r, child=c('versions.Rmd')}
 ```
