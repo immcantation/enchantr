@@ -31,6 +31,7 @@ BuildVignettes: true
 VignetteBuilder: knitr
 Encoding: UTF-8
 biocViews:
+LinkingTo: Rcpp
 Depends:
     R (>= 3.5.0),
 Imports:
@@ -64,7 +65,8 @@ Imports:
     stringi,
     stringr,
     tidyr,
-    xfun
+    xfun,
+    Rcpp
 Suggests:
     optparse,
     testthat
