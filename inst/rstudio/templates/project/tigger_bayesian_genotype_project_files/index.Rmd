@@ -1,0 +1,379 @@
+---
+title: "Immcantation - enchantR"
+subtitle: "TIgGER Bayesian genotype inference"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr TIgGER Bayesian genotype inference"
+output: enchantr::immcantation
+params:
+   input:
+      label: "`input`: Path to AIRR TSV file"
+      input: file
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
+   germline:
+      label: "`germline`: Path to germline FASTA file"
+      input: file
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+   species:
+      label: "`species`"
+      input: text
+      value: "human"
+   call_column:
+      label: "`call_column`: Column name of segment call (e.g., v_call)"
+      input: text
+      value: "v_call"
+   seq_column:
+      label: "`seq_column`: Column name of segment sequence (e.g., sequence_alignment)"
+      input: text
+      value: "sequence_alignment"
+   germline_column:
+      label: "`germline_column`: Column name of germline gene call (e.g., germline_alignment)"
+      input: text
+      value: "germline_alignment"
+   clone_id_column:
+      label: "`clone_id_column`: Column name of clone ID (e.g., clone_id)"
+      input: text
+      value: "clone_id"
+   single_clone_representative:
+      label: "`single_clone_representative`: Use single representative per clone"
+      input: checkbox
+      value: TRUE
+   find_unmutated:
+      label: "`find_unmutated`: Find unmutated sequences for genotype inference"
+      input: checkbox
+      value: TRUE
+   single_assignments:
+      label: "`single_assignments`: Filter to single gene assignments only"
+      input: checkbox
+      value: TRUE
+   v_priors:
+      label: "`v_priors`: V gene priors (comma-separated)"
+      input: text
+      value: "0.6,0.4,0.4,0.35,0.25,0.25,0.25,0.25,0.25"
+   d_priors:
+      label: "`d_priors`: D gene priors (comma-separated)"
+      input: text
+      value: "0.5,0.5,0,0,0,0,0,0,0"
+   j_priors:
+      label: "`j_priors`: J gene priors (comma-separated)"
+      input: text
+      value: "0.5,0.5,0,0,0,0,0,0,0"
+   reassign:
+      label: "`reassign`: Reassign sequences to personal genotype"
+      input: checkbox
+      value: FALSE
+   outname:
+      label: "`outname`"
+      input: text
+      value: "tigger"
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: "`outdir`: Output directory"
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date:
+      label: "`date`: Run date"
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo:
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: TRUE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options:
+  chunk_output_type: console
+---
+
+
+<div class="introduction_paragraph">
+TIgGER Bayesian genotype inference for IG/TR repertoires.
+</div>
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+# Libraries
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("tigger"))
+
+if (!dir.exists(params[['outdir']])) {
+    dir.create(params[['outdir']], recursive=T)
+}echo:
+
+file.copy(params$logo,
+          file.path(params$outdir,"assets", "logo.png"),
+          recursive=T, overwrite=T)
+
+```
+
+```{r helper-functions, include=FALSE, cache=FALSE}
+
+# Helper function to get most likely genotyped alleles
+GENOTYPED_ALLELES <- function(y) {
+  m <- which.max(as.numeric(y[2:5]))
+  paste0(unlist(strsplit(y[1], ","))[1:m], collapse = ",")
+}
+
+```
+
+# Input parameters
+
+```{r input-parameters, results='asis'}
+printParams(params)
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="input", text="Input parameters.")
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoire data
+
+```{r read-input}
+# Read repertoire data
+cols_to_read <- unique(c("sequence_id", "productive", params$call_column))
+
+db <- read_rearrangement(params[['input']], col_select = cols_to_read)
+
+# Convert boolean parameters
+find_unmutated <- params$find_unmutated
+single_assignments <- params$single_assignments
+call_col <- params$call_column
+
+# Filter to productive sequences
+db <- db %>% dplyr::filter(.data[['productive']] == TRUE)
+
+# Filter to single assignments if requested
+if (single_assignments) {
+  db <- db[!grepl(",", db[[call_col]]), ]
+}
+
+# Remove NA values
+db <- db[!is.na(db[[call_col]]), ]
+
+# Set up output filenames
+if (!is.null(params$outname)) {
+   output_fn <- paste0(params$outname, "_reassigned-pass.tsv.gz")
+   report_output_fn <- paste0(params$outname, "_", call_col , "_genotype_report.tsv")
+   ref_output_fn <- paste0(params$outname, "_personal_reference.fasta")
+} else {
+   base <- sub(".tsv$", "", basename(params$input))
+   output_fn <- paste0(base, "_reassigned-pass.tsv.gz")
+   report_output_fn <- paste0(base, "_", call_col, "_genotype_report.tsv")
+   ref_output_fn <- paste0(base, "_", call_col, "_personal_reference.fasta")
+}
+
+if (!is.null(params$log)) {
+    log_fn <- paste0(params$log, ".txt")
+} else {
+    log_fn <- sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn))
+}
+
+```
+
+# Read germline database
+
+```{r read-germline}
+# Handle germline database input
+if (params$germline != "") {
+    # If it is a zip file or URL, run prepareIMGT; else use as is
+    if (grepl("\\.zip$", params$germline) || grepl("^https?://", params$germline)) {
+       imgt_db <- prepareIMGT(params$germline)
+       germline_db <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet=TRUE)
+    } else {
+       germline_db <- tigger::readIgFasta(params$germline)
+    }
+} else {
+    germline_db <- NA
+}
+
+```
+
+
+# Clonal representative selection (optional)
+```{r clonal-representatives, eval=params$single_clone_representative}
+if (params$single_clone_representative) {
+   # Check that clone_id_column is provided
+   if (is.null(params$clone_id_column) || params$clone_id_column == "") {
+      stop("Error: 'clone_id_column' parameter must be provided when 'single_clone_representative' is TRUE.")
+   }
+   # Select clonal representatives
+   db <- select_clonal_representatives(db,
+                                                 sequence_col = params$seq_column,
+                                                 germline_col = params$germline_column,
+                                                 clone_id_col = params$clone_id_column,
+                                                 return_count = FALSE)
+   db <- db %>% filter(clone_representative)
+}
+```   
+
+# Start log
+```{r log-start}
+cat("START> TIgGER Bayesian Genotype Inference", file=log_fn, append=F)
+cat(paste0("\nMETHOD> TIgGER Bayesian"), file=log_fn, append=T)
+cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
+cat(paste0("\nCALL_COLUMN> ", params$call_column), file=log_fn, append=T)
+```
+
+# TIgGER Bayesian genotype inference
+
+In this section, genotype inference is performed using TIgGER's Bayesian approach. This method infers the most likely genotype for each individual by comparing observed mutation patterns to expected patterns for different genotype configurations.
+
+The analysis uses prior probabilities for each gene family to weight the likelihood of different genotype configurations.
+
+```{r tigger-genotype-inference}
+
+# Parse priors from parameters
+priors <- list(
+  v_call = as.numeric(strsplit(params$v_priors, ",")[[1]]),
+  d_call = as.numeric(strsplit(params$d_priors, ",")[[1]]),
+  j_call = as.numeric(strsplit(params$j_priors, ",")[[1]])
+)
+
+# Run TIgGER Bayesian genotype inference
+geno <- try(tigger::inferGenotypeBayesian(
+    db,
+    find_unmutated = find_unmutated,
+    germline_db = if (!all(is.na(germline_db))) germline_db else NULL,
+    v_call = call_col,
+    seq = params$seq_column,
+    priors = priors[[call_col]]
+))
+
+```
+
+# Process genotype results
+
+```{r process-results}
+
+# Determine most likely genotyped alleles
+geno$genotyped_alleles <- apply(geno[, c(2, 6:9)], 1, GENOTYPED_ALLELES)
+
+# Display results summary
+tab_caption <- paste("TIgGER Bayesian genotype inference results showing inferred genotypes for",
+                     nrow(geno), "genes.")
+
+tab <- eetable(geno,
+               caption = tab_caption,
+               outdir = params$outdir,
+               file = "genotype_results")
+tab$table
+
+caption <- tab$enchantr$html_caption
+
+```
+
+# Build personal reference
+
+```{r build-reference}
+
+if (!all(is.na(germline_db))) {
+   # Build personal reference database
+   # Remove genes that were genotyped
+   NOTGENO.IND <- !(sapply(strsplit(names(germline_db), "*", fixed = TRUE), `[`, 1) %in% geno$gene)
+   germline_db_new <- germline_db[NOTGENO.IND]
+
+   # Add genotyped alleles
+   for (i in seq_len(nrow(geno))) {
+        gene <- geno[i, "gene"]
+        alleles <- if (geno[i, "genotyped_alleles"] == "") geno[i, "alleles"] else geno[i, "genotyped_alleles"]
+        alleles <- unlist(strsplit(alleles, ","))
+        IND <- names(germline_db) %in% paste(gene, alleles, sep = "*")
+        germline_db_new <- c(germline_db_new, germline_db[IND])
+    }
+}
+
+```
+
+
+
+# Reassign sequences to personal genotype (optional)
+
+```{r reassign, eval=params$reassign}
+if (params$reassign & !all(is.na(germline_db))) {
+   # Read rearrangement data with all columns
+   db <- read_rearrangement(params[['input']])
+
+   # Reassign sequences to personal genotype
+   # TODO: check to add the option of path to aligner, and keep_gene
+   # Using default params for now
+   db <- reassignAlleles(db, 
+                           germline_db = germline_db_new,
+                           call = call_col, 
+                           seq = params$seq_column)
+}
+```
+
+
+# Save results
+
+```{r save-results}
+
+# Save genotype report
+write.table(geno,
+           file = file.path(params$outdir, report_output_fn),
+           sep = "\t",
+           quote = FALSE,
+           row.names = FALSE)
+
+# Save personal reference if generated
+if (!all(is.na(germline_db)) && exists("germline_db_new")) {
+    tigger::writeFasta(germline_db_new,
+                      file = file.path(params$outdir, ref_output_fn))
+}
+
+# Save reassigned database if generated
+if (params$reassign & exists("db")) {
+   write_rearrangement(db, 
+                       file = file.path(params$outdir, output_fn))
+}
+
+```
+
+```{r log-end}
+cat("\nEND> TIgGER Bayesian Genotype Inference", file=log_fn, append=T)
+if(params$reassign && exists("db")){
+   cat(paste0("\nOUTPUT> ", output_fn), file=log_fn, append=T)
+}
+cat(paste0("\nOUTPUT> ", report_output_fn), file=log_fn, append=T)
+if (!all(is.na(germline_db)) && exists("germline_db_new")) {
+    cat(paste0("\nOUTPUT> ", ref_output_fn), file=log_fn, append=T)
+}
+cat(paste0("\nGENES_GENOTYPED> ", nrow(geno)), file=log_fn, append=T)
+```
+
+
+```{r, eval=FALSE, echo=FALSE}
+# TODO: add interactive genotype plot
+```
+
+```{r, child=c('versions.Rmd')}
+```
