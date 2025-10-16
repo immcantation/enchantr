@@ -9,12 +9,34 @@
 #'
 #' @export
 loadConsoleLog <- function(log_file) {
-    ## DEBUG
-    # log_file <- file.path(IN_PATH, n, "Pipeline.log")
+   
+    # allow passing either a path to a log file or 
+    # log contents (for testthat tests)
+    if (is.character(log_file)) {
+        if (!file.exists(log_file)[1]) {
+            # Not a file. Check if it is the content of a log.
+            if (grepl("START>", log_file[1])) {
+                log_text <- log_file 
+            } else {
+                stop("`log_file` ",log_file, " does not exist." )
+            }
+        } else {
+            # message("Processing log file: ", log_file)
+            log_text <- scan(log_file, what=character(), sep="\n", quiet=TRUE)
+        }
+    }
 
     # Parse console output
-    log_text <- scan(log_file, what=character(), sep="\n", quiet=TRUE)
     log_text <- stri_trim_both(log_text)
+    # Fix missing line break in MakeDb. e.g. minOUTPUT>
+    # "PROGRESS> 09:59:43 |#                   |   5% (  9,013) 0.1 minOUTPUT> BLOD_AM1_2_A1_db-pass.tsv"
+    bad_output_line <- which(grepl(".+OUTPUT.*> ", log_text))
+    if (length(bad_output_line)>1) {
+        stop("Multiple bad OUTPUT lines found in log file.")
+    } else if (length(bad_output_line)==1) {
+        output_line <- sub("(.+)(OUTPUT.*> .*$)", "\\2", log_text[bad_output_line])
+        log_text <- c(log_text, output_line)
+    }
     log_text <- log_text[!grepl("(^PROGRESS>)|(^END>)", log_text)]
     log_df <- as.data.frame(stri_split_fixed(log_text, "> ", 2, simplify=TRUE),
                             stringsAsFactors=FALSE)
