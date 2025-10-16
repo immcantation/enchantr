@@ -1,4 +1,4 @@
-name: nf-core CI
+name: airrflow CI
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
 on:
   push:
@@ -57,7 +57,7 @@ jobs:
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
       
       - name: Push new docker image
         if: env.MATCHED_FILES
@@ -79,7 +79,7 @@ jobs:
 
       - name: Run pipeline with test data
         run: |
-          nextflow run nf-core/airrflow -profile ${{ matrix.profile }},docker --outdir ./results -c .github/workflows/airrflow.config
+          nextflow run nf-core/airrflow -r dev -profile ${{ matrix.profile }},docker --outdir ./results -c .github/workflows/airrflow.config
 
       - name: Upload logs on failure
         if: failure()

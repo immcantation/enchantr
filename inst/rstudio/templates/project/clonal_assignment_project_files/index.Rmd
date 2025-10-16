@@ -278,7 +278,7 @@ print_table_caption(tag="input_samples_summary", text="Input samples summary.")
 
 ```{r inputlocussumary, results='asis'}
 input_locus_summary <- db %>%
-   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "locus")))) %>%
+  group_by(!!!rlang::syms(unique(c("sample_id", "subject_id", params$cloneby, "locus")))) %>%
    summarize(n=n(), .groups="drop") %>%
    pivot_wider(names_from=locus, values_from=n) %>%
    rowwise() %>%
@@ -326,7 +326,7 @@ db <- db %>% filter(locus %in% c("IGH", "IGK", "IGL")) %>%
     mutate(c_gene = alakazam::getGene(c_call, first=TRUE))
 
 input_cgene_summary <- db %>%
-   group_by(!!!rlang::syms(unique(c("sample_id",params$cloneby, "c_gene")))) %>%
+  group_by(!!!rlang::syms(unique(c("sample_id", "subject_id", params$cloneby, "c_gene")))) %>%
    summarize(n=n(), .groups="drop") %>%
        pivot_wider(names_from=c_gene, values_from=n)
 
@@ -384,10 +384,12 @@ Summary of the number of clones based on heavy chain sequences, and clone size p
 </div>
 
 ```{r clone_sizes_table}
-# Add clone_size 
+# Add clone_size
 clone_sizes <- countClones(
-            db %>% filter(isHeavyChain(locus)), # Keep heavy chains only
-            groups=unique(c("sample_id", params$cloneby)))
+  db %>%
+    filter(isHeavyChain(locus)), # Keep heavy chains only
+  groups = unique(c("sample_id", "subject_id", params$cloneby))
+)
 
 subject_levels <- str_sort(unique(clone_sizes$subject_id), numeric = TRUE)
 sample_levels  <- str_sort(unique(clone_sizes$sample_id),  numeric = TRUE)
@@ -418,13 +420,13 @@ db <- db %>%
 ```{r, results='asis', eval=any(isHeavyChain(db$locus))}
 num_clones_table <- db %>%
    filter(isHeavyChain(locus)) %>% # Keep heavy chains only
-   group_by(sample_id) %>%
+  group_by(sample_id, subject_id) %>%
    mutate(sequences=n()) %>%
    group_by(sample_id) %>%
    mutate(
       number_of_clones=length(unique(clone_id)),
    ) %>%
-   group_by(!!!rlang::syms(unique(c("sample_id","sequences", params$cloneby, "number_of_clones")))) %>%
+  group_by(!!!rlang::syms(unique(c("sample_id", "subject_id", "sequences", params$cloneby, "number_of_clones")))) %>%
    summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
    mutate_at(vars(starts_with("clone_size")), round, 2)
 
@@ -558,10 +560,13 @@ a <- new("AbundanceCurve")
 
 ```{r abundancebysample, results='asis', eval=any(isHeavyChain(db$locus))}
 # calculate the rank-abundance curve
-a <- estimateAbundance(db %>% filter(isHeavyChain(locus)),
-                       group = "sample_id", min_n = params$min_n)
-if (nrow(a@abundance)==0) {
-    cat("\nAll groups failed to pass the threshold min_n=",params$min_n,". Skipping clonal abundance report.\n\n")
+a <- estimateAbundance(
+  db %>%
+    filter(isHeavyChain(locus)),
+  group = "sample_id", min_n = params$min_n
+)
+if (nrow(a@abundance) == 0) {
+  cat("\nAll groups failed to pass the threshold min_n=", params$min_n, ". Skipping clonal abundance report.\n\n")
 }
 ```
 
@@ -726,20 +731,21 @@ output_groups <- db %>%
 output_files <- c()
 output_sizes <- c()
 input_sizes <- c()
-dir.create(file.path(params$outdir,"repertoires")) 
-for (i in 1:nrow(output_groups))  {
-    group_db <- left_join( output_groups[i,params$outputby,drop=F],
-                           db,
-                           by=c(params$outputby))
-    
-    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
-    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
-    output_files <- c(output_files, group_fn)
-    output_sizes <- c(output_sizes, nrow(group_db))
-    i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
-    input_sizes <- c(input_sizes, i_input_size)
-    write_rearrangement(group_db %>% select(-input_file), file=group_fn)
-    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
+dir.create(file.path(params$outdir, "repertoires"))
+for (i in 1:nrow(output_groups)) {
+  group_db <- left_join(output_groups[i, params$outputby, drop = F],
+    db,
+    by = c(params$outputby)
+  )
+
+  group_db_label <- gsub("^id_", "", makeLabel(group_db, fields = params$outputby))
+  group_fn <- file.path(params$outdir, "repertoires", paste0(group_db_label, "_", output_fn))
+  output_files <- c(output_files, group_fn)
+  output_sizes <- c(output_sizes, nrow(group_db))
+  i_input_size <- sum(as.numeric(strsplit(as.character(output_groups[["input_size"]][i]), ",")[[1]]))
+  input_sizes <- c(input_sizes, i_input_size)
+  write_rearrangement(group_db %>% select(-input_file), file = group_fn)
+  cat("- [", group_db_label, "](", file.path("repertoires", basename(group_fn)), ")\n", sep = "")
 }
 ```
 
