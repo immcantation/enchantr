@@ -18,9 +18,63 @@ file_size_project <- function(path,...) {
 }
 
 
-# consoleLogNetwork(log_file)
+#' Format Console Log Table for File Size Tracking
+#'
+#' formatConsoleLog processes a console log file or a data frame containing log information,
+#' and formats it to extract and summarize input/output file names and their corresponding
+#' record and size information for downstream analysis.
+#'
+#' @param log_file Character string specifying the path to a log file, or a data.frame
+#'   containing log information (for testing purposes).
+#'
+#' @return A data.frame with columns:
+#'   \describe{
+#'     \item{input}{Input file name(s)}
+#'     \item{output}{Output file name(s)}
+#'     \item{task}{Task name}
+#'     \item{input_size}{Number of input records (numeric)}
+#'     \item{output_size}{Number of output records (numeric)}
+#'   }
+#'
+#' @details
+#' The function supports logs from different tasks (e.g., "ParseDb-split", "MakeDB-igblast"),
+#' handles multiple input/output files, and computes record counts for each file.
+#' It also normalizes field names and merges related log entries for easier downstream use.
+#'
+#' @import dplyr
+#' @import tidyr
+#'
+#' @examples
+#' \dontrun{
+#' # Using a log file path
+#' formatConsoleLog("path/to/log_file.log")
+#'
+#' # Using a data.frame
+#' log_df <- structure(
+#'    list(step = c(1, 1, 1, 1, 1, 1, 1, 1, 1), 
+#'          task = structure(c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L), 
+#'                           levels = "ParseDb-split", class = "factor"), 
+#'          field = c("FILE", "FIELD", "NUM_SPLIT", "OUTPUT1", "OUTPUT2", 
+#'                    "RECORDS", "PARTS", "SIZE1", "SIZE2"), 
+#'          value = c("Sample8_quality-pass.tsv", "productive", "None", 
+#'                    "Sample8_productive-F.tsv", "Sample8_productive-T.tsv", 
+#'                    "92", "2", "3", "89")), 
+#'     class = "data.frame", 
+#'     row.names = 3:11)
+#' formatConsoleLog(log_df)
+#' }
+#'
 formatConsoleLog <- function(log_file){
-    log_table <- loadConsoleLog(log_file)
+    
+    # allow passing either a path to a log file or 
+    # log contents (for testthat tests)
+    if (is.character(log_file)) {
+            log_table <- loadConsoleLog(log_file)
+    } else {
+        # log content passed as data.frame
+        log_table <- log_file
+    }
+
     task <- unique(log_table[['task']])
 
     if (length(task)>1) {
@@ -28,6 +82,16 @@ formatConsoleLog <- function(log_file){
     }
 
     if (task == "ParseDb-split") {
+        # step          task     field                    value
+        #    1 ParseDb-split      FILE Sample8_quality-pass.tsv <- this input file
+        #    1 ParseDb-split     FIELD               productive
+        #    1 ParseDb-split NUM_SPLIT                     None
+        #    1 ParseDb-split   OUTPUT1 Sample8_productive-F.tsv <- has two output files
+        #    1 ParseDb-split   OUTPUT2 Sample8_productive-T.tsv <- 
+        #    1 ParseDb-split   RECORDS                       92
+        #    1 ParseDb-split     PARTS                        2
+        #    1 ParseDb-split     SIZE1                        3
+        #    1 ParseDb-split     SIZE2                       89
         file_field <- grepl("FILE",log_table[['field']])
         if (sum(file_field)>1) {
             stop("Can't deal with multiple input files.")
@@ -35,6 +99,17 @@ formatConsoleLog <- function(log_file){
         log_table[['field']][file_field] <- 'FILE1'
         records_field <- grepl("RECORDS",log_table[['field']])
         log_table[['field']][records_field] <- 'RECORDS1'
+        # step          task     field                    value
+        # 3     1 ParseDb-split     FILE1 Sample8_quality-pass.tsv <- file1
+        # 4     1 ParseDb-split     FIELD               productive
+        # 5     1 ParseDb-split NUM_SPLIT                     None
+        # 6     1 ParseDb-split   OUTPUT1 Sample8_productive-F.tsv
+        # 7     1 ParseDb-split   OUTPUT2 Sample8_productive-T.tsv
+        # 8     1 ParseDb-split  RECORDS1                       92 <- has size records1
+        # 9     1 ParseDb-split     PARTS                        2
+        # 10    1 ParseDb-split     SIZE1                        3
+        # 11    1 ParseDb-split     SIZE2                       89
+        
         parts <- as.numeric(log_table[['value']][log_table[['field']]=="PARTS"])
         i <- 2
         while (i <= parts) {
@@ -42,8 +117,27 @@ formatConsoleLog <- function(log_file){
                       log_table[which(file_field),]
             )
             log_table[['field']][nrow(log_table)] <- paste0("FILE",i)
+            log_table <- bind_rows(log_table,
+                                   log_table[which(records_field),]
+            )     
+            log_table[['field']][nrow(log_table)] <- paste0("RECORDS",i)
             i <- i + 1
         }
+        # df is now formatted for future pivot. inputs and outputs are
+        # paired by number (eg file1 output1) and similar for
+        # input records processed and size of the output files.
+        # step          task     field                    value
+        #    1 ParseDb-split     FILE1 Sample8_quality-pass.tsv
+        #    1 ParseDb-split     FIELD               productive
+        #    1 ParseDb-split NUM_SPLIT                     None
+        #    1 ParseDb-split   OUTPUT1 Sample8_productive-F.tsv
+        #    1 ParseDb-split   OUTPUT2 Sample8_productive-T.tsv
+        #    1 ParseDb-split  RECORDS1                       92
+        #    1 ParseDb-split     PARTS                        2
+        #    1 ParseDb-split     SIZE1                        3
+        #    1 ParseDb-split     SIZE2                       89
+        #    1 ParseDb-split     FILE2 Sample8_quality-pass.tsv <- copied for output2
+        #    1 ParseDb-split  RECORDS2                       92 <- copied for output2
     }
   
     if (task == "MakeDB-igblast") {
@@ -151,9 +245,12 @@ formatConsoleLog <- function(log_file){
 #' @export
 consoleLogsAsGraphs <- function(logs, metadata=NULL) {
     
-    # Add file_0 to metadata to prepare for merge at a later step
     if (!is.null(metadata)) {
         if (nrow(metadata)>1) {
+            # Address duplicated files coming from different originating samples
+            # If needed, make filenames unique by adding sample_id. 
+            # Relevant for 10x studies, where different samples can have files 
+            # with the same filename (airr_rearrangement.tsv).
             .makeFile <- function(.data) { paste(.data[["sample_id"]], .data[["filename"]], sep=": ")}
             metadata <- metadata %>%
                 group_by(filename) %>%
@@ -162,17 +259,12 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
                 rowwise() %>%
                 mutate(name = ifelse(n>1, .makeFile(.data) , filename)) %>%
                 select(-n)
-            # >metadata
-            # sample_id filename               file_0                          
-            # <chr>     <chr>                  <chr>                           
-            # 1 sample_x  airr_rearrangement.tsv sample_x: airr_rearrangement.tsv
-            # 2 sample_y  airr_rearrangement.tsv sample_y: airr_rearrangement.tsv            
         } else {
             stop("`metadata` is empty. Please update it or use NULL.")
         }
     }
     
-    # .makeVertexName is a helper function to manage duplicated inputs. 
+    # .makeVertexName is a helper function to manage duplicated inputs in the logs. 
     # This is to allow for duplicated input files.
     # We found situations where the basename is duplicated i.e. multiple folders,
     # one per sample, and each folder has an airr_rearrangement.tsv file.
@@ -181,47 +273,58 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
     # .makeUnique will add the sample id to the "duplicated" input files in 
     # the RenameFile tasks. graph_from_data_frame won't work with duplicated node
     # names.
-    .makeVertexName <- function(.data) {
-        if (.data[["task"]] == "RenameFile") {
-            sample_id <- sub("\\.[^\\.]*$","",.data[["output"]])
-            paste0(sample_id,": ", .data[["input"]], collapse="")
-        } else {
-            # We should expect duplicated names only in the initial RenameFile tasks
-            # as downstream processes add modifiers that will make file names unique (sample_id)
-            stop("Unexpected duplicated input names.")
-        }
-    }
+    # .makeVertexName <- function(.data) {
+    #     if (.data[["task"]] == "RenameFile") {
+    #         sample_id <- sub("\\.[^\\.]*$","",.data[["output"]])
+    #         paste0(sample_id,": ", .data[["input_id"]], collapse="")
+    #     } else {
+    #         # We should expect duplicated names only in the initial RenameFile tasks
+    #         # as downstream processes add modifiers that will make file names unique (sample_id)
+    #         stop("Unexpected duplicated input names.")
+    #     }
+    # }
     
-    # Identify duplicated input filenames
+    # Concatenate input and output with their sizes to create the graph nodes.
+    # This should help to avoid issues with duplicated file names
     logs <-  logs %>% 
-        group_by(input) %>% 
-        mutate(n=n(), n_idx=1:n()) %>% 
-        ungroup()
-    
-    logs <- logs %>%
         rowwise() %>%
-        mutate(name = ifelse(n>1, .makeVertexName(.data), input))
+        mutate(input_id=paste(input,input_size, sep="_"),
+               output_id=paste(output,output_size, sep="_")
+               )
+    # %>%
+    #     group_by(input_id) %>%
+    #     mutate(group_id=cur_group_id(),
+    #            n=n(),
+    #            is_dup=n>1 & length(unique(log_id))>1,
+    #            n_idx=1:n()) %>%
+    #     ungroup()
+# 
+#     logs <- logs %>%
+#         rowwise() %>%
+#         mutate(name = ifelse(is_dup, .makeVertexName(.data), input_id))
     
-    # Create nodes from the input and output file names 
-    # and nodes' sizes (number of sequences)
+    # Create nodes from the input_id and output_id (uses file name a file size)
     # Remove duplicated nodes. This happens because outputs of some tasks are
     # inputs for others tasks, and they have the same size.
     vertex_meta <- bind_rows(
         logs %>% 
-            select(name, input, input_size) %>% 
+            select(input_id, input, input_size) %>% 
+            rename(name=input_id) %>%
             rename(num_seqs=input_size, filename=input),
         logs %>% 
-            select(output, output_size) %>%
-            mutate(name=output) %>%
+            select(output_id, output, output_size) %>%
+            rename(name=output_id) %>%
             rename(num_seqs=output_size,filename=output),
     ) %>%
-        distinct() 
+    distinct() 
     
     dup_v <- duplicated(vertex_meta$name)
     if (any(dup_v)) {
         stop("Unexpected duplicated vertex names.")
     }
-    g <- graph_from_data_frame(logs %>% select(name, output, task),
+    g <- graph_from_data_frame(logs %>% 
+                                   select(input_id, output_id, task) %>%
+                                   rename(name=input_id),
                                directed = TRUE,
                                vertices = vertex_meta)
     
@@ -251,11 +354,22 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
             c_idx <- V(g)$component == i
             this_meta <- metadata[metadata$name %in% V(g)$name[c_idx],,drop=FALSE] %>%
                 select(-filename, -name)
-            this_root_name <- igraph::vertex_attr(g, "name")[igraph::vertex_attr(g, "is_input") & c_idx]
+            if (nrow(this_meta)==0) {
+                fasta_idx <- grepl("\\.fasta_[0-9]+$|\\.fasta$", V(g)$name[c_idx])
+                if (any(fasta_idx)) {
+                    v_sample_id <- sub("([^_]+)_.+","\\1", V(g)$name[c_idx][fasta_idx])
+                    this_meta <- metadata[metadata$sample_id %in% v_sample_id,,drop=FALSE] %>%
+                        select(-filename, -name) %>%
+                        distinct()
+                }
+            }
+            this_root_name <- igraph::vertex_attr(g, "filename")[igraph::vertex_attr(g, "is_input") & c_idx]
             g <- igraph::set_vertex_attr(g, "root_name", index = V(g)[c_idx], this_root_name)
-            if (nrow(this_meta)!=1 ) { stop("Expecting one row with metadata for this component.") }
-            for ( meta_field in colnames(this_meta)) {
-                g <- igraph::set_vertex_attr(g, meta_field, index = V(g)[c_idx], this_meta[[meta_field]])
+            if (nrow(this_meta)>1 ) { stop("Expecting one row with metadata for this component.") }
+            if (nrow(this_meta)==1 ) {
+                for ( meta_field in colnames(this_meta)) {
+                    g <- igraph::set_vertex_attr(g, meta_field, index = V(g)[c_idx], this_meta[[meta_field]])
+                }
             }
         }
     }
@@ -376,9 +490,10 @@ plotWorkflow <- function(g) {
 #' @param log_files Vector of paths to log files
 #' @export
 readConsoleLogs <- function(log_files) {
-    #log_files <-  strsplit(log_files,"[ ,]")[[1]]
-    logs_df <- bind_rows(lapply(log_files, enchantr:::formatConsoleLog))
-    logs_df
+    # log_files <-  strsplit(log_files,"[ ,]")[[1]]
+    logs_list <- lapply(log_files, enchantr:::formatConsoleLog)
+    names(logs_list) <- paste0("log_", 1:length(logs_list))
+    bind_rows(logs_list, .id="log_id")
 }
 
 
