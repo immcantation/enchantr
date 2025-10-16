@@ -179,14 +179,26 @@ log_data <- graphDataFrame(log_data_graphs$workflow)
 ```
 
 ```{r fig.width=7, fig.height=4, fig.cap=caption}
+# Extract task order from workflow plot
+# p_workflow$data contains the node layout information with task names
 ordered <- p_workflow$data %>%
     arrange(-y,x) %>%
     pull(name) %>%
     unique()
-ordered <- ordered[ordered %in% log_data$task]
-missing_tasks <- setdiff(log_data$task, ordered)
-if (length(missing_tasks)>0) {
-    stop("Task(s) missing in worklow", paste(missing_tasks,collapse=", "))
+
+# Get unique tasks from log_data
+log_tasks <- unique(log_data$task)
+
+# Check if all tasks in log_data appear in the workflow plot
+# Filter ordered to only include tasks that exist in log_data
+ordered <- ordered[ordered %in% log_tasks]
+
+# If there are tasks in log_data not in ordered, add them at the end
+missing_tasks <- setdiff(log_tasks, ordered)
+if (length(missing_tasks) > 0) {
+    warning("Some tasks in log_data are not in the workflow plot: ", 
+            paste(missing_tasks, collapse=", "))
+    ordered <- c(ordered, missing_tasks)
 }
 
 log_data$task <- factor(log_data$task, levels=ordered , ordered = T)
