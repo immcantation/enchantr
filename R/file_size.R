@@ -365,9 +365,11 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
             }
             this_root_name <- igraph::vertex_attr(g, "filename")[igraph::vertex_attr(g, "is_input") & c_idx]
             g <- igraph::set_vertex_attr(g, "root_name", index = V(g)[c_idx], this_root_name)
-            if (nrow(this_meta)!=1 ) { stop("Expecting one row with metadata for this component.") }
-            for ( meta_field in colnames(this_meta)) {
-                g <- igraph::set_vertex_attr(g, meta_field, index = V(g)[c_idx], this_meta[[meta_field]])
+            if (nrow(this_meta)>1 ) { stop("Expecting one row with metadata for this component.") }
+            if (nrow(this_meta)==1 ) {
+                for ( meta_field in colnames(this_meta)) {
+                    g <- igraph::set_vertex_attr(g, meta_field, index = V(g)[c_idx], this_meta[[meta_field]])
+                }
             }
         }
     }
