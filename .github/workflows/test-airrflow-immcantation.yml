@@ -1,14 +1,26 @@
 name: Immcantation CI
 description: |
-  Run nf-core/airrflow -r dev in
+  Run nf-core/airrflow with specified revision in
   immcantation/suite:devel after updating enchantr.
-
+  
+  Revision examples:
+  - dev (branch)
+  - 4.3.1 (release tag)  
+  - eb11e2e7e653e3353d3e3dbb687bb5d71b4990dc (commit SHA)
+  - refs/pull/416/head (pull request - will clone and checkout PR)
+  - username/branch-name (if it's from a fork, use branch name)
 on:
   workflow_dispatch:
+    inputs:
+      nfcore_revision:
+        description: 'nf-core/airrflow revision'
+        required: true
+        default: 'dev'
+        type: string
 
 jobs:
   run-airrflow-immcantation:
-    name: Run enchantr and nf-core/airrflow -r dev in immcantation/suite:devel
+    name: Run enchantr and nf-core/airrflow -r ${{ inputs.nfcore_revision }} in immcantation/suite:devel
     runs-on: ubuntu-latest
     container:
       image: immcantation/suite:devel
@@ -22,9 +34,25 @@ jobs:
       - name: Set up airrflow environment
         run: |
           dnf install -y java-21-openjdk
-          update-alternatives --install  /usr/bin/python python /usr/bin/python3 1
-          export PYTHONPATH=/usr/local/lib/python3.11/site-packages
+          #update-alternatives --install  /usr/bin/python python /usr/bin/python3 1
+          #export PYTHONPATH=/usr/local/lib/python3.11/site-packages
           wget -qO- https://get.nextflow.io | bash && chmod +x nextflow
+      - name: Clone nf-core/airrflow for PR testing (if needed)
+        run: |
+          if [[ "${{ inputs.nfcore_revision }}" == refs/pull/* ]]; then
+            echo "Detected PR reference, cloning repository..."
+            PR_NUMBER=$(echo "${{ inputs.nfcore_revision }}" | sed 's/refs\/pull\/\([0-9]*\)\/head/\1/')
+            git clone https://github.com/nf-core/airrflow.git
+            cd airrflow
+            git fetch origin pull/$PR_NUMBER/head:pr-$PR_NUMBER
+            git checkout pr-$PR_NUMBER
+            echo "WORKFLOW_PATH=./airrflow" >> $GITHUB_ENV
+            echo "REVISION_FLAG=" >> $GITHUB_ENV
+          else
+            echo "Using direct revision reference..."
+            echo "WORKFLOW_PATH=nf-core/airrflow" >> $GITHUB_ENV
+            echo "REVISION_FLAG=-r ${{ inputs.nfcore_revision }}" >> $GITHUB_ENV
+          fi
       - name: Run nf-core/airrflow test command
         run: |
-          ./nextflow run nf-core/airrflow -r dev -c .github/workflows/immcantation.config --outdir ./results
+          ./nextflow run $WORKFLOW_PATH $REVISION_FLAG -profile test_assembled_hs -c .github/workflows/immcantation.config --outdir ./results
