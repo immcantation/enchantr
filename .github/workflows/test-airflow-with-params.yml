@@ -73,7 +73,8 @@ jobs:
 
       - name: Build container with enchantr
         run: |
-          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile-enchantr ./docker
+          # Use repository root as build context so Dockerfile can COPY the package sources
+          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile-enchantr .
 
       - name: Install Nextflow
         uses: nf-core/setup-nextflow@v2
