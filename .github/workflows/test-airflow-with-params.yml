@@ -53,7 +53,7 @@ jobs:
             docker/Version.yaml
       - name: Build new docker image
         if: env.MATCHED_FILES
-        run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile ./docker
+        run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile .
 
       - name: Login to DockerHub
         if: env.MATCHED_FILES
