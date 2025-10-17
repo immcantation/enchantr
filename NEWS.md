@@ -1,4 +1,4 @@
-Version 0.1.22: September 11, 2025
+Version 0.1.22: October 16, 2025
 -----------------------------------
 
 General:

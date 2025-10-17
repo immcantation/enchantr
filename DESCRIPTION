@@ -36,7 +36,7 @@ Depends:
 Imports:
     airr (>= 1.4.1),
     alakazam (>= 1.2.1),
-    bookdown (>= 0.29),
+    bookdown (>= 0.35),
     ComplexHeatmap,
     data.table,
     doParallel,
@@ -68,7 +68,7 @@ Imports:
 Suggests:
     optparse,
     testthat
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://enchantr.readthedocs.io/en/stable
 BugReports: https://github.com/immcantation/enchantr/issues
 Language: en-US
