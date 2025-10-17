@@ -1,14 +1,22 @@
 name: Immcantation CI
-description: |
-  Run nf-core/airrflow with specified revision in
-  immcantation/suite:devel after updating enchantr.
-  
-  Revision examples:
-  - dev (branch)
-  - 4.3.1 (release tag)  
-  - eb11e2e7e653e3353d3e3dbb687bb5d71b4990dc (commit SHA)
-  - refs/pull/416/head (pull request - will clone and checkout PR)
-  - username/branch-name (if it's from a fork, use branch name)
+# Run nf-core/airrflow with specified revision in
+# immcantation/suite:devel after updating enchantr.
+#
+# This allows testing of a specific version of nf-core/airrflow 
+# (branches, PRs, tags, commits) with immcantation/suite:devel
+# (all immcantation tools in their devel version) and the 
+# most recent changes in enchantr.
+#
+# Use cases:
+#  - identify incoming issues for nf-core/airrflow
+#  - unit testing of immcantation
+#
+# Revision examples:
+# - dev (branch)
+# - 4.3.1 (release tag)  
+# - eb11e2e7e653e3353d3e3dbb687bb5d71b4990dc (commit SHA)
+# - refs/pull/416/head (pull request - will clone and checkout PR)
+# - username/branch-name (if it's from a fork, use branch name)
 on:
   workflow_dispatch:
     inputs:
