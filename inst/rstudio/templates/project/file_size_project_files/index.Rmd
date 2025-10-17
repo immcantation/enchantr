@@ -102,7 +102,7 @@ if (!is.null(params$metadata)) {
         mutate(filename=basename(filename)) %>%
         select(sample_id, filename)
 } else {
-    metadata <- data.frame(stringsAsFactors = F)
+    metadata <- NULL
 }
 ```
 
