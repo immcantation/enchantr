@@ -41,8 +41,6 @@ jobs:
       - name: Set up airrflow environment
         run: |
           dnf install -y java-21-openjdk
-          #update-alternatives --install  /usr/bin/python python /usr/bin/python3 1
-          #export PYTHONPATH=/usr/local/lib/python3.11/site-packages
           wget -qO- https://get.nextflow.io | bash && chmod +x nextflow
       - name: Clone nf-core/airrflow for PR testing (if needed)
         run: |
