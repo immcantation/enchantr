@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       nfcore_revision:
-        description: 'nf-core/airrflow revision'
+        description: 'nf-core/airrflow revision. For PRs use: refs/pull/416/head'
         required: true
         default: 'dev'
         type: string
