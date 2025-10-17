@@ -246,7 +246,7 @@ formatConsoleLog <- function(log_file){
 consoleLogsAsGraphs <- function(logs, metadata=NULL) {
     
     if (!is.null(metadata)) {
-        if (nrow(metadata)>1) {
+        if (nrow(metadata) > 0) {
             # Address duplicated files coming from different originating samples
             # If needed, make filenames unique by adding sample_id. 
             # Relevant for 10x studies, where different samples can have files 

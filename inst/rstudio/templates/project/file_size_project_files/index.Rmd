@@ -19,7 +19,7 @@ params:
    metadata: 
       label: "`metadata`: Path to metadata."
       input: file
-      value: !r NULL     
+      value: !r NULL
    output: 'tmp_input'
    outdir:
       label: '`outdir`: Output directory'
@@ -101,8 +101,15 @@ if (!is.null(params$metadata)) {
         rename(filename=value) %>%
         mutate(filename=basename(filename)) %>%
         select(sample_id, filename)
+    
+    # If metadata ends up empty or with only 1 row after processing, set to NULL
+    if (nrow(metadata) <= 1) {
+        warning("Metadata file provided but resulted in ", nrow(metadata), 
+                " row(s) after processing. Setting metadata to NULL.")
+        metadata <- NULL
+    }
 } else {
-    metadata <- data.frame(stringsAsFactors = F)
+    metadata <- NULL
 }
 ```
 
@@ -144,6 +151,11 @@ for (i in order(ids)) {
     out_filename <- sub("\\.[^\\.]*$","",this_root_name)
     out_filename <- sub(": ", "_", out_filename)
     
+    # Handle empty or NULL out_filename
+    if (length(out_filename) == 0 || is.null(out_filename) || out_filename == "") {
+        out_filename <- paste0("sample_", i)
+    }
+    
     cat("\n\n### Barplot \n\n")
     caption <- paste0("Number of reads at different stages of the processing of ",this_id)
     tab <- eetable(plot_table, 
@@ -162,8 +174,14 @@ for (i in order(ids)) {
         # scale_x_discrete(labels= function(x) { gsub("(.*_)([^_]*$)","\\2",x)} ) # Do we need this for shorter x-axis labels?
         
     cat(tab$caption)
+    # Remove file extension safely
+    out_filename_base <- if (grepl("\\.", out_filename)) {
+        strsplit(out_filename, "\\.")[[1]][1]
+    } else {
+        out_filename
+    }
     p <- eeplot(p,outdir=params$outdir,
-           file=strsplit(out_filename,"\\.")[[1]][1],
+           file=out_filename_base,
            caption="")
     print(p)
     cat(p$enchantr$html_caption)
@@ -204,7 +222,14 @@ if (length(missing_tasks) > 0) {
 log_data$task <- factor(log_data$task, levels=ordered , ordered = T)
 
 id_col <- c("sample_id", "root_name")
-id_col <- intersect(id_col, colnames(log_data))[1]
+id_col <- intersect(id_col, colnames(log_data))
+if (length(id_col) == 0) {
+    # If neither column exists, create a default grouping column
+    log_data$group_id <- "all"
+    id_col <- "group_id"
+} else {
+    id_col <- id_col[1]
+}
 
 sequence_count_plot <- ggplot(log_data, aes(x=task, y=input_size, fill=!!rlang::sym(id_col))) +
     geom_bar(stat="identity", width=.5, position = "dodge") +
