@@ -1,3 +1,11 @@
+Version 0.1.23: October 17, 2025
+-----------------------------------
+
+Bug fixes:
+
++ Fixed bugs in file size report.
+
+
 Version 0.1.22: October 16, 2025
 -----------------------------------
 
