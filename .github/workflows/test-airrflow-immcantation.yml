@@ -7,6 +7,10 @@ name: Immcantation CI
 # (all immcantation tools in their devel version) and the 
 # most recent changes in enchantr.
 #
+# Optionally, specific versions/commits of other immcantation
+# packages (alakazam, shazam, scoper, dowser) can also be
+# (re)installed prior to running nf-core/airrflow.
+#
 # Use cases:
 #  - identify incoming issues for nf-core/airrflow
 #  - unit testing of immcantation
