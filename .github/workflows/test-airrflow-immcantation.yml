@@ -24,6 +24,22 @@ on:
         required: true
         default: 'dev'
         type: string
+      alakazam_version:
+        description: 'alakazam version/commit (leave empty to use container version)'
+        required: false
+        type: string
+      shazam_version:
+        description: 'shazam version/commit (leave empty to use container version)'
+        required: false
+        type: string
+      scoper_version:
+        description: 'scoper version/commit (leave empty to use container version)'
+        required: false
+        type: string
+      dowser_version:
+        description: 'dowser version/commit (leave empty to use container version)'
+        required: false
+        type: string
 
 jobs:
   run-airrflow-immcantation:
@@ -31,9 +47,54 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: immcantation/suite:devel
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Optional installation of Immcantation packages
+        run: |
+        
+          # Install alakazam if version specified
+          alakazam_version <- "${{ inputs.alakazam_version }}"
+          if (nchar(alakazam_version) > 0) {
+            cat("Installing alakazam from GitHub:", alakazam_version, "\n")
+            devtools::install_github(
+              "immcantation/alakazam", 
+              ref=alakazam_version, 
+              upgrade="never")
+          }
+          
+          # Install shazam if version specified  
+          shazam_version <- "${{ inputs.shazam_version }}"
+          if (nchar(shazam_version) > 0) {
+            cat("Installing shazam from GitHub:", shazam_version, "\n")
+            devtools::install_github(
+              "immcantation/shazam", 
+              ref=shazam_version, 
+              upgrade="never")
+          }
+          
+          # Install scoper if version specified
+          scoper_version <- "${{ inputs.scoper_version }}"
+          if (nchar(scoper_version) > 0) {
+            cat("Installing scoper from GitHub:", scoper_version, "\n")
+            devtools::install_github(
+              "immcantation/scoper", 
+              ref=scoper_version,
+              upgrade="never")
+          }
+          
+          # Install dowser if version specified
+          dowser_version <- "${{ inputs.dowser_version }}"
+          if (nchar(dowser_version) > 0) {
+            cat("Installing dowser from GitHub:", dowser_version, "\n")
+            devtools::install_github(
+              "immcantation/dowser",
+              ref=dowser_version, 
+              upgrade="never")
+          }
+        shell: Rscript {0}
       - name: Install enchantr
         run: |
           devtools::install(upgrade="never")
