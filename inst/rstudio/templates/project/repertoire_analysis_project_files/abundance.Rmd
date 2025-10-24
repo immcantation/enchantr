@@ -2,7 +2,7 @@
 ```{r abundanceAnnotation}
 # annotate
 a@abundance <- a@abundance %>%
-   left_join( db %>% 
+   left_join( db_keep_for_abundance %>% 
                  select(any_of(c(unique(c("sample_id", 
                                                 "subject_id",
                                                 params$cloneby)))
@@ -50,7 +50,7 @@ getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=20) {
 ```
 
 
-```{r abundanceSample, eval=TRUE, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r abundanceSample, eval=TRUE, fig.width=getPrettyWidth(length(unique(db_keep_for_abundance[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db_keep_for_abundance[['sample_id']])),ncols=3), fig.cap=caption}
 abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
 abundanceSample <- eeplot(abundanceSample, 
                      outdir=params$outdir, 
@@ -112,13 +112,14 @@ The following table shows the summary of the diversity calculations per sample.
 </div>
 
 ```{r diversity, results='asis'}
+
 # generate the Hill diversity curve
-d <- alphaDiversity(db %>% filter(isHeavyChain(locus)), 
+d <- alphaDiversity(db_keep_for_abundance %>% filter(isHeavyChain(locus)), 
                     group = "sample_id", 
                     min_n=params$min_n)
 
 d@diversity <- d@diversity %>%
-   left_join( db %>% 
+   left_join( db_keep_for_abundance %>% 
                  select(any_of(c(unique(c("sample_id", 
                                                 "subject_id", 
                                                 params$cloneby)))
@@ -151,7 +152,7 @@ print_table_caption("clonal_diversity", tab$caption)
 
 ## Diversity plot by sample
 
-```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3)}
+```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=getPrettyWidth(length(unique(db_keep_for_abundance[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db_keep_for_abundance[['sample_id']])),ncols=3)}
 # plot duplicated cells
 diversitySample <- diversitySample + 
     geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
@@ -190,6 +191,7 @@ div_at_q <- eeplot(div_at_q,
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
                      caption="Diversity at different q values.")
-ggplotly(div_at_q)
+ggplotly(div_at_q+ 
+           theme(panel.border = element_rect(color = "black", fill = NA, linewidth = 0.6), legend.position="right"))
 caption <- div_at_q$enchantr$html_caption
 ```
