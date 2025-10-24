@@ -189,6 +189,10 @@ if (!"locus" %in% colnames(db)) {
 }
 heavy_chains <- isHeavyChain(db[['locus']])
 
+if (sum(heavy_chains, na.rm=T)==0){
+  stop("No heavy chains detected. Heavy chains are required for clonal inference.")
+}
+
 if ("clone_id" %in% colnames(db)) {
     if (params$force) {
         # Reset if force
