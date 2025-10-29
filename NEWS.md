@@ -1,3 +1,11 @@
+Version 0.1.24: October 29, 2025
+-----------------------------------
+
+Bug fixes:
+
++ Add temporary pin for ggplot2 to avoid compatibility bugs of ggplot2=4.4.0 with ggplotly
+
+
 Version 0.1.23: October 17, 2025
 -----------------------------------
 
