@@ -1,4 +1,4 @@
-Version 0.1.24: October 29, 2025
+Version 0.1.24: October 31, 2025
 -----------------------------------
 
 Bug fixes:
