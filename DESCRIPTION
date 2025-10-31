@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.1.24
-Date: 2025-10-17
+Date: 2025-10-31
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
              person("Edel", "Aron", role=c("aut"),
