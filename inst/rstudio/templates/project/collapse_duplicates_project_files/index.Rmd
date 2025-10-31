@@ -343,9 +343,10 @@ for (i in 1:nrow(output_groups))  {
     
     group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
     group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
+    
 # Check whether group_db is empty with only sample_id because no sequence left after collapsing and filtering. If so, only keep the header.
     if (nrow(group_db)==1){
-      if (is.na(group_db$sequence)) {
+      if (is.na(group_db$sequence_alignment)) {
       group_db <- group_db[0,]}
     }
     output_files <- c(output_files, group_fn)
