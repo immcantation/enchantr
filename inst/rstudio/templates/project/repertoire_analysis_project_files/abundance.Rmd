@@ -191,7 +191,6 @@ div_at_q <- eeplot(div_at_q,
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
                      caption="Diversity at different q values.")
-ggplotly(div_at_q+ 
-           theme(panel.border = element_rect(color = "black", fill = NA, linewidth = 0.6), legend.position="right"))
+ggplotly(div_at_q+theme(legend.position="right"))
 caption <- div_at_q$enchantr$html_caption
 ```
