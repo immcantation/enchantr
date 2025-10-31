@@ -16,6 +16,10 @@ params:
       label: "`input`: Path to repertoires files"
       input: file
       value: "Example_clone-pass.tsv"
+   cloneby:
+      label: "`cloneby`"
+      input: text
+      value: "subject_id"  
    min_n:
       label: "`min_n` minimum number of observations to sample to run alakazam::estimateAbundance."
       input: numeric
@@ -273,15 +277,15 @@ clone_size_plot<-ggplot(clone_sizes_summary, aes(x=seq_count, y=count,
                 facet_wrap(~sample_id, scales = "free_y", ncol = n_col) +
                 xlab("Clone size (Sequences per clone)") +
                 ylab("Clone counts") + 
-  theme(text = element_text(family = "Helvetica"))
+  theme(text = element_text(family = "Helvetica")) 
 
 clone_size_plot <- eeplot(clone_size_plot, 
                   outdir=params$outdir, 
                   file=knitr::opts_current$get('clone-size-plot'),
                   caption=caption)
                 
-ggplotly(clone_size_plot + theme(panel.border = element_rect(color = "black", fill = NA, linewidth = 0.6), panel.spacing=unit(2, 'lines'), legend.position="right"),tooltip = "text")  %>%
-  layout(font = list(family = "Helvetica"))
+ggplotly(clone_size_plot + theme(panel.spacing=unit(2, 'lines'), legend.position="right"),tooltip = "text")  %>%
+  layout(font = list(family = "Helvetica")) 
 caption <- clone_size_plot$enchantr$html_caption
 ```
 
@@ -326,7 +330,7 @@ clone_size_cdf_plot <- eeplot(clone_size_cdf_plot,
 
 # Step 3: Convert to interactive plot
 ggplotly(clone_size_cdf_plot + 
-           theme(panel.border = element_rect(color = "black", fill = NA, linewidth = 0.6), panel.spacing=unit(2, 'lines'), legend.position="right"),
+           theme(panel.spacing=unit(2, 'lines'), legend.position="right"),
          tooltip = "text") %>%
   layout(font = list(family = "Helvetica"))
 
@@ -352,6 +356,8 @@ if (any(num_clones_table$number_of_clones==1)){
   skip_abundance_diversity <- nrow(db_keep_for_abundance) == 0
   if(skip_abundance_diversity){
       cat("Samples have only one clone. Skip clone abundance and diversity. \n")
+  }else{
+      cat("Samples with only one clone are removed from clone abundance and diversity analysis. \n")
     }
 } else {
   db_keep_for_abundance <- db
