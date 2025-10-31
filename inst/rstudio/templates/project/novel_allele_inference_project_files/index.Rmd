@@ -236,9 +236,7 @@ save(params, file = file.path(params$outdir, "params.RData"))
 # Read repertoires
 
 Load repertoire annotation tables in AIRR format.
-Expected columns include `v_call`, `j_call`, `sequence_alignment`, and `junction_length`.
-Only productive, in-frame sequences without stop codons are retained to avoid artefacts.
-The repertoire is then grouped by germline allele to prepare for per-allele analysis.
+Expected columns include `sequence_id`, `productive`, `v_call`, `j_call`, `sequence_alignment`, `junction`, and `junction_length`. Only productive, in-frame sequences without stop codons are retained to avoid artefacts.
 
 ```{r read-input}
 # Read repertoire
@@ -273,24 +271,26 @@ db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
 # Read Germline database
 
 Import the nucleotide germline reference used for alignment.
-Using the same reference ensures positional numbering and mutation counts remain consistent with the upstream alignment step.
-Expected: each `v_call` present in the repertoire should have a corresponding entry in the germline database.
+Using the same reference ensures positional numbering and mutation counts remain consistent with the upstream alignment step. Each `v_call` present in the repertoire should have a corresponding entry in the germline database.
 
 ```{r read-germline}
-# If it is a zip file or URL, run prepareIMGT; else use as is
-if (grepl("\\.zip$", params$imgt_db) || grepl("^https?://", params$imgt_db)) {
-  imgt_db <- prepareIMGT(params$imgt_db)
-} else {
-  imgt_db <- params$imgt_db
-}
 
-germline_db <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet = TRUE)
-## filter the germline database to include only alleles of params$v_call
 loci <- unique(db[["locus"]])
 call_tag <- paste0(loci, toupper(substr(params$v_call, 1, 1)))
 ref_output_fn <- paste0(params$species, "_", call_tag, "_novel.fasta")
 
-germline_db <- unlist(lapply(loci, function(locus) germline_db[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
+
+# If it is a zip file or URL, run prepareIMGT; else use as is
+if (grepl("\\.zip$", params$imgt_db) || grepl("^https?://", params$imgt_db)) {
+  imgt_db <- prepareIMGT(params$imgt_db)
+  germline_db <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet = TRUE)
+   ## filter the germline database to include only alleles of params$v_call
+   germline_db <- unlist(lapply(loci, function(locus) germline_db[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
+} else {
+  germline_db <- tigger::readIgFasta(params$imgt_db)
+  germline_db <- germline_db[grepl(toupper(substr(params$v_call, 1, 1)), names(germline_db))]
+}
+
 ```
 
 ```{r log}
