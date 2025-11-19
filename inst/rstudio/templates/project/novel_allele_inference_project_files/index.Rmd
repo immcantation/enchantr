@@ -84,14 +84,14 @@ params:
       label: "`junction_length`: Column name for junction length"
       input: text
       value: "junction_length"
-   reassign:
-      label: "`reassign`: Reassign sequences to personal genotype"
-      input: checkbox
-      value: FALSE
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      input: text
+      value: "sample_id"
    outname:
       label: "`outname`"
       input: text
-      value: "tigger"
+      value: "tigger-novel"
    nproc:
       label: "`nproc`"
       input: numeric
@@ -243,13 +243,15 @@ Expected columns include `sequence_id`, `productive`, `v_call`, `j_call`, `seque
 
 cols_to_read <- unique(c("sequence_id", "productive",
                          params$seq, params$v_call, params$j_call,
-                         params$junction, params$junction_length))
+                         params$junction, params$junction_length, 
+                         params$outputby, "subject_id", "sample_id"))
 
-db <- read_rearrangement(params[["input"]], col_select = cols_to_read)
+db <- readInput(params[['input']], col_select = cols_to_read)
 
 if (!"locus" %in% colnames(db)) {
   db[["locus"]] <- getLocus(db[[params$v_call]])
 }
+heavy_chains <- isHeavyChain(db[["locus"]])
 
 if (!is.null(params$outname)) {
   output_fn <- paste0(basename(params$outname), "_novel-pass.tsv.gz")
@@ -265,6 +267,25 @@ if (!is.null(params$log)) {
   log_fn <- file.path(params$outdir, sub("_novel-pass.tsv$", "_command_log.txt", basename(output_fn)))
 }
 
+if (all(c("subject_id", "sample_id") %in% colnames(db))){
+   subject_levels <- str_sort(unique(db$subject_id), numeric = TRUE)
+   sample_levels  <- str_sort(unique(db$sample_id),  numeric = TRUE)
+   db <- db %>%
+   mutate(
+      subject_id = factor(subject_id, levels = subject_levels),
+      sample_id  = factor(sample_id,  levels = sample_levels)
+   ) %>%
+   arrange(subject_id, sample_id)
+} else{
+   # add fake columns
+   db <- db %>%
+   mutate(
+      subject_id = "subject",
+      sample_id  = "sample"
+   ) %>%
+   arrange(subject_id, sample_id)
+}
+
 db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
 ```
 
@@ -277,20 +298,11 @@ Using the same reference ensures positional numbering and mutation counts remain
 
 loci <- unique(db[["locus"]])
 call_tag <- paste0(loci, toupper(substr(params$v_call, 1, 1)))
-ref_output_fn <- paste0(params$species, "_", call_tag, "_novel.fasta")
 
-
-# If it is a zip file or URL, run prepareIMGT; else use as is
-if (grepl("\\.zip$", params$imgt_db) || grepl("^https?://", params$imgt_db)) {
-  imgt_db <- prepareIMGT(params$imgt_db)
-  germline_db <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet = TRUE)
-   ## filter the germline database to include only alleles of params$v_call
-   germline_db <- unlist(lapply(loci, function(locus) germline_db[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
-} else {
-  germline_db <- tigger::readIgFasta(params$imgt_db)
-  germline_db <- germline_db[grepl(toupper(substr(params$v_call, 1, 1)), names(germline_db))]
-}
-
+imgt_db <- prepareIMGT(params$imgt_db)
+references <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet = TRUE)
+## filter the germline database to include only alleles of params$v_call
+germline_db <- unlist(lapply(loci, function(locus) references[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
 ```
 
 ```{r log}
@@ -380,35 +392,10 @@ if (!inherits(novel, "try-error") && nrow(novel) > 0) {
 We append the high-confidence novel alleles to the existing germline reference set, producing an updated “novel” reference database. Each novel allele retains its reference name plus a suffix identifying its novel variant
 
 ```{r build-reference}
-
 if (!inherits(novel, "try-error") && nrow(novel) > 0) {
   # Build novel reference database
   novel_germline <- setNames(gsub("-", ".", novel[["novel_imgt"]], fixed = TRUE), novel[["polymorphism_call"]])
   germline_db <- c(germline_db, novel_germline)
-}
-
-```
-
-# Reassign sequences to novel alleles (optional)
-
-If enabled, sequences are re-aligned to the updated germline database to include the novel alleles in the repertoire annotations.
-
-For re-alignment the `reassignAlleles` function from TIgGER is used. The function utilizes hamming distance on the gapped sequence (i.e `sequence_alignment`), in order to save time, initial gene assignments are preserved and the allele calls are chosen from among those provided in `germline_db`, based on a simple alignment to the sample sequence.
-
-```{r reassign, eval=params$reassign}
-if (params$reassign && exists("germline_db") && !all(is.na(germline_db))) {
-  # Read rearrangement data with all columns
-  db <- read_rearrangement(params$input)
-
-  # Reassign sequences to novel alleles. Only do it if novel alleles were found
-  if (nrow(novel) > 0) {
-    # TODO: check to add the option of path to aligner, and keep_gene
-    # Using default params for now
-    db <- reassignAlleles(db,
-                          genotype_db = germline_db,
-                          v_call = params$v_call,
-                          seq = params$seq)
-  }
 }
 ```
 
@@ -417,33 +404,35 @@ if (params$reassign && exists("germline_db") && !all(is.na(germline_db))) {
 ```{r save-results, results='asis'}
 # Save novel report
 if (!inherits(novel, "try-error") && nrow(novel) > 0) {
-  write.table(novel, file = file.path(params$outdir, report_output_fn),
+  dir.create(file.path(params$outdir, "tables"))
+  write.table(novel, file = file.path(params$outdir, "tables", report_output_fn),
               row.names = FALSE, quote = FALSE, sep = "\t")
-  cat("- **Novel alleles report**: [", report_output_fn, "](", report_output_fn, ") - Detailed results table\n")
+  cat("Novel alleles report: [", report_output_fn, "](", report_output_fn, ") - Detailed results table\n")
 }
 
-# Save novel reference database
-if (!all(is.na(germline_db)) && exists("germline_db")) {
-  tigger::writeFasta(germline_db,
-                     file = file.path(params$outdir, ref_output_fn))
-  cat("- **Reference database**: [", ref_output_fn, "](", ref_output_fn, ") - FASTA file with novel alleles added (if detected)\n")
-}
+# create the germline output directory
+germline_output_dir <- file.path(params$outdir, file.path("db_novel", params$species, "vdj"))
+dir.create(germline_output_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Save reassigned sequences (if requested)
-if (params$reassign && exists("db")) {
-  write_rearrangement(db,
-                      file = file.path(params$outdir, output_fn))
-  cat("- **Reassigned sequences**: [", output_fn, "](", output_fn, ") - Sequences reassigned to novel alleles\n")
+# copy everything from the original germline db to the new location
+file.copy(list.files(file.path(imgt_db, params$species, "vdj"), full.names = TRUE),
+          germline_output_dir,
+          recursive = TRUE)
+
+# get the V loci files
+loci_files <- list.files(germline_output_dir, paste0(loci, "V", collapse = "|"), full.names = TRUE)
+
+for (locus in loci) {
+  locus_germline_db <- germline_db[grep(paste0("^", locus), names(germline_db))]
+  locus_file <- loci_files[grep(paste0(locus, "V"), loci_files)]
+  tigger::writeFasta(locus_germline_db, file = locus_file)
+  cat("Reference database: [", locus_file, "](", locus_file, ") - FASTA file with novel alleles added (if detected)\n")
 }
 ```
 
 
 ```{r log-end}
 cat("\nEND> InferNovelAlleles", file = log_fn, append = TRUE)
-if (params$reassign && exists("db")) {
-  cat(paste0("\nOUTPUT> ", output_fn), file = log_fn, append = TRUE)
-}
-cat(paste0("\nOUTPUT> ", basename(ref_output_fn)), file = log_fn, append = TRUE)
 if (exists("novel") && !inherits(novel, "try-error") && nrow(novel) > 0) {
   cat(paste0("\nOUTPUT> ", report_output_fn), file = log_fn, append = TRUE)
   cat(paste0("\nNOVEL-ALLELES-DETECTED> ", nrow(novel)), file = log_fn, append = TRUE)
