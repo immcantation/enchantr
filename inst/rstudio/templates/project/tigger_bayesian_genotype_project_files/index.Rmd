@@ -24,10 +24,22 @@ params:
       label: "`species`"
       input: text
       value: "human"
-   call_column:
-      label: "`call_column`: Column name of segment call (e.g., v_call)"
+   segments:
+      label: "`segments`: which segments to reassign. Options are 'v', 'd', 'j'. Multiple segments can be provided as a comma-separated string. auto will reassign segments based on loci type."    
+      input: text
+      value: "auto"
+   v_call:
+      label: "`v_call`: Column name for V gene calls"
       input: text
       value: "v_call"
+   j_call:
+      label: "`j_call`: Column name for J gene calls"
+      input: text
+      value: "j_call"
+   d_call:
+      label: "`d_call`: Column name for D gene calls"
+      input: text
+      value: "d_call"
    seq_column:
       label: "`seq_column`: Column name of segment sequence (e.g., sequence_alignment)"
       input: text
@@ -64,10 +76,10 @@ params:
       label: "`j_priors`: J gene priors (comma-separated)"
       input: text
       value: "0.5,0.5,0,0,0,0,0,0,0"
-   reassign:
-      label: "`reassign`: Reassign sequences to personal genotype"
-      input: checkbox
-      value: FALSE
+   genotypeby:
+      label: "`genotypeby` name of the column in `input` that contains sample identifiers that will be used to genotype the input db." 
+      input: text
+      value: NULL
    outname:
       label: "`outname`"
       input: text
@@ -104,7 +116,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-
 <div class="introduction_paragraph">
 Genotype inference determines the set of germline alleles carried by an individual for each immunoglobulin (IG) or T-cell receptor (TR) gene. 
 Because repertoire sequencing captures rearranged V(D)J gene assignmentsrather than the germline loci themselves, an individual's true germline composition must be inferred from the distribution of unmutated or minimally mutated sequences observed across the repertoire. 
@@ -112,12 +123,14 @@ Accurate genotype inference corrects for missing or misassigned alleles in the r
 </div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
-knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
-                      echo=params$echo,cache=params$cache,
-                      warning=FALSE, message=FALSE,
-                      eval.after="fig.cap",
-                      out_dir=params$outdir,
-                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+knitr::opts_chunk$set(
+  fig.width = 7, fig.height = 4, fig.path = "figures/",
+  echo = params$echo, cache = params$cache,
+  warning = FALSE, message = FALSE,
+  eval.after = "fig.cap",
+  out_dir = params$outdir,
+  eval.opts = c("eval", "echo", "fig.height", "fig.width")
+)
 
 # Libraries
 suppressPackageStartupMessages(library("dplyr"))
@@ -128,23 +141,18 @@ suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("tigger"))
 
 if (!dir.exists(params$outdir)) {
-    dir.create(params$outdir, recursive=T)
+  dir.create(params$outdir, recursive = TRUE)
 }
+
+# Convert boolean parameters
+find_unmutated <- as.logical(params$find_unmutated)
+single_assignments <- as.logical(params$single_assignments)
+genotypeby <- params$genotypeby
 
 file.copy(params$logo,
-          file.path(params$outdir,"assets", "logo.png"),
-          recursive=T, overwrite=T)
-
-```
-
-```{r helper-functions, include=FALSE, cache=FALSE}
-
-# Helper function to get most likely genotyped alleles
-GENOTYPED_ALLELES <- function(y) {
-  m <- which.max(as.numeric(y[2:5]))
-  paste0(unlist(strsplit(y[1], ","))[1:m], collapse = ",")
-}
-
+  file.path(params$outdir, "assets", "logo.png"),
+  recursive = TRUE, overwrite = TRUE
+)
 ```
 
 # Input parameters
@@ -153,8 +161,8 @@ GENOTYPED_ALLELES <- function(y) {
 printParams(params)
 ```
 ```{r echo=FALSE, results='asis'}
-print_table_caption(tag="input", text="Input parameters.")
-save(params, file=file.path(params$outdir,"params.RData"))
+print_table_caption(tag = "input", text = "Input parameters.")
+save(params, file = file.path(params$outdir, "params.RData"))
 ```
 
 # Read repertoire data
@@ -165,45 +173,73 @@ Expected columns include `sequence_id`, `productive`, `v_call` / `d_call` / `j_c
 
 ```{r read-input}
 # Read repertoire data
-cols_to_read <- unique(c("sequence_id", "productive", "sequence_alignment", params$call_column))
+cols_to_read <- unique(c(
+  "sequence_id", "productive", "sequence_alignment",
+  params$v_call, params$d_call, params$j_call,
+  params$genotypeby, "subject_id", "sample_id"
+))
 
-db <- read_rearrangement(params$input, col_select = cols_to_read)
+cols_to_read <- cols_to_read[!is.null(cols_to_read)]
 
-# Convert boolean parameters
-find_unmutated <- params$find_unmutated
-single_assignments <- params$single_assignments
-call_col <- params$call_column
+db <- readInput(params[["input"]], col_select = cols_to_read)
 
-# Filter to productive sequences
-db <- db %>% dplyr::filter(.data[['productive']] == TRUE)
+if (!"locus" %in% colnames(db)) {
+  db[["locus"]] <- getLocus(db[[params$v_call]])
+}
+heavy_chains <- isHeavyChain(db[["locus"]])
 
-# Filter to single assignments if requested
-if (single_assignments) {
-  db <- db[!grepl(",", db[[call_col]]), ]
+# segment to genotype
+if (params$segments == "auto") {
+  segments_to_genotype <- if (any(heavy_chains)) c("v", "d", "j") else c("v", "j")
+} else {
+  segments_to_genotype <- unlist(strsplit(params$segments, ","))
+  segments_to_genotype <- tolower(trimws(segments_to_genotype))
+  valid_segments <- c("v", "d", "j")
+  if (!all(segments_to_genotype %in% valid_segments)) {
+    stop("Invalid segments provided in `segments` parameter. Valid options are 'v', 'd', 'j'.")
+  }
+  if (any(segments_to_genotype == "d") && !any(heavy_chains)) {
+    stop("D segments can only be reassigned for heavy chain repertoires.")
+  }
 }
 
-# Remove NA values
-db <- db[!is.na(db[[call_col]]), ]
+
+if (all(c("subject_id", "sample_id") %in% colnames(db))) {
+  subject_levels <- str_sort(unique(db$subject_id), numeric = TRUE)
+  sample_levels <- str_sort(unique(db$sample_id), numeric = TRUE)
+  db <- db %>%
+    mutate(
+      subject_id = factor(subject_id, levels = subject_levels),
+      sample_id  = factor(sample_id, levels = sample_levels)
+    ) %>%
+    arrange(subject_id, sample_id)
+} else {
+  # add fake columns
+  db <- db %>%
+    mutate(
+      subject_id = "subject",
+      sample_id  = "sample"
+    ) %>%
+    arrange(subject_id, sample_id)
+}
+
+# Filter to productive sequences
+db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
 
 # Set up output filenames
 if (!is.null(params$outname)) {
-   outname <- basename(params$outname)
-   output_fn <- paste0(outname, "_reassigned-pass.tsv.gz")
-   report_output_fn <- paste0(outname, "_", call_col , "_genotype_report.tsv")
-   ref_output_fn <- paste0(outname, "_personal_reference.fasta")
+  outname <- basename(params$outname)
+  report_output_fn <- paste0(outname, "_genotype_report.tsv")
 } else {
-   base <- sub(".tsv$", "", basename(params$input))
-   output_fn <- paste0(base, "_reassigned-pass.tsv.gz")
-   report_output_fn <- paste0(base, "_", call_col, "_genotype_report.tsv")
-   ref_output_fn <- paste0(base, "_", call_col, "_personal_reference.fasta")
+  base <- sub(".tsv$", "", basename(params$input))
+  report_output_fn <- paste0(base, "_genotype_report.tsv")
 }
 
 if (!is.null(params$log)) {
-    log_fn <- paste0(params$log, ".txt")
+  log_fn <- paste0(params$log, ".txt")
 } else {
-    log_fn <- sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn))
+  log_fn <- sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn))
 }
-
 ```
 
 # Read germline database
@@ -213,23 +249,15 @@ Using the same reference ensures positional numbering and mutation counts remain
 
 
 ```{r read-germline}
-
 loci <- unique(db[["locus"]])
 
 # Handle germline database input
 if (params$imgt_db != "") {
-    # If it is a zip file or URL, run prepareIMGT; else use as is
-    if (grepl("\\.zip$", params$imgt_db) || grepl("^https?://", params$imgt_db)) {
-       imgt_db <- prepareIMGT(params$imgt_db)
-       germline_db <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet=TRUE)
-       germline_db <- unlist(lapply(loci, function(locus) germline_db[[locus]][[toupper(substr(params$call_col, 1, 1))]]))
-    } else {
-       germline_db <- tigger::readIgFasta(params$imgt_db)
-    }
+  imgt_db <- prepareIMGT(params$imgt_db)
+  references <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet = TRUE)
 } else {
-    germline_db <- NA
+  references <- NA
 }
-
 ```
 
 
@@ -239,30 +267,22 @@ When multiple sequences originate from the same clone, they can inflate allele c
 
 ```{r clonal-representatives, eval=params$single_clone_representative}
 if (params$single_clone_representative) {
-   # Check that clone_id_column is provided
-   if (is.null(params$clone_id_column) || params$clone_id_column == "") {
-      stop("Error: 'clone_id_column' parameter must be provided when 'single_clone_representative' is TRUE.")
-   }
-   # Select clonal representatives
-   db <- select_clonal_representatives(db,
-                                       sequence_col = params$seq_column,
-                                       germline_col = params$germline_column,
-                                       clone_id_col = params$clone_id_column,
-                                       return_count = FALSE)
-   db <- db %>% filter(clone_representative)
+  # Check that clone_id_column is provided
+  if (is.null(params$clone_id_column) || params$clone_id_column == "") {
+    stop("Error: 'clone_id_column' parameter must be provided when 'single_clone_representative' is TRUE.")
+  }
+  # Select clonal representatives
+  db <- select_clonal_representatives(db,
+    sequence_col = params$seq_column,
+    germline_col = params$germline_column,
+    clone_id_col = params$clone_id_column,
+    return_count = FALSE
+  )
+  db <- db %>% filter(clone_representative)
 }
 ```   
 
-# Start log
-```{r log-start}
-cat("START> TIgGER Bayesian Genotype Inference", file=log_fn, append=F)
-cat(paste0("\nMETHOD> TIgGER Bayesian"), file=log_fn, append=T)
-cat(paste0("\nFILE> ",basename(params$input)), file=log_fn, append=T)
-cat(paste0("\nCALL_COLUMN> ", params$call_column), file=log_fn, append=T)
-```
-
 # TIgGER Bayesian genotype inference
-
 
 The `inferGenotypeBayesian` function applies a Bayesian framework to infer subject-specific germline genotypes from observed V(D)J gene assignments.
 Allele usage is modeled as a multinomial distribution with a Dirichlet prior, empirically parameterized from high-coverage reference genotypes.
@@ -272,26 +292,27 @@ For each gene, the method evaluates all possible configurations of up to four al
 This probabilistic approach incorporates prior expectations of allele frequencies within each gene family and accounts for sequencing depth variation, ambiguous V assignments, and low-frequency alleles. Together, these features yield quantitative, confidence-weighted genotype calls that form the basis for building a personalized germline reference.
 
 ```{r tigger-genotype-inference}
-
 # Parse priors from parameters
 priors <- list(
-  v_call = as.numeric(strsplit(params$v_priors, ",")[[1]]),
-  d_call = as.numeric(strsplit(params$d_priors, ",")[[1]]),
-  j_call = as.numeric(strsplit(params$j_priors, ",")[[1]])
+  v = as.numeric(strsplit(params$v_priors, ",")[[1]]),
+  d = as.numeric(strsplit(params$d_priors, ",")[[1]]),
+  j = as.numeric(strsplit(params$j_priors, ",")[[1]])
 )
 
 # Run TIgGER Bayesian genotype inference
-geno <- try(tigger::inferGenotypeBayesian(
-    db,
+genotypes <- lapply(segments_to_genotype, function(seg) {
+  infer_genotype(
+    db = db,
+    seg = seg,
+    loci = loci,
+    genotypeby = genotypeby,
+    references = references,
     find_unmutated = find_unmutated,
-    germline_db = if (!all(is.na(germline_db))) germline_db else NULL,
-    v_call = call_col,
     seq = params$seq_column,
-    priors = priors[[call_col]]
-))
-
-stopifnot(!inherits(geno, "try-error"))
-
+    priors = priors[[seg]]
+  )
+})
+genotypes <- do.call(rbind, genotypes)
 ```
 
 # Process genotype results
@@ -300,22 +321,33 @@ We extract the most likely alleles per gene using GENOTYPED_ALLELES, summarizing
 This step produces a concise summary of the subject’s inferred genotype for downstream reference building.
 
 ```{r process-results}
-
-# Determine most likely genotyped alleles
-geno$genotyped_alleles <- apply(geno[, c(2, 6:9)], 1, GENOTYPED_ALLELES)
-
 # Display results summary
-tab_caption <- paste("TIgGER Bayesian genotype inference results showing inferred genotypes for",
-                     nrow(geno), "genes.")
+tab_caption <- "TIgGER Bayesian genotype inference results showing inferred genotypes"
 
-tab <- eetable(geno,
-               caption = tab_caption,
-               outdir = params$outdir,
-               file = "genotype_results")
+tab <- eetable(genotypes,
+  caption = tab_caption,
+  outdir = params$outdir,
+  file = "genotype_results"
+)
 tab$table
 
 caption <- tab$enchantr$html_caption
+```
 
+
+# Save genotype report
+
+```{r save-genotypes}
+# Save genotype report
+genotypes_output_dir <- file.path(params$outdir, "genotypes")
+dir.create(genotypes_output_dir, recursive = TRUE, showWarnings = FALSE)
+
+write_genotypes(
+  genotypes = genotypes,
+  out_dir = genotypes_output_dir,
+  out_fn = report_output_fn,
+  genotypeby = genotypeby
+)
 ```
 
 # Build personal reference
@@ -326,87 +358,34 @@ We start from the full germline DB:
 
 This yields a personal reference restricted to genotype-validated alleles for seen genes, while leaving unseen genes unchanged.
 
-```{r build-reference}
+```{r build-reference, message=TRUE}
 
-if (!all(is.na(germline_db))) {
-   # Build personal reference database
-   # Remove genes that were genotyped
-   NOTGENO.IND <- !(sapply(strsplit(names(germline_db), "*", fixed = TRUE), `[`, 1) %in% geno$gene)
-   germline_db_new <- germline_db[NOTGENO.IND]
-
-   # Add genotyped alleles
-   for (i in seq_len(nrow(geno))) {
-        gene <- geno[i, "gene"]
-        alleles <- if (geno[i, "genotyped_alleles"] == "") geno[i, "alleles"] else geno[i, "genotyped_alleles"]
-        alleles <- unlist(strsplit(alleles, ","))
-        IND <- names(germline_db) %in% paste(gene, alleles, sep = "*")
-        germline_db_new <- c(germline_db_new, germline_db[IND])
-    }
-}
-
-```
-
-
-
-# Reassign sequences to personal genotype (optional)
-
-If enabled, sequences are re-aligned to the updated germline database of the personal genotype alleles in the repertoire annotations.
-
-For re-alignment the `reassignAlleles` function from TIgGER is used. The function utilizes hamming distance on the gapped sequence (i.e `sequence_alignment`), in order to save time, initial gene assignments are preserved and the allele calls are chosen from among those provided in `germline_db_new`, based on a simple alignment to the sample sequence.
-
-```{r reassign, eval=params$reassign}
-if (params$reassign & !all(is.na(germline_db))) {
-   # Read rearrangement data with all columns
-   db <- read_rearrangement(params$input)
-
-   # Reassign sequences to personal genotype
-   # TODO: check to add the option of path to aligner, and keep_gene
-   # Using default params for now
-   db <- reassignAlleles(db, 
-                         genotype_db = germline_db_new,
-                         v_call = call_col, 
-                         seq = params$seq_column)
-}
-```
-
-
-# Save results
-
-```{r save-results}
-
-# Save genotype report
-write.table(geno,
-           file = file.path(params$outdir, report_output_fn),
-           sep = "\t",
-           quote = FALSE,
-           row.names = FALSE)
-
-# Save personal reference if generated
-if (!all(is.na(germline_db)) && exists("germline_db_new")) {
-    tigger::writeFasta(germline_db_new,
-                      file = file.path(params$outdir, ref_output_fn))
-}
-
-# Save reassigned database if generated
-if (params$reassign & exists("db")) {
-   write_rearrangement(db, 
-                       file = file.path(params$outdir, output_fn))
-}
-
+# create the germline output directory
+germline_output_dir <- file.path(params$outdir, "db_genotype")
+dir.create(germline_output_dir, recursive = TRUE, showWarnings = FALSE)
+references_dir <- file.path(imgt_db, params$species, "vdj")
+# generate the personal genotyped reference
+generate_genotyped_reference(
+  genotypes = genotypes,
+  references = references,
+  output_dir = germline_output_dir,
+  references_dir = references_dir,
+  loci = loci,
+  species = params$species,
+  genotypeby = genotypeby,
+  quiet = FALSE
+)
 ```
 
 ```{r log-end}
-cat("\nEND> TIgGER Bayesian Genotype Inference", file=log_fn, append=TRUE)
-if(params$reassign && exists("db")){
-   cat(paste0("\nOUTPUT> ", output_fn), file=log_fn, append=TRUE)
-}
-cat(paste0("\nOUTPUT> ", report_output_fn), file=log_fn, append=TRUE)
-if (!all(is.na(germline_db)) && exists("germline_db_new")) {
-    cat(paste0("\nOUTPUT> ", ref_output_fn), file=log_fn, append=TRUE)
-}
-cat(paste0("\nGENES_GENOTYPED> ", nrow(geno)), file=log_fn, append=TRUE)
+cat("START> TIgGER Bayesian Genotype Inference", file = log_fn, append = FALSE)
+cat(paste0("\nMETHOD> TIgGER Bayesian"), file = log_fn, append = TRUE)
+cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
+cat(paste0("\nGENOTYPE_LOCI> ", paste0(loci, collapse = ",")), file = log_fn, append = TRUE)
+cat(paste0("\nGENOTYPE_SEGMENTS> ", paste0(segments_to_genotype, collapse = ",")), file = log_fn, append = TRUE)
+cat(paste0("\nOUTPUT> ", genotypes_output_dir), file = log_fn, append = TRUE)
+cat(paste0("\nOUTPUT_REFERENCE> ", germline_output_dir), file = log_fn, append = TRUE)
 ```
-
 
 ```{r, eval=FALSE, echo=FALSE}
 # TODO: add interactive genotype plot
