@@ -14,7 +14,8 @@ enchantr_report <- function(name=c("validate_input",
                                    "convergence",
                                    "dowser_lineage",
                                    "novel_allele_inference",
-                                   "tigger_bayesian_genotype"), report_params=list()) {
+                                   "tigger_bayesian_genotype",
+                                   "reassign_alleles"), report_params=list()) {
     
     name <- match.arg(name)
     
@@ -43,7 +44,8 @@ enchantr_report <- function(name=c("validate_input",
             "convergence" = invisible(convergence_project(outdir)),            
             "dowser_lineage" = invisible(dowser_lineage_project(outdir)),
             "novel_allele_inference" = invisible(novel_allele_inference_project(outdir)),
-            "tigger_bayesian_genotype" = invisible(tigger_bayesian_genotype_project(outdir))
+            "tigger_bayesian_genotype" = invisible(tigger_bayesian_genotype_project(outdir)),
+            "reassign_alleles" = invisible(reassign_alleles_project(outdir))
     )
     
     if (!is.null(report_params[['logo']])) {

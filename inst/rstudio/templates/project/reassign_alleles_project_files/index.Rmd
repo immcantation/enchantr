@@ -1,0 +1,303 @@
+---
+title: "Immcantation - enchantR"
+subtitle: "Reassign Alleles to Given Germline Alleles"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr reassign alleles to given germline alleles using TIgGER."
+output: enchantr::immcantation
+params:
+   input:
+      label: "`input`: Path to repertoires files"
+      input: file
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
+   imgt_db:
+      label: "`imgt_db`: Path to IMGT reference  database."
+      input: file
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+   species:
+      label: "`species`"
+      input: text
+      value: "human"
+   singlecell:
+      label: "`singlecell`"
+      input: text
+      value: NULL
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      input: text
+      value: "sample_id"
+   segments:
+      label: "`segments`: which segments to reassign. Options are 'v', 'd', 'j'. Multiple segments can be provided as a comma-separated string. auto will reassign segments based on loci type."    
+      input: text
+      value: "auto"
+   outname:
+      label: "`outname`"
+      input: text
+      value: "allele-reassignment"
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: "`outdir`: Output directory"
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date:
+      label: "`date`: Run date"
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo:
+      label: "`echo`: Show code in the report."
+      input: checkbox
+      value: TRUE
+   cache:
+      label: "`cache`: Use cached results"
+      input: checkbox
+      value: FALSE
+editor_options:
+   chunk_output_type: console
+---
+
+<div class="introduction_paragraph">
+This report performs novel allele inference using TIgGER to identify potential new immunoglobulin alleles in repertoire sequencing data. Novel alleles are detected by identifying positions with unexpectedly high mutation frequencies compared to the germline reference database.
+</div>
+
+```{r global-options, include = FALSE, cache = FALSE}
+knitr::opts_chunk$set(fig.width = 7, fig.height = 4, fig.path = "figures/",
+                      echo = params$echo, cache = params$cache,
+                      warning = FALSE, message = FALSE,
+                      eval.after = "fig.cap",
+                      out_dir = params$outdir,
+                      eval.opts = c("eval", "echo", "fig.height", "fig.width"))
+
+# Libraries
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("tigger"))
+suppressPackageStartupMessages(library("alakazam"))
+
+if (!dir.exists(params$outdir)) {
+  dir.create(params$outdir, recursive = TRUE)
+}
+
+file.copy(params$logo,
+          file.path(params$outdir, "assets", "logo.png"),
+          recursive = TRUE, overwrite = TRUE)
+
+```
+
+
+# Input parameters
+
+```{r input-parameters, results = 'asis'}
+printParams(params)
+```
+```{r input-parameters-save, echo=FALSE, results = 'asis'}
+print_table_caption(tag = "input", text = "Input parameters.")
+save(params, file = file.path(params$outdir, "params.RData"))
+```
+
+# Read repertoires
+<div class="introduction_paragraph">
+Tables summarizing number of sequences in the provided repertoires according to different characteristics.
+</div>
+
+```{r}
+# Read repertoire
+db <- readInput(params[['input']], col_select = NULL)
+singlecell <- params$singlecell
+
+if (params$species == "auto") {
+  if ("species" %in% colnames(db)) {
+    species <- unique(db[["species"]])
+    if (length(species) > 1) {
+      stop("Multiple species detected. Only one allowed.")
+    }
+  } else {
+    stop("Can't detect species. The column `species` does not exist in `db`.")
+  }
+} else {
+  species <- params$species
+}
+
+# Check for single cell label
+if (!is.null(singlecell)) {
+  if (singlecell %in% colnames(db)) {
+    db[[ singlecell ]] <- as.logical(db[[singlecell]])
+  } else {
+    stop("`",singlecell, "` is not a valid field in `db`.")
+  }
+} else {
+  singlecell <- "single_cell"
+  db[[singlecell]] <- FALSE
+  if ("cell_id" %in% colnames(db)) {
+    message("Setting `singlecell` using `cell_id`.")
+    db[[singlecell]][!db[["cell_id"]] %in% c(NA, "")] <- TRUE
+  }
+
+}
+
+if (!"locus" %in% colnames(db)) {
+  db[["locus"]] <- getLocus(db[["v_call"]])
+}
+heavy_chains <- isHeavyChain(db[["locus"]])
+
+if (params$segments == "auto") {
+  segments_to_reassign <- if (any(heavy_chains)) c("v", "d", "j") else c("v", "j")
+} else {
+  segments_to_reassign <- unlist(strsplit(params$segments, ","))
+  segments_to_reassign <- tolower(trimws(segments_to_reassign))
+  valid_segments <- c("v", "d", "j")
+  if (!all(segments_to_reassign %in% valid_segments)) {
+    stop("Invalid segments provided in `segments` parameter. Valid options are 'v', 'd', 'j'.")
+  }
+  if (any(segments_to_reassign == "d") && !any(heavy_chains)) {
+    stop("D segments can only be reassigned for heavy chain repertoires.")
+  }
+}
+
+subject_levels <- str_sort(unique(db$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(db$sample_id),  numeric = TRUE)
+db <- db %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id)
+```
+
+
+```{r}
+input_size <- nrow(db)
+input_sizes <- db %>%
+  group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+  summarize(input_size = n())
+
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+  group_by(!!!rlang::syms(unique(params$outputby))) %>%
+  mutate(
+    num_input_files = length(unique(input_file)),
+    input_files = paste(unique(input_file), collapse = ",")
+  ) %>%
+  ungroup() %>%
+  group_by(!!!rlang::syms(unique(c(params$outputby, "input_file", "num_input_files", "input_files")))) %>%
+  summarize(
+    input_size = n()
+  )
+
+```
+
+# Read Germline database
+
+Import the nucleotide germline reference used for alignment.
+Using the same reference ensures positional numbering and mutation counts remain consistent with the upstream alignment step. Each `v_call` present in the repertoire should have a corresponding entry in the germline database.
+
+```{r read-germline}
+loci <- unique(db[["locus"]])
+# download and unzip if needed
+imgt_db <- prepareIMGT(params$imgt_db)
+references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
+```
+
+# Reassign sequences to germline database
+
+Sequences are re-aligned to the updated germline database to include the novel alleles in the repertoire annotations.
+
+For re-alignment the `reassignAlleles` function from TIgGER is used. The function utilizes hamming distance on the gapped sequence (i.e `sequence_alignment`), 
+
+in order to save time, initial gene assignments are preserved and the allele calls are chosen from among those provided in `germline_db`, based on a simple alignment to the sample sequence.
+
+```{r reassign, message = TRUE, warning = TRUE}
+if (!all(is.na(references))) {
+  for (seg in segments_to_reassign) {
+    db <- reassign_segment(db, seg, loci, references)
+  }
+}
+```
+
+# Final repertoires
+
+Find your final repertoires here:
+
+```{r fn, results='asis', echo=F}
+
+if (!is.null(params$outname)) {
+  output_fn <- paste0(params$outname, "_reassign-pass.tsv")
+} else {
+  output_fn <- sub(".tsv$", "_reassign-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+  log_fn <- file.path(params$outdir, paste0(params$log, ".txt"))
+} else {
+  log_fn <- file.path(params$outdir, sub("_reassign-pass.tsv$", "_command_log.txt", basename(output_fn)))
+}
+```
+
+```{r dbpass, results='asis', echo=FALSE}
+
+# collpase in case there are multiple rows
+# due to multiple input files
+input_sizes_byoutput <- input_sizes_byoutput %>%
+  select(-input_files) %>%
+  ungroup() %>%
+  group_by(!!!rlang::syms(params$outputby)) %>%
+  summarise(across(everything(), function(x) {
+    paste(x, collapse = ",")
+  }))
+
+output_groups <- db %>%
+  ungroup() %>%
+  select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
+  group_by(!!!rlang::syms(params$outputby)) %>%
+  summarize(output_size = n()) %>%
+  right_join(input_sizes_byoutput) %>%
+  select(input_size, output_size, everything())
+
+output_files <- c()
+output_sizes <- c()
+input_sizes <- c()
+dir.create(file.path(params$outdir, "repertoires"))
+for (i in seq_len(nrow(output_groups))) {
+  group_db <- left_join(output_groups[i, params$outputby, drop = FALSE],
+                        db,
+                        by = c(params$outputby))
+
+  group_db_label <- gsub("^id_", "", makeLabel(group_db, fields = params$outputby))
+  group_fn <- file.path(params$outdir, "repertoires", paste0(group_db_label, "_", output_fn))
+  output_files <- c(output_files, group_fn)
+  output_sizes <- c(output_sizes, nrow(group_db))
+  i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i], ",")[[1]]))
+  input_sizes <- c(input_sizes, i_input_size)
+  write_rearrangement(group_db %>% select(-input_file), file = group_fn)
+  cat("- [", group_db_label, "](", file.path("repertoires", basename(group_fn)), ")\n", sep = "")
+}
+```
+
+```{r log, echo=FALSE}
+cat("START> ReassignAlleles", file = log_fn, append = FALSE)
+cat(paste0("\nFILE-", i, "> ", basename(output_groups[["input_file"]][i])), file = log_fn, append = TRUE)
+cat(paste0("\nOUTPUT-", i, "> ", basename(output_files[i])), file = log_fn, append = TRUE)
+```
+
+```{r, child=c('versions.Rmd')}
+```
