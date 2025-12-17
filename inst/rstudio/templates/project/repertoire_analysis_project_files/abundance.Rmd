@@ -43,7 +43,7 @@ getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
     min(max_w, max(ncols*2, min_w))
 }
 
-getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=20) {
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=40) {
     nrows <- ceiling(nfacets/ncols)
     min(max_h, max(nrows*2, min_h))
 }
