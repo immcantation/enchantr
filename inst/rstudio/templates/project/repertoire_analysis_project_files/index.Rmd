@@ -388,6 +388,118 @@ if (nrow(a@abundance) == 0) {
 ```{r, child=c('abundance.Rmd'), eval=nrow(a@abundance)>0}
 ```
 
+```{r}
+# check whether to calculate clonal overlap
+cloneby_sample_count <- db %>% group_by(.data[[params$cloneby]]) %>% summarize(n_samples=n_distinct(sample_id))
+
+calculate_overlap <- any(cloneby_sample_count$n_samples>1)
+max_n_samples <- max(cloneby_sample_count$n_samples)
+fig_size <- min(8,max(4,0.7*max_n_samples))
+text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_samples > 20
+```
+
+```{r clonal_overlap, eval=calculate_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
+caption<- "Clonal Overlap Among Samples"
+
+cat("# Clonal Overlap Among Samples\n")
+
+if (text_size>0){
+  cat("\n Heatmap of clonal overlap among samples. Numbers in each cell are the counts of clones shared by the x-axis sample and the y-axis sample. Percentages indicate the fraction of shared clones in the y-axis sample. Each cell is colored by percentage of clonal overlap. \n")
+} else{
+    cat("\n Heatmap of clonal overlap among samples. Each cell is colored by percentage of clonal overlap, which is the fraction of shared clones in the y-axis sample. \n")
+}
+
+calculate_overlap_list <- cloneby_sample_count %>% 
+                             filter(n_samples>1) %>% 
+                             pull(.data[[params$cloneby]])
+
+# build a list of htmlwidgets
+plot_list <- lapply(calculate_overlap_list, function(item) {
+
+  clonal_overlap_p <- ClonalOverlap_plot(
+    db[db[[params$cloneby]] == item, ],
+    geom_text_size = text_size
+  )
+  
+  clonal_overlap_p <- clonal_overlap_p + ggtitle(paste0("Clonal Overlap Heatmap(",params$cloneby, ": ", item,")"))
+
+  eeplot(
+    clonal_overlap_p,
+    outdir = params$outdir,
+    file   = paste0("Clonal_Overlap_", params$cloneby, "_", item),
+    caption = caption
+  )
+  
+  htmltools::div(
+    ggplotly(clonal_overlap_p, tooltip = c("sample_x", "sample_y", "overlap"))%>%
+    layout(width = fig_size+1,height = fig_size),
+    htmltools::h2("\n\n")
+  )
+})
+
+# output all widgets + headings
+htmltools::tagList(plot_list)
+
+```
+
+```{r}
+# check whether to calculate bootstrapping clonal overlap
+bootstrapping_cloneby_sample_count <- db %>% 
+  filter(sample_id %in% unique(a@bootstrap$sample_id)) %>%       group_by(.data[[params$cloneby]]) %>%  
+  summarize(n_samples=n_distinct(sample_id))
+
+calculate_bootstrapping_overlap <- any(bootstrapping_cloneby_sample_count$n_samples>1)
+max_n_samples <- max(bootstrapping_cloneby_sample_count$n_samples)
+fig_size <- min(8,max(4,0.7*max_n_samples))
+text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_samples > 20
+```
+
+```{r bootstrapping_clonal_overlap, eval=calculate_bootstrapping_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
+cat("# Bootstrapping Clonal Overlap Among Samples\n")
+
+cat(paste0("\n Heatmap of average bootstrapping clonal overlap among samples. Each cell is colored by the percentage of average bootstrapping clonal overlap in the y-axis sample. Bootstrapping drew ",unique(a@n), " sequences from each sample each time for ", a@nboot, " bootstrapping repetitions. \n"))
+    
+db_bootstrapping <- a@bootstrap
+
+calculate_overlap_list <- bootstrapping_cloneby_sample_count %>% 
+                             filter(n_samples>1) %>% 
+                             pull(.data[[params$cloneby]])
+
+# build a list of htmlwidgets
+plot_list <- lapply(calculate_overlap_list, function(item) {
+
+  samples <- clone_sizes %>% 
+    filter(.data[[params$cloneby]]==item)  %>%
+     pull(sample_id) %>%
+     unique()
+  
+  bootstrapping_clonal_overlap_p <- Bootstrapping_ClonalOverlap_plot(
+    db_bootstrapping %>% filter(sample_id %in% samples),
+    geom_text_size = text_size
+  )
+  
+  bootstrapping_clonal_overlap_p <- bootstrapping_clonal_overlap_p + ggtitle(paste0("Bootstrapping Clonal Overlap Heatmap(",params$cloneby, ": ", item,")"))
+
+  eeplot(
+    bootstrapping_clonal_overlap_p,
+    outdir = params$outdir,
+    file   = paste0("Bootstrapping_Clonal_Overlap_", params$cloneby, "_", item),
+    caption = caption
+  )
+  
+  htmltools::div(
+    ggplotly(bootstrapping_clonal_overlap_p, tooltip = c("sample_x", "sample_y", "overlap"))%>%
+    layout(width = fig_size+1,height = fig_size),
+    htmltools::h2("\n\n")
+  )
+  }
+)
+
+# output all widgets + headings
+htmltools::tagList(plot_list)
+
+```
+
 ```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
 cat("# Mutation frequency\n")
 ```
