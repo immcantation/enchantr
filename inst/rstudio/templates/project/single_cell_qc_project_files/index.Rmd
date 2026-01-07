@@ -169,7 +169,7 @@ print_table_caption(tag = "seqs_per_cell", text = tab$caption)
 
 Since most of the analyses are based on heavy chains, we remove cells with only light chains.
 
-```{r findLightOnlyCells, results="asis"}
+```{r findLightOnlyCells, eval=nrow(db)>0, results="asis"}
 db <- findLightOnlyCells(db, sample_id = "sample_id", cell_id = "cell_id",
                          locus = "locus", fields = NULL)
 light_only_size <- sum(db[["light_only_cell"]])
@@ -194,6 +194,10 @@ tab <- eetable(light_only,
                caption = paste("Cells with only light chains account for",
                                light_only_size, caption_text_seq, "removed."))
 tab$table
+
+if(nrow(db)==0){
+  cat("\nNo cells left after removing cells without heavy chains.\n\n")
+}
 ```
 
 ```{r echo=FALSE, results="asis"}
@@ -206,19 +210,31 @@ When calling clones (B cells that descend from a common naive B cell ancestor) f
 
 A simple solution is just to remove cells with multiple heavy chains from the single cell data:
 
-```{r removeDoublets}
+```{r removeDoublets, eval=nrow(db)>0, results = 'asis'}
 db <- removeDoublets(db, cell_id = "cell_id", locus = "locus",
                      sequence_id = "sequence_id", fields = "sample_id")
 db_no_doublets_size <- nrow(db)
-```
 
-`r db_with_heavy_size-db_no_doublets_size` sequences have been removed because they were found in cells with multiple heavy chains.
+cat(paste(db_with_heavy_size-db_no_doublets_size, "sequences have been removed because they were found in cells with multiple heavy chains."))
+
+if(nrow(db)==0){
+  cat("No cells left after removing cells with multiple heavy chains.\n\n")
+}
+
+```
 
 # Check for contamination
 
+```{r}
+# check whether to check contamination
+sample_count <- n_distinct(db$sample_id)
+calculate_contamination <- sample_count > 1
+dups_found <- FALSE
+```
+
 Sequences in different samples that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) can indicate contamination.
 
-```{r sc-duplicates, results="asis"}
+```{r sc-duplicates, eval=calculate_contamination, results="asis"}
 # Find duplicated sequences
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
                                  seq = "sequence_alignment", mode = "sequences")
@@ -226,9 +242,7 @@ dups_found <- sum(dups$dups$sc_duplicate, na.rm = T) > 0
 ```
 
 ```{r sc-duplicates-zero, results="asis", eval=!dups_found, echo=FALSE}
-if (nrow(dups[["dups"]]) == 0) {
-  cat("No suspicious overlaps detected.\n\n")
-}
+cat("No suspicious overlaps detected.\n\n")
 ```
 
 ```{r sc-duplicates-summary, results="asis", eval=dups_found}
@@ -295,7 +309,7 @@ ggplotly(p_sc_duplicates) %>% layout(barmode = "stack")
 
 ## Cell overlaps matrix
 
-```{r overlap-summary}
+```{r overlap-summary, eval=dups_found}
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
