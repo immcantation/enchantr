@@ -301,7 +301,7 @@ db <- db %>% filter(!!rlang::sym(params$collapse_count_colname) >= params$collap
 after_filter_nrow <- nrow(db)
 
 if(params$collapse_filter_threshold > 1){
-  print(paste0("Filter out sequence with less than ", params$collapse_filter_threshold, " ", params$rename_collapse_count,"."))
+  print(paste0("Filter out sequence with less than ", params$collapse_filter_threshold, " ", params$collapse_count_colname,"."))
   print(paste0("Before filtering, there are ", before_filter_nrow, " sequences."))
   print(paste0("After filtering, there are ", after_filter_nrow, " sequences."))
 }
@@ -343,6 +343,12 @@ for (i in 1:nrow(output_groups))  {
     
     group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
     group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
+    
+# Check whether group_db is empty with only sample_id because no sequence left after collapsing and filtering. If so, only keep the header.
+    if (nrow(group_db)==1){
+      if (is.na(group_db$sequence_alignment)) {
+      group_db <- group_db[0,]}
+    }
     output_files <- c(output_files, group_fn)
     output_sizes <- c(output_sizes, nrow(group_db))
     i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
