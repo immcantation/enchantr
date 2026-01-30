@@ -267,7 +267,7 @@ loci <- unique(db[["locus"]])
 # Handle germline database input
 if (params$imgt_db != "") {
   imgt_db <- prepareIMGT(params$imgt_db)
-  references <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet = TRUE)
+  references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
 } else {
   references <- NA
 }
