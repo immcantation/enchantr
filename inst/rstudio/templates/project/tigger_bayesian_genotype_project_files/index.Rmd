@@ -374,7 +374,7 @@ This yields a personal reference restricted to genotype-validated alleles for se
 ```{r build-reference, message=TRUE}
 
 # create the germline output directory
-references_dir <- file.path(imgt_db, params$species, "vdj")
+references_dir <- file.path(imgt_db, species, "vdj")
 # generate the personal genotyped reference
 generate_genotyped_reference(
   genotypes = genotypes,
@@ -383,7 +383,7 @@ generate_genotyped_reference(
   germline_dir = "db_genotype",
   references_dir = references_dir,
   loci = loci,
-  species = params$species,
+  species = species,
   genotypeby = genotypeby,
   quiet = FALSE
 )
