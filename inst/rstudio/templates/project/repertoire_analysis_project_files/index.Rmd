@@ -406,7 +406,7 @@ cat("## Clonal overlap without bootstrapping\n")
 if (text_size>0){
   cat("\n Clonal overlap among samples. Numbers in each cell are the number of clones shared by the x-axis sample and the y-axis sample. Percentages indicate the fraction of shared clones from the total number of clones in the y-axis sample. Each cell is colored by percentage of clonal overlap. \n")
 } else{
-    cat("\n Heatmap of clonal overlap among samples. Each cell is colored by percentage of clonal overlap, which is the fraction of shared clones in the y-axis sample. \n")
+    cat("\n Clonal overlap among samples. Each cell is colored by percentage of clonal overlap, which is the fraction of shared clones in the y-axis sample. \n")
 }
 
 calculate_overlap_list <- cloneby_sample_count %>% 
