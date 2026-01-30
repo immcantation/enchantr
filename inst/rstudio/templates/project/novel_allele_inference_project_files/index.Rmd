@@ -313,7 +313,7 @@ loci <- unique(db[["locus"]])
 call_tag <- paste0(loci, toupper(substr(params$v_call, 1, 1)))
 
 imgt_db <- prepareIMGT(params$imgt_db)
-references <- dowser::readIMGT(file.path(imgt_db, params$species, "vdj"), quiet = TRUE)
+references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
 ## filter the germline database to include only alleles of params$v_call
 germline_db <- unlist(lapply(loci, function(locus) references[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
 ```
