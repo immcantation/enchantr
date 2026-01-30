@@ -455,7 +455,7 @@ text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_s
 ```
 
 ```{r bootstrapping_clonal_overlap, eval=calculate_bootstrapping_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
-cat("# Bootstrapping Clonal Overlap Among Samples\n")
+cat("# Clonal overlap with bootstrapping\n")
 
 cat(paste0("\n Average clonal overlap among samples over all bootstrapping repetitions. Each cell is colored by the percentage of the average clonal overlap over the bootstrapping repetitions in the y-axis sample. Bootstrapping drew ",unique(a@n), " sequences from each sample each time for ", a@nboot, " bootstrapping repetitions. \n"))
     
