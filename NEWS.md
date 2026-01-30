@@ -8,10 +8,6 @@ General:
 + Increase the maximum height for clonal abundance and diversity plots
 + Add Clonal Overlap plots in repertoire analysis report
 
-
-Add a check for this that there is only 1 clone in a sample, remove this sample from abundance and diversity analysis.
-If no sample is left after removal, print out a message “Samples have only one clone. Skip clone abundance and diversity”.
-
 Bug fixes:
 
 + In the clonal assignment step, throw an error message if there’s no heavy chain in the sequences
