@@ -388,6 +388,15 @@ if (nrow(a@abundance) == 0) {
 ```{r, child=c('abundance.Rmd'), eval=nrow(a@abundance)>0}
 ```
 
+
+# Clonal overlap
+
+<div class="introduction_paragraph">
+Clonal overlap analysis computes the number of clones that are present across any pair of samples within a cloneby group. The cloneby group for this anlaysis was `r params$cloneby`. 
+In clonal overlap without bootstrapping, overlapping clones are counted using all sequences from each paired samples.
+In clonal overlap with bootstrapping, the average number of overlapping clones is calculated across bootstrap resamples, which corrects for differences in sequencing depth among samples.
+</div>
+
 ```{r}
 # check whether to calculate clonal overlap
 cloneby_sample_count <- db %>% group_by(.data[[params$cloneby]]) %>% summarize(n_samples=n_distinct(sample_id))
@@ -396,6 +405,10 @@ calculate_overlap <- any(cloneby_sample_count$n_samples>1)
 max_n_samples <- max(cloneby_sample_count$n_samples)
 fig_size <- min(8,max(4,0.7*max_n_samples))
 text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_samples > 20
+
+if (!calculate_overlap){
+  cat("Clonal overlap analysis was not performed since there is only one sample per cloneby group")
+}
 ```
 
 ```{r clonal_overlap, eval=calculate_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
@@ -455,9 +468,9 @@ text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_s
 ```
 
 ```{r bootstrapping_clonal_overlap, eval=calculate_bootstrapping_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
-cat("# Clonal overlap with bootstrapping\n")
+cat("## Clonal overlap with bootstrapping\n")
 
-cat(paste0("\n Average clonal overlap among samples over all bootstrapping repetitions. Each cell is colored by the percentage of the average clonal overlap over the bootstrapping repetitions in the y-axis sample. Bootstrapping drew ",unique(a@n), " sequences from each sample each time for ", a@nboot, " bootstrapping repetitions. \n"))
+cat(paste0("\n Average clonal overlap among samples over all bootstrapping repetitions.", "Bootstrapping drew ",unique(a@n), " sequences from each sample each time for ", a@nboot, " bootstrapping repetitions.", "Each cell is colored by the percentage of the average clonal overlap over the bootstrapping repetitions in the y-axis sample."))
     
 db_bootstrapping <- a@bootstrap
 
