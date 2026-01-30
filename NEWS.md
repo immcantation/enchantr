@@ -1,3 +1,24 @@
+Version 0.1.25: January 30, 2026
+-----------------------------------
+General:
+
++ Delete repertoire analysis (eg.abundance, diversity and mutation frequency) from clonal assignment report  
++ Add an independent repertoire analysis report 
++ Combine C_gene subclass in tables and plots in repertoire analysis report
++ Increase the maximum height for clonal abundance and diversity plots
++ Add Clonal Overlap plots in repertoire analysis report
+
+
+Add a check for this that there is only 1 clone in a sample, remove this sample from abundance and diversity analysis.
+If no sample is left after removal, print out a message “Samples have only one clone. Skip clone abundance and diversity”.
+
+Bug fixes:
+
++ In the clonal assignment step, throw an error message if there’s no heavy chain in the sequences
++ In the repertoire analysis report, add appropriate handling for the boundary case where a sample contains only one clone
+
+
+
 Version 0.1.24: October 31, 2025
 -----------------------------------
 
