@@ -290,7 +290,7 @@ if (params$single_clone_representative) {
     sequence_col = params$seq_column,
     germline_col = params$germline_column,
     clone_id_col = params$clone_id_column,
-    return_count = FALSE
+    return_count = TRUE
   )
   db <- db %>% filter(clone_representative)
 }
