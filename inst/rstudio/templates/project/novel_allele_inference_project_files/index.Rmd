@@ -424,11 +424,11 @@ if (!inherits(novel, "try-error") && nrow(novel) > 0) {
 }
 
 # create the germline output directory
-germline_output_dir <- file.path(params$outdir, file.path("db_novel", params$species, "vdj"))
+germline_output_dir <- file.path(params$outdir, file.path("db_novel", species, "vdj"))
 dir.create(germline_output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # copy everything from the original germline db to the new location
-file.copy(list.files(file.path(imgt_db, params$species, "vdj"), full.names = TRUE),
+file.copy(list.files(file.path(imgt_db, species, "vdj"), full.names = TRUE),
           germline_output_dir,
           recursive = TRUE)
 
