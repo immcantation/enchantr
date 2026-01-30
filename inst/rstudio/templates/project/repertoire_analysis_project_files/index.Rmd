@@ -401,7 +401,7 @@ text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_s
 ```{r clonal_overlap, eval=calculate_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
 caption<- "Clonal Overlap Among Samples"
 
-cat("# Clonal Overlap Among Samples\n")
+cat("## Clonal overlap without bootstrapping\n")
 
 if (text_size>0){
   cat("\n Heatmap of clonal overlap among samples. Numbers in each cell are the counts of clones shared by the x-axis sample and the y-axis sample. Percentages indicate the fraction of shared clones in the y-axis sample. Each cell is colored by percentage of clonal overlap. \n")
