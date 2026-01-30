@@ -236,9 +236,9 @@ if (!is.null(params$outname)) {
 }
 
 if (!is.null(params$log)) {
-  log_fn <- paste0(params$log, ".txt")
+  log_fn <- file.path(params$outdir, paste0(params$log, ".txt"))
 } else {
-  log_fn <- sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn))
+  log_fn <- file.path(params$outdir, sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn)))
 }
 ```
 
