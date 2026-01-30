@@ -175,13 +175,26 @@ Expected columns include `sequence_id`, `productive`, `v_call` / `d_call` / `j_c
 # Read repertoire data
 cols_to_read <- unique(c(
   "sequence_id", "productive", "sequence_alignment",
-  params$v_call, params$d_call, params$j_call,
-  params$genotypeby, "subject_id", "sample_id"
+  params$v_call, params$d_call, params$j_call, params$germline_column,
+  params$genotypeby, "subject_id", "sample_id", "species"
 ))
 
 cols_to_read <- cols_to_read[!is.null(cols_to_read)]
 
 db <- readInput(params[["input"]], col_select = cols_to_read)
+
+if (params$species =="auto") {
+    if ("species" %in% colnames(db)) {
+        species <- unique(db[['species']])
+        if (length(species)>1) {
+            stop("Multiple species detected. Only one allowed.")
+        }
+    } else  {
+        stop("Can't detect species. The column `species` does not exist in `db`.")
+    }
+} else {
+    species <- params$species
+}
 
 if (!"locus" %in% colnames(db)) {
   db[["locus"]] <- getLocus(db[[params$v_call]])
@@ -236,9 +249,9 @@ if (!is.null(params$outname)) {
 }
 
 if (!is.null(params$log)) {
-  log_fn <- paste0(params$log, ".txt")
+  log_fn <- file.path(params$outdir, paste0(params$log, ".txt"))
 } else {
-  log_fn <- sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn))
+  log_fn <- file.path(params$outdir, sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn)))
 }
 ```
 
@@ -361,14 +374,13 @@ This yields a personal reference restricted to genotype-validated alleles for se
 ```{r build-reference, message=TRUE}
 
 # create the germline output directory
-germline_output_dir <- file.path(params$outdir, "db_genotype")
-dir.create(germline_output_dir, recursive = TRUE, showWarnings = FALSE)
 references_dir <- file.path(imgt_db, params$species, "vdj")
 # generate the personal genotyped reference
 generate_genotyped_reference(
   genotypes = genotypes,
   references = references,
-  output_dir = germline_output_dir,
+  output_dir = params$outdir,
+  germline_dir = "db_genotype",
   references_dir = references_dir,
   loci = loci,
   species = params$species,

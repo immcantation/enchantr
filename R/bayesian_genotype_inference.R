@@ -227,6 +227,7 @@ generate_genotyped_reference <- function(
   genotypes,
   references,
   output_dir,
+  germline_dir,
   references_dir,
   loci,
   species,
@@ -239,7 +240,7 @@ generate_genotyped_reference <- function(
       genotypes_genotypeby <- genotypes[genotypes[[genotypeby]] == val, ]
 
       # create output dir for this group
-      output_dir_genotypeby <- file.path(output_dir, as.character(val), species, "vdj")
+      output_dir_genotypeby <- file.path(output_dir, as.character(val), germline_dir, species, "vdj")
       dir.create(output_dir_genotypeby, showWarnings = FALSE, recursive = TRUE)
 
       # copy the files from the original references dir
