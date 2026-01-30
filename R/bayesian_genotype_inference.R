@@ -215,7 +215,6 @@ write_genotypes <- function(genotypes, out_dir, out_fn, genotypeby = NULL) {
 #' @param references Nested list of original reference sequences (as returned by
 #'   dowser::readIMGT), indexed by locus and segment (e.g. `references[["IGH"]][["V"]]`).
 #' @param output_dir Root output directory where per-group reference directories will be created.
-#' @param germline_dir Name of the germline directory to create under `output_dir`.
 #' @param references_dir Path to the original IMGT reference directory to copy baseline files from (the function
 #'   will copy files found under this directory into each group's `.../vdj` folder).
 #' @param loci Character vector of locus names to process (e.g. `c("IGH")`).
