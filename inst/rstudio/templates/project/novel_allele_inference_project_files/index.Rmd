@@ -244,9 +244,22 @@ Expected columns include `sequence_id`, `productive`, `v_call`, `j_call`, `seque
 cols_to_read <- unique(c("sequence_id", "productive",
                          params$seq, params$v_call, params$j_call,
                          params$junction, params$junction_length, 
-                         params$outputby, "subject_id", "sample_id"))
+                         params$outputby, "subject_id", "sample_id", "species"))
 
 db <- readInput(params[['input']], col_select = cols_to_read)
+
+if (params$species =="auto") {
+    if ("species" %in% colnames(db)) {
+        species <- unique(db[['species']])
+        if (length(species)>1) {
+            stop("Multiple species detected. Only one allowed.")
+        }
+    } else  {
+        stop("Can't detect species. The column `species` does not exist in `db`.")
+    }
+} else {
+    species <- params$species
+}
 
 if (!"locus" %in% colnames(db)) {
   db[["locus"]] <- getLocus(db[[params$v_call]])
