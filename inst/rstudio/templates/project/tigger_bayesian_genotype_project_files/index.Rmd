@@ -379,7 +379,7 @@ references_dir <- file.path(imgt_db, species, "vdj")
 generate_genotyped_reference(
   genotypes = genotypes,
   references = references,
-  output_dir = params$outdir,
+  output_dir = file.path(params$outdir, "references"),
   germline_dir = "db_genotype",
   references_dir = references_dir,
   loci = loci,
@@ -396,7 +396,7 @@ cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
 cat(paste0("\nGENOTYPE_LOCI> ", paste0(loci, collapse = ",")), file = log_fn, append = TRUE)
 cat(paste0("\nGENOTYPE_SEGMENTS> ", paste0(segments_to_genotype, collapse = ",")), file = log_fn, append = TRUE)
 cat(paste0("\nOUTPUT> ", genotypes_output_dir), file = log_fn, append = TRUE)
-cat(paste0("\nOUTPUT_REFERENCE> ", germline_output_dir), file = log_fn, append = TRUE)
+cat(paste0("\nOUTPUT_REFERENCE> ", file.path(params$outdir, "references")), file = log_fn, append = TRUE)
 ```
 
 ```{r, eval=FALSE, echo=FALSE}
