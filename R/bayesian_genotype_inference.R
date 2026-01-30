@@ -215,6 +215,7 @@ write_genotypes <- function(genotypes, out_dir, out_fn, genotypeby = NULL) {
 #' @param references Nested list of original reference sequences (as returned by
 #'   dowser::readIMGT), indexed by locus and segment (e.g. `references[["IGH"]][["V"]]`).
 #' @param output_dir Root output directory where per-group reference directories will be created.
+#' @param germline_dir Name of the germline directory to create under `output_dir`.
 #' @param references_dir Path to the original IMGT reference directory to copy baseline files from (the function
 #'   will copy files found under this directory into each group's `.../vdj` folder).
 #' @param loci Character vector of locus names to process (e.g. `c("IGH")`).
@@ -227,6 +228,7 @@ generate_genotyped_reference <- function(
   genotypes,
   references,
   output_dir,
+  germline_dir,
   references_dir,
   loci,
   species,
@@ -239,7 +241,7 @@ generate_genotyped_reference <- function(
       genotypes_genotypeby <- genotypes[genotypes[[genotypeby]] == val, ]
 
       # create output dir for this group
-      output_dir_genotypeby <- file.path(output_dir, as.character(val), species, "vdj")
+      output_dir_genotypeby <- file.path(output_dir, as.character(val), germline_dir, species, "vdj")
       dir.create(output_dir_genotypeby, showWarnings = FALSE, recursive = TRUE)
 
       # copy the files from the original references dir
