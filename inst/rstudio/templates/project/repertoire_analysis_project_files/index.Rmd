@@ -73,7 +73,7 @@ editor_options:
 ---
 
 <div class="introduction_paragraph">
-Report of clone size distribution, clonal abundance, diversity and mutation frequency created by Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a>. Package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. Package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
+Repertoire analysis report containing clone size distribution, clonal abundance, clonal diversity, V gene usage and somatic hypermutation frequency (for B cells) created by the Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a>. The Immcantation package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. The Immcantation package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
 </div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
