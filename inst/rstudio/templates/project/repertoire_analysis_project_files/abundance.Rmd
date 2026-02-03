@@ -68,7 +68,7 @@ caption <- abundanceSample$enchantr$html_caption
 
 # Diversity
 <div class="introduction_paragraph">
-The clonal abundance distribution can be characterized using diversity statistics. Diversity scores (D) are calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
+The clonal abundance distribution can be characterized using diversity statistics. Diversity scores (D) can be calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
 
 The function alphaDiversity resamples the sequences (`r params$nboot` random bootstrapping events, with the number of sequences in the sample with less sequences (N)) and calculates diversity scores (D) over a interval of diversity orders (q). The diversity (D) is shown on the y-axis and the x-axis is the parameter q. - q = 0 corresponds to Species Richness - q = 1 corresponds to Shannon Entropy - q = 2 corresponds to Simpson Index
 
