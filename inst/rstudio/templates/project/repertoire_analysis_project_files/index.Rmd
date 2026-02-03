@@ -162,7 +162,7 @@ input_sizes_byoutput <- db %>%
 # Clone size distribution
 
 <div class="introduction_paragraph">
-The clone sizes table is available <a href=tables/clone_sizes_table.tsv target="_blank">here</a>. In real datasets, most clones contain only one unique sequence as they represent naive cells that have not undergone clonal expansion (also termed singletons). Straight sequence count as a measure of the size of the clones is not the best measure for clonal size comparison between samples due to possible disproportionate sampling. The clonal abundance and diversity computations (see sections below) address this issue by bootstrapping (i.e. re-sampling multiple times) the sample sequences to the same number of sequences. 
+A table summarizing the number of clones in each sample and  their frequency in the repertoire is available <a href=tables/clone_sizes_table.tsv target="_blank">here</a>. In real datasets, most clones contain only one unique sequence as they represent naive cells that have not undergone clonal expansion (also termed singletons). Straight sequence count as a measure of the size of the clones is not the best measure for clonal size comparison between samples due to possible disproportionate sampling. The clonal abundance and diversity computations (see sections below) address this issue by bootstrapping (i.e. re-sampling multiple times) the sample sequences to the same number of sequences so that clonal abundance and diversity can be compared across samples.
 </div>
 
 <div class="introduction_paragraph">
