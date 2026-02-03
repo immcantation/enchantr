@@ -345,7 +345,7 @@ cat("Only singletons detected: there aren't clones of size>1.\n\n")
 # Clonal abundance {#clonal_abundance}
 
 <div class="introduction_paragraph">
-Clonal abundance is the size of each clone as a fraction of the entire repertoire. To correct for the different number of sequences in each of the samples, Function `estimateAbundance` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping. `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less sequences (N). The y-axis shows the clone abundance (i.e., the size as a percent of the repertoire) and the x-axis is a rank of each clone, where the rank is sorted by clone size from larger (rank 1, left) to smaller (right). The shaded areas are confidence intervals.
+Clonal abundance is the size of each clone as a fraction of the entire repertoire. To correct for the different number of sequences in each of the samples, Function `estimateAbundance` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping (i.e. selecting the same number of sequences to compare for all samples and repeating this selection multiple times to compute the mean and confidence intervals on the clonal abundance). `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less sequences (N).
 </div>
 
 ```{r}
