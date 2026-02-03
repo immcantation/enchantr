@@ -59,7 +59,7 @@ abundanceSample <- eeplot(abundanceSample,
                       a@n,
                       " sequences with ",
                       a@nboot,
-                      " boostrapping repetitions."),
+                      " boostrapping repetitions. The y-axis shows the clonal abundance (i.e., the proportion of the clone in the repertoire as a percentage. The x-axis shows the rank of each clone (from 1 to N number of clones in the sample), where the rank is sorted by clone size from larger (rank 1, left) to smaller (right).  The x-axis rank number is represented on a logarithmic scale. The shaded areas are confidence intervals of the clonal abundance over the bootstrapping repetitions."),
                      a)
 abundanceSample +
     theme(legend.position = "none")
