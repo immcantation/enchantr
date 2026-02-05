@@ -416,7 +416,7 @@ if (!inherits(novel, "try-error") && nrow(novel) > 0) {
 
 ```{r plot-novel-alleles}
 if (!inherits(novel, "try-error") && nrow(novel) > 0) {
-  for(i in seq_along(novel)) {
+  for(i in seq_along(nrow(novel))) {
     plotNovel(db, novel[i, ])
   }
 }
