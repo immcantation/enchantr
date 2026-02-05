@@ -412,6 +412,16 @@ if (!inherits(novel, "try-error") && nrow(novel) > 0) {
 }
 ```
 
+# Plot Novel Alleles Evidence
+
+```{r plot-novel-alleles}
+if (!inherits(novel, "try-error") && nrow(novel) > 0) {
+  for(i in seq_along(novel)) {
+    plotNovel(db, novel[i, ])
+  }
+}
+```
+
 # Output files
 
 ```{r save-results, results='asis'}
