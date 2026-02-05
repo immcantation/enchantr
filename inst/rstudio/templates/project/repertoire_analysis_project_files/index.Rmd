@@ -73,7 +73,7 @@ editor_options:
 ---
 
 <div class="introduction_paragraph">
-Repertoire analysis report containing clone size distribution, clonal abundance, clonal diversity, V gene usage and somatic hypermutation frequency (for B cells) created by the Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a>. The Immcantation package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. The Immcantation package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
+Repertoire analysis report containing clone size distribution, clonal abundance, clonal diversity, clonal overlap, V gene usage and somatic hypermutation frequency (for B cells) created by the Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a>. The Immcantation package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. The Immcantation package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
 </div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
@@ -123,6 +123,8 @@ save(params, file=file.path(params$outdir,"params.RData"))
 # read repertoire
 db <- readInput(params[['input']], col_select = NULL)
 
+db$all <- 'All_samples'
+
 if (! "clone_id" %in% colnames(db)) {
     stop("The column `clone_id` does not exist in `db`.")
 }
@@ -162,7 +164,7 @@ input_sizes_byoutput <- db %>%
 # Clone size distribution
 
 <div class="introduction_paragraph">
-A table summarizing the number of clones in each sample and  their frequency in the repertoire is available <a href=tables/clone_sizes_table.tsv target="_blank">here</a>. In real datasets, most clones contain only one unique sequence as they represent naive cells that have not undergone clonal expansion (also termed singletons). Straight sequence count as a measure of the size of the clones is not the best measure for clonal size comparison between samples due to possible disproportionate sampling. The clonal abundance and diversity computations (see sections below) address this issue by bootstrapping (i.e. re-sampling multiple times) the sample sequences to the same number of sequences so that clonal abundance and diversity can be compared across samples.
+A table summarizing the number of clones in each sample and  their frequency in the repertoire is available <a href=tables/clone_sizes_table.tsv target="_blank">here</a>. In real datasets, most clones contain only one unique sequence as they represent naive cells that have not undergone clonal expansion (also termed singletons). Straight sequence count as a measure of the size of the clones is not optimal for comparing clonal sizes between samples due to possible disproportionate sampling. The clonal abundance and diversity computations (see sections below) address this issue by bootstrapping (i.e. re-sampling multiple times) the same number of sequences from each sample. Bootstrapping approach enables meaningful comparisons of clonal abundance and diversity across samples.
 </div>
 
 <div class="introduction_paragraph">
@@ -345,7 +347,7 @@ cat("Only singletons detected: there aren't clones of size>1.\n\n")
 # Clonal abundance {#clonal_abundance}
 
 <div class="introduction_paragraph">
-Clonal abundance is the size of each clone as a fraction of the entire repertoire. To correct for the different number of sequences in each of the samples, Function `estimateAbundance` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping (i.e. selecting the same number of sequences to compare for all samples and repeating this selection multiple times to compute the mean and confidence intervals on the clonal abundance). `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less sequences (N).
+Clonal abundance is the size of each clone as a fraction of the entire repertoire. To correct for the different number of sequences in each of the samples, Function `estimateAbundance` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping (i.e. selecting the same number of sequences and repeating this selection multiple times to compute the mean and confidence intervals on the clonal abundance for each sample). `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less heavy chain sequences (N).
 </div>
 
 ```{r}
@@ -404,7 +406,6 @@ cloneby_sample_count <- db %>% group_by(.data[[params$cloneby]]) %>% summarize(n
 calculate_overlap <- any(cloneby_sample_count$n_samples>1)
 max_n_samples <- max(cloneby_sample_count$n_samples)
 fig_size <- min(8,max(4,0.7*max_n_samples))
-text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_samples > 20
 
 if (!calculate_overlap){
   cat("Clonal overlap analysis was not performed since there is only one sample per cloneby group")
@@ -412,15 +413,11 @@ if (!calculate_overlap){
 ```
 
 ```{r clonal_overlap, eval=calculate_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
-caption<- "Clonal Overlap Among Samples"
 
 cat("## Clonal overlap without bootstrapping\n")
 
-if (text_size>0){
-  cat("\n Clonal overlap among samples considering all sequences in each sample. Numbers in each cell are the number of clones shared by the x-axis sample and the y-axis sample. Percentages indicate the fraction of shared clones from the total number of clones in the y-axis sample. Each cell is colored by percentage of clonal overlap. ")
-} else{
-    cat("\n Clonal overlap among samples. Each cell is colored by percentage of clonal overlap, which is the fraction of shared clones in the y-axis sample. \n")
-}
+cat("Clonal overlap among samples considering all sequences in each sample. Numbers in each cell are the number of clones shared by the x-axis sample and the y-axis sample. Percentages indicate the fraction of shared clones from the total number of clones in the y-axis sample. Each cell is colored by percentage of clonal overlap. For group with many samples, numbers and percentages are hidden to improve visualization.")
+
 
 calculate_overlap_list <- cloneby_sample_count %>% 
                              filter(n_samples>1) %>% 
@@ -428,19 +425,25 @@ calculate_overlap_list <- cloneby_sample_count %>%
 
 # build a list of htmlwidgets
 plot_list <- lapply(calculate_overlap_list, function(item) {
-
+  
+  n_sample <- n_distinct(db[db[[params$cloneby]] == item, ]['sample_id'])
+  if(n_sample > 12){
+    text_size <- 0
+  }else{
+    text_size <- floor(min(4,1+12/n_sample))
+  }
+  
   clonal_overlap_p <- ClonalOverlap_plot(
     db[db[[params$cloneby]] == item, ],
     geom_text_size = text_size
   )
   
-  clonal_overlap_p <- clonal_overlap_p + ggtitle(paste0("Clonal Overlap Heatmap(",params$cloneby, ": ", item,")"))
+  clonal_overlap_p <- clonal_overlap_p + ggtitle(item)
 
   eeplot(
     clonal_overlap_p,
     outdir = params$outdir,
-    file   = paste0("Clonal_Overlap_", params$cloneby, "_", item),
-    caption = caption
+    file   = paste0("Clonal_Overlap_", params$cloneby, "_", item)
   )
   
   htmltools::div(
@@ -464,7 +467,6 @@ bootstrapping_cloneby_sample_count <- db %>%
 calculate_bootstrapping_overlap <- any(bootstrapping_cloneby_sample_count$n_samples>1)
 max_n_samples <- max(bootstrapping_cloneby_sample_count$n_samples)
 fig_size <- min(8,max(4,0.7*max_n_samples))
-text_size <- floor(min(3,20/max_n_samples)) # No text in heatmap cell if max_n_samples > 20
 ```
 
 ```{r bootstrapping_clonal_overlap, eval=calculate_bootstrapping_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
@@ -480,7 +482,13 @@ calculate_overlap_list <- bootstrapping_cloneby_sample_count %>%
 
 # build a list of htmlwidgets
 plot_list <- lapply(calculate_overlap_list, function(item) {
-
+  n_sample <- n_distinct(db[db[[params$cloneby]] == item, ]['sample_id'])
+  if(n_sample > 12){
+    text_size <- 0
+  }else{
+    text_size <- floor(min(4,1+12/n_sample))
+  }
+  
   samples <- clone_sizes %>% 
     filter(.data[[params$cloneby]]==item)  %>%
      pull(sample_id) %>%
@@ -491,13 +499,12 @@ plot_list <- lapply(calculate_overlap_list, function(item) {
     geom_text_size = text_size
   )
   
-  bootstrapping_clonal_overlap_p <- bootstrapping_clonal_overlap_p + ggtitle(paste0("Bootstrapping Clonal Overlap Heatmap(",params$cloneby, ": ", item,")"))
+  bootstrapping_clonal_overlap_p <- bootstrapping_clonal_overlap_p + ggtitle(item)
 
   eeplot(
     bootstrapping_clonal_overlap_p,
     outdir = params$outdir,
-    file   = paste0("Bootstrapping_Clonal_Overlap_", params$cloneby, "_", item),
-    caption = caption
+    file   = paste0("Bootstrapping_Clonal_Overlap_", params$cloneby, "_", item)
   )
   
   htmltools::div(
@@ -529,6 +536,7 @@ db <- shazam::observedMutations(db,
                                 frequency = T,
                                 combine = T,
                                 nproc = params$nproc)
+
 ```
 
 ```{r eval=TRUE, echo=F}
@@ -544,12 +552,20 @@ getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=40) {
 ```
 
 ```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
-cat("Showing mutation frequency per c_gene only if the `c_call` column is present.\n")
 cat("The mutation frequency per sequence is stored in the final dataframes in the `mu_freq` column.\n")
+
+BCRs <- any(db$locus %in% c("IGH", "IGL", "IGK")) 
+no_c_call <-  all(is.na(db$c_call))
+if(no_c_call){
+  cat("Mutation frequency per c_gene is skipped becasue no constant region is present in the sequences.\n ")
+}
+
 ```
 
 
-```{r mufreqSample, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & "c_call" %in% colnames(db), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+
+```{r mufreqSample, eval=BCRs & !no_c_call, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+
 db_cgene <- db %>% filter(!is.na(c_gene), !(is.na(mu_freq)))
 db_cgene$mu_freq <- as.numeric(db_cgene$mu_freq)
 
@@ -582,7 +598,7 @@ if (nrow(db_cgene) > 0) {
 
 ```
 
-```{r mufreqSampleLocus, eval=any(db$locus %in% c("IGL", "IGK")), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r mufreqSampleLocus,fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 
 db_locus <- db %>% filter(!is.na(locus), !is.na(mu_freq))
 db_locus$mu_freq <- as.numeric(db_locus$mu_freq)
@@ -630,15 +646,15 @@ Find your final repertoires here:
 
 ```{r fn, results='asis', echo=F}
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_with_mutation_freq.tsv")
+    output_fn <- paste0(params$outname,"_repertoire-pass.tsv")
 } else {
-    output_fn <- sub(".tsv$", "_with_mutation_freq.tsv", basename(params$input))
+    output_fn <- sub(".tsv$", "_repertoire-pass.tsv", basename(params$input))
 }
 
 if (!is.null(params$log)) {
     log_fn <- file.path(params$outdir,paste0(params$log,".txt"))
 } else {
-    log_fn <- file.path(params$outdir,sub("_with_mutation_freq.tsv$", "_command_log.txt", basename(output_fn)))
+    log_fn <- file.path(params$outdir,sub("_repertoire-pass.tsv$", "_command_log.txt", basename(output_fn)))
 }
 ```
 
@@ -677,7 +693,7 @@ for (i in 1:nrow(output_groups))  {
     output_sizes <- c(output_sizes, nrow(group_db))
     i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
     input_sizes <- c(input_sizes, i_input_size)
-    write_rearrangement(group_db %>% select(-input_file), file=group_fn)
+    write_rearrangement(group_db %>% select(-c(input_file,all)), file=group_fn)
     cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
 }
 ```
