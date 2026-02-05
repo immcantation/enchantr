@@ -68,9 +68,11 @@ caption <- abundanceSample$enchantr$html_caption
 
 # Diversity
 <div class="introduction_paragraph">
-The clonal abundance distribution can be characterized using diversity statistics. Diversity scores (D) can be calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
+The clonal abundance distribution can be characterized using diversity statistics. Diversity calculation is useful to determine whether there is any difference in clonal expansion or the clonal distribution between repertoires.
 
-For diversity calculations, bootstrapping is also performed (i.e. selecting the same number of sequences for each sample and repeating this procedure multiple times). For this diversity computation, `r params$nboot` bootstrapping repetitions were performed.
+Diversity scores (D) are calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
+
+For diversity calculations, bootstrapping is also performed (i.e. selecting the same number of sequences and repeating this procedure multiple times for each sample). For this diversity computation, `r params$nboot` bootstrapping repetitions were performed.
 
 Inspection of this figure is useful to determine whether any difference in diversity between two repertoires depends on the statistic used or if it is a universal property. 
 
@@ -180,18 +182,19 @@ caption <- diversitySample$enchantr$html_caption
 </div>
 
 ```{r div_at_q, eval=TRUE,  fig.cap=caption, fig.width=5, fig.height=3}
+caption = "Diversity at different q values."
 # plot duplicated cells
 div_data <- d@diversity %>% dplyr::filter(q==0 | q==1 | q==2)
 
-div_at_q <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
+div_at_q_plot <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
     geom_point() + theme_enchantr() +
     scale_x_continuous(breaks= c(0,1,2))+ 
     theme(text = element_text(family = "Helvetica"))
     
-div_at_q <- eeplot(div_at_q, 
+div_at_q_plot <- eeplot(div_at_q_plot, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
-                     caption="Diversity at different q values.")
-ggplotly(div_at_q+theme(legend.position="right"))
-caption <- div_at_q$enchantr$html_caption
+                     caption= caption)
+ggplotly(div_at_q_plot+theme(legend.position="right"))
+caption <- div_at_q_plot$enchantr$html_caption
 ```
