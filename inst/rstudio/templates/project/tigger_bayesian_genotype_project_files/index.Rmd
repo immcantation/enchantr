@@ -348,6 +348,12 @@ tab$table
 caption <- tab$enchantr$html_caption
 ```
 
+# Plot genotype inference
+
+```{r plot-genotype-inference}
+plotGenotype(genotypes)
+```
+
 
 # Save genotype report
 
@@ -398,10 +404,6 @@ cat(paste0("\nGENOTYPE_LOCI> ", paste0(loci, collapse = ",")), file = log_fn, ap
 cat(paste0("\nGENOTYPE_SEGMENTS> ", paste0(segments_to_genotype, collapse = ",")), file = log_fn, append = TRUE)
 cat(paste0("\nOUTPUT> ", genotypes_output_dir), file = log_fn, append = TRUE)
 cat(paste0("\nOUTPUT_REFERENCE> ", file.path(params$outdir, "references")), file = log_fn, append = TRUE)
-```
-
-```{r, eval=FALSE, echo=FALSE}
-# TODO: add interactive genotype plot
 ```
 
 ```{r, child=c('versions.Rmd')}
