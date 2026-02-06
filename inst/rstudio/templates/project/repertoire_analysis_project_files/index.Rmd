@@ -15,7 +15,8 @@ params:
    input: 
       label: "`input`: Path to repertoires files"
       input: file
-      value: "Example_clone-pass.tsv"
+      #value: "Example_clone-pass.tsv"
+      value: "D:/Yale_Kleinstein_working/clonal_overlap_test_data/Mouse_makeup.tsv"
    cloneby:
       label: "`cloneby`"
       input: text
@@ -458,6 +459,10 @@ htmltools::tagList(plot_list)
 
 #output link to Rdata
 htmltools::tagList(
+  htmltools::div(
+    "The ggplot files for clonal overlap plots are stored here:",
+    style = "margin-top:3px"
+  ),
   lapply(calculate_overlap_list, function(item) {
     rdata_path <- file.path(
       basename(params$outdir),
@@ -470,7 +475,7 @@ htmltools::tagList(
         paste0("Clonal_Overlap_", item, ".RData"),
         target = "_blank"
       ),
-      style = "margin-top:4px;"
+      style = "margin-top:3px;"
     )
   })
 )
@@ -591,6 +596,10 @@ htmltools::tagList(plot_list)
 
 # output link to Rdata
 htmltools::tagList(
+  htmltools::div(
+    "The ggplot files for clonal overlap with bootstrapping plots are stored here:",
+    style = "margin-top:3px"
+  ),
   lapply(calculate_overlap_list, function(item) {
     rdata_path <- file.path(
       basename(params$outdir),
@@ -603,7 +612,7 @@ htmltools::tagList(
         paste0("Bootstrapping_Clonal_Overlap_", item, ".RData"),
         target = "_blank"
       ),
-      style = "margin-top:4px;"
+      style = "margin-top:3px;"
     )
   })
 )
