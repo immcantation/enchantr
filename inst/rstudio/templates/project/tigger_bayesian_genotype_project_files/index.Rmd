@@ -175,7 +175,7 @@ Expected columns include `sequence_id`, `productive`, `v_call` / `d_call` / `j_c
 # Read repertoire data
 cols_to_read <- unique(c(
   "sequence_id", "productive", "sequence_alignment",
-  params$v_call, params$d_call, params$j_call, 
+  params$v_call, params$d_call, params$j_call,
   params$germline_column, params$clone_id_column,
   params$genotypeby, "subject_id", "sample_id", "species"
 ))
@@ -184,17 +184,17 @@ cols_to_read <- cols_to_read[!is.null(cols_to_read)]
 
 db <- readInput(params[["input"]], col_select = cols_to_read)
 
-if (params$species =="auto") {
-    if ("species" %in% colnames(db)) {
-        species <- unique(db[['species']])
-        if (length(species)>1) {
-            stop("Multiple species detected. Only one allowed.")
-        }
-    } else  {
-        stop("Can't detect species. The column `species` does not exist in `db`.")
+if (params$species == "auto") {
+  if ("species" %in% colnames(db)) {
+    species <- unique(db[["species"]])
+    if (length(species) > 1) {
+      stop("Multiple species detected. Only one allowed.")
     }
+  } else {
+    stop("Can't detect species. The column `species` does not exist in `db`.")
+  }
 } else {
-    species <- params$species
+  species <- params$species
 }
 
 if (!"locus" %in% colnames(db)) {
@@ -329,29 +329,49 @@ genotypes <- lapply(segments_to_genotype, function(seg) {
 genotypes <- do.call(rbind, genotypes)
 ```
 
-# Process genotype results
+# Genotype inference results
 
-We extract the most likely alleles per gene using GENOTYPED_ALLELES, summarizing the Bayesian genotype output. The table lists each gene with its inferred alleles, supporting counts, and confidence metrics (log-likelihoods and Bayes factors).
-This step produces a concise summary of the subject’s inferred genotype for downstream reference building.
+## Genotype inference table
+<div class="introduction_paragraph">
+The genotype table summarizes the inferred alleles for each gene, including the Bayes factor for each gene. 
+</div>
 
-```{r process-results}
+```{r genotype-inference-table, results='asis'}
 # Display results summary
-tab_caption <- "TIgGER Bayesian genotype inference results showing inferred genotypes"
+caption <- "TIgGER Bayesian genotype inference results showing inferred genotypes"
 
-tab <- eetable(genotypes,
-  caption = tab_caption,
+tab_genotype <- eetable(genotypes,
+  caption = caption,
   outdir = params$outdir,
-  file = "genotype_results"
+  file = "tab_genotype"
 )
-tab$table
-
-caption <- tab$enchantr$html_caption
+tab_genotype$table
 ```
 
-# Plot genotype inference
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="tab_genotype", text=tab_genotype$caption)
+```
 
-```{r plot-genotype-inference}
-plotGenotype(genotypes)
+## Genotype inference plot
+
+<div class="introduction_paragraph">
+The genotype plot provides a visual representation of the inferred alleles for each gene. 
+</div>
+
+```{r plot-genotype-inference, results='asis', fig.cap=caption, fig.height=12, fig.width=8}
+genotype_plot <- plot_genotype(genotypes, allele_column = "genotyped_alleles", silent=TRUE)
+
+caption <- "Genotype inference summary. Each row represents a specific gene, where the colored bars indicate the inferred alleles."
+
+genotype_plot <- eeplot(genotype_plot,
+  caption = caption,
+  outdir = params$outdir,
+  file = "plot-genotype-inference"
+)
+
+print(genotype_plot)
+
+caption <- genotype_plot$enchantr$html_caption
 ```
 
 
@@ -379,7 +399,6 @@ We start from the full germline DB:
 This yields a personal reference restricted to genotype-validated alleles for seen genes, while leaving unseen genes unchanged.
 
 ```{r build-reference, message=TRUE}
-
 # create the germline output directory
 references_dir <- file.path(imgt_db, species, "vdj")
 # generate the personal genotyped reference
