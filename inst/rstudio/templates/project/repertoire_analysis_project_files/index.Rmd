@@ -15,8 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires files"
       input: file
-      #value: "Example_clone-pass.tsv"
-      value: "D:/Yale_Kleinstein_working/clonal_overlap_test_data/Mouse_makeup.tsv"
+      value: "Example_clone-pass.tsv"
    cloneby:
       label: "`cloneby`"
       input: text
