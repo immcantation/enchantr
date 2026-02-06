@@ -443,7 +443,7 @@ plot_list <- lapply(calculate_overlap_list, function(item) {
   eeplot(
     clonal_overlap_p,
     outdir = params$outdir,
-    file   = paste0("Clonal_Overlap_", params$cloneby, "_", item)
+    file   = paste0("Clonal_Overlap_", item)
   )
   
   htmltools::div(
@@ -456,6 +456,72 @@ plot_list <- lapply(calculate_overlap_list, function(item) {
 # output all widgets + headings
 htmltools::tagList(plot_list)
 
+#output link to Rdata
+htmltools::tagList(
+  lapply(calculate_overlap_list, function(item) {
+    rdata_path <- file.path(
+      basename(params$outdir),
+      paste0("Bootstrapping_Clonal_Overlap_", item, ".RData")
+    )
+
+    htmltools::div(
+      htmltools::a(
+        href = rdata_path,
+        paste0("Clonal_Overlap_", item, ".RData"),
+        target = "_blank"
+      ),
+      style = "margin-top:4px;"
+    )
+  })
+)
+
+```
+
+```{r clonal_overlap_table, eval=calculate_overlap, results='asis'}
+
+calculate_overlap_list <- cloneby_sample_count %>% 
+                             filter(n_samples>1) %>% 
+                             pull(.data[[params$cloneby]])
+
+cloneby_element <- c()
+sampleA <- c()
+sampleB <- c()
+overlap_clones <- c()
+
+for(item in calculate_overlap_list){
+  unique_group <-str_sort(unique(db[db[[params$cloneby]] == item,][['sample_id']]),numeric=TRUE)
+  pairs <- combn(unique_group, 2)
+  for (i in seq_len(ncol(pairs))){
+      x <- pairs[1, i]
+      y <- pairs[2, i]
+      overlap <- db %>% filter(sample_id %in% c(x,y)) %>% 
+             group_by(clone_id) %>% 
+            summarise(distinct_sample = n_distinct(sample_id)) %>%
+            filter(distinct_sample > 1) %>%
+            arrange(as.integer(clone_id)) %>%
+            pull(clone_id)
+      if(length(overlap)>0){
+        cloneby_element <- c(cloneby_element, item)
+        sampleA <- c(sampleA, x)
+        sampleB <- c(sampleB, y)
+        overlap_clones <- c(overlap_clones, overlap %>% paste(collapse = ", "))
+      }
+  }
+}
+
+clone_overlap_table <- data.frame(
+        setNames(list(cloneby_element), params$cloneby),
+        sampleA = sampleA,
+        sampleB = sampleB,
+        overlap_clone_id = overlap_clones
+      )
+
+tbl <- eetable(clone_overlap_table, caption="Clonal_Overlap_Table", outdir=params$outdir, file="clonal_overlap")
+  
+cat(
+  "Clonal overlap table can be found here: ",
+  "[clonal_overlap.tsv](tables/clonal_overlap.tsv)\n"
+)
 ```
 
 ```{r}
@@ -504,19 +570,44 @@ plot_list <- lapply(calculate_overlap_list, function(item) {
   eeplot(
     bootstrapping_clonal_overlap_p,
     outdir = params$outdir,
-    file   = paste0("Bootstrapping_Clonal_Overlap_", params$cloneby, "_", item)
+    file   = paste0("Bootstrapping_Clonal_Overlap_", item)
   )
   
+  rdata_path <- file.path(
+  params$outdir,
+  paste0("Bootstrapping_Clonal_Overlap_", item, ".RData")
+)
+
   htmltools::div(
     ggplotly(bootstrapping_clonal_overlap_p, tooltip = c("sample_x", "sample_y", "overlap"))%>%
     layout(width = fig_size+1,height = fig_size),
     htmltools::h2("\n\n")
-  )
+    )
   }
 )
 
 # output all widgets + headings
 htmltools::tagList(plot_list)
+
+# output link to Rdata
+htmltools::tagList(
+  lapply(calculate_overlap_list, function(item) {
+    rdata_path <- file.path(
+      basename(params$outdir),
+      paste0("Bootstrapping_Clonal_Overlap_", item, ".RData")
+    )
+
+    htmltools::div(
+      htmltools::a(
+        href = rdata_path,
+        paste0("Bootstrapping_Clonal_Overlap_", item, ".RData"),
+        target = "_blank"
+      ),
+      style = "margin-top:4px;"
+    )
+  })
+)
+
 
 ```
 
@@ -640,6 +731,10 @@ cat("- [Summary of number of clones](tables/num_clones_table.tsv)\n", sep="")
 cat("- [Clone sizes table](tables/clone_sizes_table.tsv)\n", sep="")
 cat("- [Clonal abundance](tables/clonal_abundance.tsv)\n", sep="")
 cat("- [Clonal diversity](tables/clonal_diversity.tsv)\n", sep="")
+if(calculate_overlap){
+  cat("- [Clonal overlap](tables/clonal_overlap.tsv)\n", sep="")
+}
+
 ```
 
 Find your final repertoires here:
