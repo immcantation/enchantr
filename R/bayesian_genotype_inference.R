@@ -317,3 +317,77 @@ generate_genotyped_reference <- function(
     }
   }
 }
+
+#' Plot genotype
+#'
+#' \code{plot_genotype} plots a genotype.
+#'
+#' @param    genotype       data frame of genotype information.
+#' @param    allele_column  name of the column containing alleles.
+#' @param    facet_by       column name to facet the plot by.
+#' @param    gene_sort      method to sort genes ("name" or "position").
+#' @param    text_size      size of the text in the plot.
+#' @param    silent         if \code{TRUE}, do not plot the result.
+#' @param    ...            additional arguments to pass to \code{theme()}.
+#'
+#' @return   A \code{ggplot} object.
+#'
+#' @export
+plot_genotype <- function(genotype, allele_column = "alleles", facet_by = NULL, gene_sort = c("name", "position"),
+                          text_size = 12, silent = FALSE, ...) {
+  # Check arguments
+  gene_sort <- match.arg(gene_sort)
+
+  # Split genes' alleles into their own rows
+  alleles <- strsplit(genotype[[allele_column]], ",")
+  geno2 <- genotype
+  r <- 1
+  for (g in 1:nrow(genotype)) {
+    for (a in 1:length(alleles[[g]])) {
+      geno2[r, ] <- genotype[g, ]
+      geno2[r, ]$alleles <- alleles[[g]][a]
+      r <- r + 1
+    }
+  }
+
+  # Set the gene order
+  geno2$gene <- factor(geno2$gene,
+    levels = rev(sortAlleles(unique(geno2$gene), method = gene_sort))
+  )
+
+  # Create the base plot
+  p <- ggplot(geno2, aes(
+    x = !!rlang::sym("gene"),
+    fill = !!rlang::sym("alleles")
+  )) +
+    theme_bw() +
+    theme(
+      axis.ticks = element_blank(),
+      axis.text.x = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      text = element_text(size = text_size),
+      strip.background = element_blank(),
+      strip.text = element_text(face = "bold")
+    ) +
+    geom_bar(position = "fill") +
+    coord_flip() +
+    xlab("Gene") +
+    ylab("") +
+    scale_fill_hue(name = "Allele", h = c(0, 270), h.start = 10)
+
+  # Plot, with facets by SUBJECT if that column is present
+  if (!is.null(facet_by)) {
+    p <- p + facet_grid(paste0(".~", facet_by))
+  }
+
+  # Add additional theme elements
+  p <- p + do.call(theme, list(...))
+
+  # Plot
+  if (!silent) {
+    plot(p)
+  }
+
+  invisible(p)
+}
