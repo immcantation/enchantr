@@ -38,5 +38,6 @@ nav:
       - topics/single_cell_qc_project.md
       - topics/find_threshold_project.md
       - topics/clonal_assignment_project.md
+      - topics/repertoire_analysis_project.md
       - topics/dowser_lineage_project.md
 
