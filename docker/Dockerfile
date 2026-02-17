@@ -49,7 +49,7 @@ RUN wget2 -q --force-progress --no-check-certificate \
 RUN AIRR_PY=$(versions get -n airr-py) \
     && AIRR_R=$(versions get -n airr-r) \
     && pip3 install airr==${AIRR_PY} \
-    && Rscript -e "devtools::install_version('airr', '${AIRR_R}', quiet=FALSE)"    
+    && Rscript -e "devtools::install_version('airr', '${AIRR_R}', quiet=FALSE, upgrade='never')"    
 
 # Install alakazam
 RUN ALAKAZAM_VER=$(versions get -n alakazam) \
