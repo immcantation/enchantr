@@ -25,6 +25,7 @@ nav:
     - 'Introduction': index.md
     - 'Download & Installation': install.md
     - 'Contributing': contributing.md
+    - 'Developer Guide': developer-guide.md
     - 'Package Overview': topics/enchantr.md
     - 'Release Notes': news.md
     - 'Related Projects': projects.md
