@@ -28,6 +28,7 @@ Reports
 + [contamination_project](contamination_project.md):       Create an Immcantation Detect contamination project
 + [find_threshold_project](find_threshold_project.md):      Create an Find threshold project
 + [clonal_assignment_project](clonal_assignment_project.md):       Create an Immcantation Clonal assignment project
++ [repertoire_analysis_project](repertoire_analysis_project.md):       Create an Immcantation Repertoire analysis project
 + [convergence_project](convergence_project.md):         Create an Immcantation Convergence project
 + [dowser_lineage_project](dowser_lineage_project.md):      Create an Immcantation Dowser project
 + [single_cell_qc_project](single_cell_qc_project.md):      Create an Immcantation sc QC project
