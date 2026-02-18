@@ -48,6 +48,8 @@ jobs:
         with:
           FILES: |
             docker/Version.yaml
+            docker/Dockerfile
+            docker/Dockerfile-enchantr
       - name: Build new docker image
         if: env.MATCHED_FILES
         run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile .
