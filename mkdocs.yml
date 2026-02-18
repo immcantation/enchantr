@@ -6,6 +6,9 @@ edit_uri: src/master/docs/
 theme: readthedocs
 site_name: enchantr
 docs_dir: docs
+plugins:
+  - search
+  - mermaid2
 markdown_extensions:
   - admonition
   - def_list
@@ -24,8 +27,9 @@ nav:
   - 'About':
     - 'Introduction': index.md
     - 'Download & Installation': install.md
-    - 'Contributing': contributing.md
-    - 'Developer Guide': developer-guide.md
+    - 'Contributing':
+      - contributing.md
+      - 'Developer Guide': developer-guide.md
     - 'Package Overview': topics/enchantr.md
     - 'Release Notes': news.md
     - 'Related Projects': projects.md
