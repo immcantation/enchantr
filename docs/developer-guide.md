@@ -17,16 +17,14 @@ flowchart LR
     style E fill:#d4edda
 ```
 
-**User calls `enchantr_report()`**: The main entry point for generating reports
-   ```r
-   enchantr_report(name = "single_cell_qc", 
-                   report_params = list(outdir = "results/"))
-   ```
+**User calls `enchantr_report()`**: The main entry point for generating reports:
 
-**Project creation**: Based on the report `name`, the corresponding `*_project()` function is called
-   - Example: `single_cell_qc_project(outdir)` for single cell QC reports
-   - This function copies skeleton files from `inst/rstudio/templates/project/<report_name>_project_files/` to the output directory
-   - If `report_params$logo` is provided, the custom logo is copied to replace the default logo
+```r
+enchantr_report(name = "single_cell_qc", 
+               report_params = list(outdir = "results/"))
+```
+
+**Project creation**: Based on the report `name`, the corresponding `*_project()` function is called. In the example, the `single_cell_qc_project` function. The function then copies the skeleton files from `inst/rstudio/templates/project/single_cell_qc_project_files/` to the output directory.
 
 **Report rendering**: The report is rendered using `bookdown::render_book()`
    - Input file: `index.Rmd` in the project directory
