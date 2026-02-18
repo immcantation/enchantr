@@ -26,8 +26,9 @@ enchantr_report(name = "single_cell_qc",
 
 **Project creation**: Based on the report `name`, the corresponding `*_project()` function is called. In the example, the `single_cell_qc_project` function. The function then copies the skeleton files from `inst/rstudio/templates/project/single_cell_qc_project_files/` to the output directory.
 
-**Report rendering**: The report is rendered using `bookdown::render_book()`
-   - Input file: `index.Rmd` in the project directory
+**Report rendering**: The report is rendered with `bookdown::render_book()` using:
+
+   - Input file: the `index.Rmd` in the project directory
    - Output format: `enchantr::immcantation` (custom HTML format)
    - Configuration: `_bookdown.yml`
 
