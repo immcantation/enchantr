@@ -1,0 +1,456 @@
+---
+title: "Immcantation - enchantR"
+subtitle: "Novel allele inference"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr novel allele inference"
+output: enchantr::immcantation
+params:
+   input:
+      label: "`input`: Path to repertoires files"
+      input: file
+      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
+   imgt_db:
+      label: "`imgt_db`: Path to IMGT reference  database."
+      input: file
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+   species:
+      label: "`species`"
+      input: text
+      value: "human"
+   germline_min:
+      label: "`germline_min`"
+      input: numeric
+      value: 200
+   min_seqs:
+      label: "`min_seqs`"
+      input: numeric
+      value: 50
+   auto_mutrange:
+      label: "`auto_mutrange`"
+      input: checkbox
+      value: TRUE
+   mut_range:
+      label: "`mut_range`"
+      input: text
+      value: "1:10"
+   pos_range:
+      label: "`pos_range`"
+      input: text
+      value: "1:318"
+   pos_range_max:
+      label: "`pos_range_max`"
+      input: numeric
+      value: NULL
+   y_intercept:
+      label: "`y_intercept`"
+      input: numeric
+      value: 0.125
+   alpha:
+      label: "`alpha`"
+      input: numeric
+      value: 0.05
+   j_max:
+      label: "`j_max`"
+      input: numeric
+      value: 0.15
+   min_frac:
+      label: "`min_frac`"
+      input: numeric
+      value: 0.75
+   v_call:
+      label: "`v_call`: Column name for V gene calls"
+      input: text
+      value: "v_call"
+   j_call:
+      label: "`j_call`: Column name for J gene calls"
+      input: text
+      value: "j_call"
+   seq:
+      label: "`seq`: Column name for sequence alignment"
+      input: text
+      value: "sequence_alignment"
+   junction:
+      label: "`junction`: Column name for junction sequence"
+      input: text
+      value: "junction"
+   junction_length:
+      label: "`junction_length`: Column name for junction length"
+      input: text
+      value: "junction_length"
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      input: text
+      value: "sample_id"
+   outname:
+      label: "`outname`"
+      input: text
+      value: "tigger-novel"
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: "`outdir`: Output directory"
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date:
+      label: "`date`: Run date"
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo:
+      label: "`echo`: Show code in the report."
+      input: checkbox
+      value: TRUE
+   cache:
+      label: "`cache`: Use cached results"
+      input: checkbox
+      value: FALSE
+editor_options:
+   chunk_output_type: console
+---
+
+<div class="introduction_paragraph">
+This report performs novel allele inference using TIgGER to identify potential new immunoglobulin alleles in repertoire sequencing data. Novel alleles are detected by identifying positions with unexpectedly high mutation frequencies compared to the germline reference database.
+</div>
+
+```{r global-options, include = FALSE, cache = FALSE}
+knitr::opts_chunk$set(fig.width = 7, fig.height = 4, fig.path = "figures/",
+                      echo = params$echo, cache = params$cache,
+                      warning = FALSE, message = FALSE,
+                      eval.after = "fig.cap",
+                      out_dir = params$outdir,
+                      eval.opts = c("eval", "echo", "fig.height", "fig.width"))
+
+# Libraries
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("tigger"))
+suppressPackageStartupMessages(library("alakazam"))
+
+if (!dir.exists(params$outdir)) {
+  dir.create(params$outdir, recursive = TRUE)
+}
+
+file.copy(params$logo,
+          file.path(params$outdir, "assets", "logo.png"),
+          recursive = TRUE, overwrite = TRUE)
+
+# make sure mut_range is range
+mut_range <- params$mut_range
+if (is.character(mut_range)) {
+   if (grepl(":", mut_range)) {
+      mut_range <- unlist(strsplit(mut_range, ":"))
+      mut_range <- mut_range[1]:mut_range[2]
+   } else {
+      warning("Couldn't parse mut_rage; reverting to default 1:10")
+      mut_range <- 1:10
+   }
+}
+
+# make sure pos_range is range
+pos_range <- params$pos_range
+if (is.character(pos_range)) {
+   if (grepl(":", pos_range)) {
+      pos_range <- unlist(strsplit(pos_range, ":"))
+      pos_range <- pos_range[1]:pos_range[2]
+   } else {
+      warning("Couldn't parse pos_range; reverting to default 1:318")
+      pos_range <- 1:318
+   }
+}
+
+```
+
+
+```{r helper-functions, include = FALSE, cache = FALSE}
+
+# Helper for light chain inference by gene range
+infer_novel_light_chain <- function(db, germline_db, params) {
+  gene_range <- tigger_upper_bound(db)
+  purrr::map_dfr(seq_along(gene_range), function(i) {
+    upper_range <- as.numeric(names(gene_range)[i])
+    genes <- gene_range[i]
+    sub_db <- db[stringi::stri_detect_regex(db[[params$v_call]], genes), ]
+    if (nrow(sub_db) == 0) return(NULL)
+    low_range <- min(sub_db$v_germline_start)
+    novel_df <- try(findNovelAlleles(
+      data = sub_db,
+      germline_db = germline_db,
+      pos_range = low_range:upper_range,
+      v_call = params$v_call,
+      j_call = params$j_call,
+      seq = params$seq,
+      junction = params$junction,
+      junction_length = params$junction_length,
+      nproc = params$nproc,
+      germline_min = params$germline_min,
+      min_seqs = params$min_seqs,
+      y_intercept = params$y_intercept,
+      alpha = params$alpha,
+      j_max = params$j_max,
+      min_frac = params$min_frac,
+      auto_mutrange = params$auto_mutrange,
+      mut_range = mut_range
+    ))
+    if (inherits(novel_df, "try-error")) return(NULL)
+    novel_df
+  })
+}
+
+
+```
+
+
+# Input parameters
+
+```{r input-parameters, results = 'asis'}
+printParams(params)
+```
+```{r input-parameters-save, echo=FALSE, results = 'asis'}
+print_table_caption(tag = "input", text = "Input parameters.")
+save(params, file = file.path(params$outdir, "params.RData"))
+```
+
+# Read repertoires
+
+Load repertoire annotation tables in AIRR format.
+Expected columns include `sequence_id`, `productive`, `v_call`, `j_call`, `sequence_alignment`, `junction`, and `junction_length`. Only productive, in-frame sequences without stop codons are retained to avoid artefacts.
+
+```{r read-input}
+# Read repertoire
+
+cols_to_read <- unique(c("sequence_id", "productive",
+                         params$seq, params$v_call, params$j_call,
+                         params$junction, params$junction_length, 
+                         params$outputby, "subject_id", "sample_id", "species"))
+
+db <- readInput(params[['input']], col_select = cols_to_read)
+
+if (params$species =="auto") {
+    if ("species" %in% colnames(db)) {
+        species <- unique(db[['species']])
+        if (length(species)>1) {
+            stop("Multiple species detected. Only one allowed.")
+        }
+    } else  {
+        stop("Can't detect species. The column `species` does not exist in `db`.")
+    }
+} else {
+    species <- params$species
+}
+
+if (!"locus" %in% colnames(db)) {
+  db[["locus"]] <- getLocus(db[[params$v_call]])
+}
+heavy_chains <- isHeavyChain(db[["locus"]])
+
+if (!is.null(params$outname)) {
+  output_fn <- paste0(basename(params$outname), "_novel-pass.tsv.gz")
+  report_output_fn <- paste0(basename(params$outname), "_novel_report.tsv")
+} else {
+  output_fn <- sub(".tsv$", "_novel-pass.tsv", basename(params$input))
+  report_output_fn <- sub(".tsv$", "_novel_report.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+  log_fn <- file.path(params$outdir, paste0(params$log, ".txt"))
+} else {
+  log_fn <- file.path(params$outdir, sub("_novel-pass.tsv$", "_command_log.txt", basename(output_fn)))
+}
+
+if (all(c("subject_id", "sample_id") %in% colnames(db))){
+   subject_levels <- str_sort(unique(db$subject_id), numeric = TRUE)
+   sample_levels  <- str_sort(unique(db$sample_id),  numeric = TRUE)
+   db <- db %>%
+   mutate(
+      subject_id = factor(subject_id, levels = subject_levels),
+      sample_id  = factor(sample_id,  levels = sample_levels)
+   ) %>%
+   arrange(subject_id, sample_id)
+} else{
+   # add fake columns
+   db <- db %>%
+   mutate(
+      subject_id = "subject",
+      sample_id  = "sample"
+   ) %>%
+   arrange(subject_id, sample_id)
+}
+
+db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
+```
+
+# Read Germline database
+
+Import the nucleotide germline reference used for alignment.
+Using the same reference ensures positional numbering and mutation counts remain consistent with the upstream alignment step. Each `v_call` present in the repertoire should have a corresponding entry in the germline database.
+
+```{r read-germline}
+
+loci <- unique(db[["locus"]])
+call_tag <- paste0(loci, toupper(substr(params$v_call, 1, 1)))
+
+imgt_db <- prepareIMGT(params$imgt_db)
+references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
+## filter the germline database to include only alleles of params$v_call
+germline_db <- unlist(lapply(loci, function(locus) references[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
+```
+
+```{r log}
+cat("START> InferNovelAlleles", file = log_fn, append = FALSE)
+cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
+```
+
+# Run `findNovelAlleles`
+
+`findNovelAlleles` evaluates each germline allele represented in the dataset to detect potential polymorphic positions.
+Mutation frequency at every IMGT-numbered site is modeled as a function of the overall mutation load per sequence.
+Positions with a disproportionately high baseline mutation frequency (high y-intercept) are flagged as possible germline differences.
+
+*Key parameters*:
+
+- `germline_min`: excludes alleles with too few sequences for statistical testing.
+
+- `min_seqs`: ensures adequate read depth in the target mutation and positional ranges.
+
+- `auto_mutrange` / `mut_range`: controls which sequences (by mutation count) are included to balance sensitivity vs noise.
+
+- `pos_range`: limits the region analyzed to reliably aligned V-segment positions, avoiding false SNPs near the CDR3 junction.
+
+*Expected*: only a small fraction of alleles show candidate polymorphic sites; most known alleles return no novel calls.
+
+```{r infer-novel-alleles}
+
+# Run TIgGER novel allele inference
+if (all(loci == "IGH")) {
+  # Heavy chain: run as usual
+  novel <- try(findNovelAlleles(
+    data = db,
+    germline_db = germline_db,
+    v_call = params$v_call,
+    j_call = params$j_call,
+    seq = params$seq,
+    junction = params$junction,
+    junction_length = params$junction_length,
+    germline_min = params$germline_min,
+    min_seqs = params$min_seqs,
+    y_intercept = params$y_intercept,
+    alpha = params$alpha,
+    j_max = params$j_max,
+    min_frac = params$min_frac,
+    auto_mutrange = params$auto_mutrange,
+    mut_range = mut_range,
+    pos_range = pos_range,
+    nproc = params$nproc
+  ))
+
+} else {
+  # Light chain: run per gene-range
+  novel <- infer_novel_light_chain(db, germline_db, params)
+}
+```
+
+# Filter and clean novel alleles
+
+*Per-gene cap (max two alleles per V gene)*
+
+We retain at most two novel alleles per V gene. This guards against over-splitting caused by low-frequency artefacts, sequencing noise, or residual SHM that can mimic additional variants. we prioritize candidates by those with the higher `novel_imgt_count`.
+
+`novel_imgt_count`: The number of times the sequence novel_imgt is found in the input data. Considers the subsequence of novel_imgt in the pos_range.
+
+*Repeated-read / recurrent SNP-pattern filter*
+We remove support from sequences that show repeated instances of the same novel-SNP motif inside a single read. These patterns are a common source of false positives from sequecing errors. 
+
+```{r clean-up}
+
+if (!inherits(novel, "try-error") && nrow(novel) > 0) {
+  novel <- tigger::selectNovel(novel) %>%
+    dplyr::distinct(novel_imgt, .keep_all = TRUE) %>%
+    dplyr::filter(!is.na(novel_imgt), nt_substitutions != "") %>%
+    dplyr::mutate(gene = alakazam::getGene(germline_call, strip_d = FALSE)) %>%
+    dplyr::group_by(gene) %>%
+    dplyr::top_n(n = 2, wt = novel_imgt_count)
+
+  snp_xxxx <- check_repeated_snp_patterns(novel)
+  novel <- novel[!snp_xxxx, ]
+  novel <- novel[!duplicated(novel[["polymorphism_call"]]), ]
+}
+
+```
+
+# Generate novel reference database
+
+We append the high-confidence novel alleles to the existing germline reference set, producing an updated “novel” reference database. Each novel allele retains its reference name plus a suffix identifying its novel variant
+
+```{r build-reference}
+if (!inherits(novel, "try-error") && nrow(novel) > 0) {
+  # Build novel reference database
+  novel_germline <- setNames(gsub("-", ".", novel[["novel_imgt"]], fixed = TRUE), novel[["polymorphism_call"]])
+  germline_db <- c(germline_db, novel_germline)
+}
+```
+
+# Output files
+
+```{r save-results, results='asis'}
+# Save novel report
+if (!inherits(novel, "try-error") && nrow(novel) > 0) {
+  dir.create(file.path(params$outdir, "tables"))
+  write.table(novel, file = file.path(params$outdir, "tables", report_output_fn),
+              row.names = FALSE, quote = FALSE, sep = "\t")
+  cat("Novel alleles report: [", report_output_fn, "](", report_output_fn, ") - Detailed results table\n")
+}
+
+# create the germline output directory
+germline_output_dir <- file.path(params$outdir, file.path("db_novel", params$species, "vdj"))
+dir.create(germline_output_dir, recursive = TRUE, showWarnings = FALSE)
+
+# copy everything from the original germline db to the new location
+file.copy(list.files(file.path(imgt_db, params$species, "vdj"), full.names = TRUE),
+          germline_output_dir,
+          recursive = TRUE)
+
+# get the V loci files
+loci_files <- list.files(germline_output_dir, paste0(loci, "V", collapse = "|"), full.names = TRUE)
+
+for (locus in loci) {
+  locus_germline_db <- germline_db[grep(paste0("^", locus), names(germline_db))]
+  locus_file <- loci_files[grep(paste0(locus, "V"), loci_files)]
+  tigger::writeFasta(locus_germline_db, file = locus_file)
+  cat("Reference database: [", locus_file, "](", locus_file, ") - FASTA file with novel alleles added (if detected)\n")
+}
+```
+
+
+```{r log-end}
+cat("\nEND> InferNovelAlleles", file = log_fn, append = TRUE)
+if (exists("novel") && !inherits(novel, "try-error") && nrow(novel) > 0) {
+  cat(paste0("\nOUTPUT> ", report_output_fn), file = log_fn, append = TRUE)
+  cat(paste0("\nNOVEL-ALLELES-DETECTED> ", nrow(novel)), file = log_fn, append = TRUE)
+}
+```
+
+```{r, child=c('versions.Rmd')}
+```
