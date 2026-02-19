@@ -1,3 +1,37 @@
+Version 0.1.25: January 30, 2026
+-----------------------------------
+General:
+
++ Delete repertoire analysis (eg.abundance, diversity and mutation frequency) from clonal assignment report  
++ Add an independent repertoire analysis report 
++ Combine C_gene subclass in tables and plots in repertoire analysis report
++ Increase the maximum height for clonal abundance and diversity plots
++ Add Clonal Overlap plots in repertoire analysis report
+
+Bug fixes:
+
++ In the clonal assignment step, throw an error message if there’s no heavy chain in the sequences
++ In the repertoire analysis report, add appropriate handling for the boundary case where a sample contains only one clone
+
+
+
+Version 0.1.24: October 31, 2025
+-----------------------------------
+
+Bug fixes:
+
++ Add temporary pin for ggplot2 to avoid compatibility bugs of ggplot2=4.4.0 with ggplotly
++ Fix bug in collapseDuplicates report
+
+
+Version 0.1.23: October 17, 2025
+-----------------------------------
+
+Bug fixes:
+
++ Fixed bugs in file size report.
+
+
 Version 0.1.22: October 16, 2025
 -----------------------------------
 

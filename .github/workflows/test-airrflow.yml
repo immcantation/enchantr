@@ -47,10 +47,12 @@ jobs:
         uses: technote-space/get-diff-action@v4
         with:
           FILES: |
-            docker/Version.yaml
+            ./docker/Version.yaml
+            ./docker/Dockerfile
+            ./docker/Dockerfile-enchantr
       - name: Build new docker image
         if: env.MATCHED_FILES
-        run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile ./docker
+        run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile .
 
       - name: Login to DockerHub
         if: env.MATCHED_FILES
@@ -70,7 +72,7 @@ jobs:
 
       - name: Build container with enchantr
         run: |
-          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile-enchantr ./docker
+          docker build --no-cache -t immcantation/airrflow:dev -f ./docker/Dockerfile-enchantr .
 
       - name: Install Nextflow
         uses: nf-core/setup-nextflow@v2

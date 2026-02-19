@@ -11,6 +11,7 @@ enchantr_report <- function(name=c("validate_input",
                                    "collapse_duplicates",
                                    "find_threshold",
                                    "clonal_assignment",
+                                   "repertoire_analysis",
                                    "convergence",
                                    "dowser_lineage"), report_params=list()) {
     
@@ -38,6 +39,7 @@ enchantr_report <- function(name=c("validate_input",
             "collapse_duplicates" = invisible(collapse_duplicates_project(outdir)),
             "find_threshold" = invisible(find_threshold_project(outdir)),
             "clonal_assignment" = invisible(clonal_assignment_project(outdir)),
+            "repertoire_analysis" = invisible(repertoire_analysis_project(outdir)),
             "convergence" = invisible(convergence_project(outdir)),            
             "dowser_lineage" = invisible(dowser_lineage_project(outdir))
     )
