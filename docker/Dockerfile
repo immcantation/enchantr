@@ -49,23 +49,23 @@ RUN wget2 -q --force-progress --no-check-certificate \
 RUN AIRR_PY=$(versions get -n airr-py) \
     && AIRR_R=$(versions get -n airr-r) \
     && pip3 install airr==${AIRR_PY} \
-    && Rscript -e "devtools::install_version('airr', '${AIRR_R}', quiet=FALSE)"    
+    && Rscript -e "devtools::install_version('airr', '${AIRR_R}', quiet=FALSE, upgrade='never')"    
 
 # Install alakazam
 RUN ALAKAZAM_VER=$(versions get -n alakazam) \
-    && Rscript -e "devtools::install_github('immcantation/alakazam', ref='${ALAKAZAM_VER}', quiet=FALSE)"
+    && Rscript -e "devtools::install_github('immcantation/alakazam', ref='${ALAKAZAM_VER}', quiet=FALSE, upgrade='never')"
 
 # Install shazam
 RUN SHAZAM_VER=$(versions get -n shazam) \
-    && Rscript -e "devtools::install_github('immcantation/shazam', ref='${SHAZAM_VER}', quiet=FALSE)"
+    && Rscript -e "devtools::install_github('immcantation/shazam', ref='${SHAZAM_VER}', quiet=FALSE, upgrade='never')"
 
 # Install SCOPer
 RUN SCOPER_VER=$(versions get -n scoper) \
-    && Rscript -e "devtools::install_github('immcantation/scoper', ref='${SCOPER_VER}', quiet=FALSE)"
+    && Rscript -e "devtools::install_github('immcantation/scoper', ref='${SCOPER_VER}', quiet=FALSE, upgrade='never')"
 
 # Install dowser
 RUN DOWSER_VER=$(versions get -n dowser) \
-    && Rscript -e "devtools::install_github('immcantation/dowser', ref='${DOWSER_VER}', quiet=FALSE)"
+    && Rscript -e "devtools::install_github('immcantation/dowser', ref='${DOWSER_VER}', quiet=FALSE, upgrade='never')"
 
 # Install IgPhyML
 RUN IGPHYML=$(versions get -n igphyml) \
