@@ -1,0 +1,815 @@
+--- 
+title: "Immcantation - enchantR"
+subtitle: "Repertoire Analysis"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr repertoire analysis"
+output: enchantr::immcantation
+params:
+   input: 
+      label: "`input`: Path to repertoires files"
+      input: file
+      value: "Example_clone-pass.tsv"
+   cloneby:
+      label: "`cloneby`"
+      input: text
+      value: "subject_id"  
+   min_n:
+      label: "`min_n` minimum number of observations to sample to run alakazam::estimateAbundance."
+      input: numeric
+      value: 30
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      input: text
+      value: "sample_id"
+   nboot:
+       label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
+       input: numeric
+       value: 200               
+   outname:
+      label: "`outname`"
+      input: text
+      value: ""
+   nproc:
+      label: "`nproc`"
+      input: numeric
+      value: 1      
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date: 
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo: 
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: TRUE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options: 
+  chunk_output_type: console
+---
+
+<div class="introduction_paragraph">
+Repertoire analysis report containing clone size distribution, clonal abundance, clonal diversity, clonal overlap, V gene usage and somatic hypermutation frequency (for B cells) created by the Immcantation package <a href="https://enchantr.readthedocs.io/en/stable/" target="_blank">enchantR</a>. The Immcantation package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used for clonal abundance and diversity analysis. The Immcantation package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used for analysis of somatic hypermutation (SHM). 
+</div>
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                      echo=params$echo,cache=params$cache,
+                      warning=FALSE, message=FALSE,
+                      eval.after="fig.cap",
+                      out_dir=params$outdir,
+                      eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+# Libraries
+suppressPackageStartupMessages(library("DT"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+suppressPackageStartupMessages(library("shazam"))
+suppressPackageStartupMessages(library("scoper"))
+suppressPackageStartupMessages(library("dowser"))
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("ComplexHeatmap"))
+suppressPackageStartupMessages(library("plotly"))
+suppressPackageStartupMessages(library("fastcluster"))
+
+if (!dir.exists(params[['outdir']])) {
+    dir.create(params[['outdir']], recursive=T)
+}
+
+file.copy(params$logo,
+          file.path(params$outdir,"assets", "logo.png"),
+          recursive=T, overwrite=T)
+```
+
+
+# Input parameters
+
+```{r input-parameters, results='asis'}
+printParams(params)
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="input", text="Input parameters.")
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+```{r}
+# read repertoire
+db <- readInput(params[['input']], col_select = NULL)
+
+db$all <- 'All_samples'
+
+if (! "clone_id" %in% colnames(db)) {
+    stop("The column `clone_id` does not exist in `db`.")
+}
+
+# Create c_gene column 
+if (any(db$locus %in% c("IGH")) && "c_call" %in% colnames(db) && !"c_gene" %in% colnames(db)) {
+  db <- db %>% filter(locus %in% c("IGH", "IGK", "IGL")) %>%
+    mutate(c_gene = alakazam::getGene(c_call, first=TRUE)) %>%
+    mutate(c_gene = substr(c_gene, 1, 4))
+}
+
+
+```
+
+```{r}
+input_size <- nrow(db)
+input_sizes <- db %>%
+    group_by(!!!rlang::syms(unique(c("input_file")))) %>%
+    summarize(input_size=n())
+
+# Track input size of the expected output groups, for the
+# end of report summary
+input_sizes_byoutput <- db %>%
+    group_by(!!!rlang::syms(unique(params$outputby))) %>%
+    mutate(
+        num_input_files = length(unique(input_file)),
+        input_files = paste(unique(input_file), collapse=",")
+    ) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(unique(c(params$outputby, "input_file", "num_input_files", "input_files")))) %>%
+    summarize(
+        input_size = n()
+    )
+
+```
+
+# Clone size distribution
+
+<div class="introduction_paragraph">
+A table summarizing the number of clones in each sample and  their frequency in the repertoire is available <a href=tables/clone_sizes_table.tsv target="_blank">here</a>. In real datasets, most clones contain only one unique sequence as they represent naive cells that have not undergone clonal expansion (also termed singletons). Straight sequence count as a measure of the size of the clones is not optimal for comparing clonal sizes between samples due to possible disproportionate sampling. The clonal abundance and diversity computations (see sections below) address this issue by bootstrapping (i.e. re-sampling multiple times) the same number of sequences from each sample. Bootstrapping approach enables meaningful comparisons of clonal abundance and diversity across samples.
+</div>
+
+<div class="introduction_paragraph">
+Description of terms:
+
+* `clone_size_count`: Clone size as sequence counts. In a sample (`sample_id`), the number of heavy chain sequences with the same `clone_id`.
+
+* `clone_size_freq`: Clone size as percent of the repertoire. `clone_size_count` divided by the number of heavy chain sequences in the sample (`sample_id`).
+</div>
+
+## Number of clones 
+<div class="introduction_paragraph">
+Summary of the number of clones based on heavy chain sequences, and clone size per sample. Singletons (clones with just one sequence) are included in the table. 
+</div>
+
+```{r clone_sizes_table}
+# Add clone_size
+clone_sizes <- countClones(
+  db %>%
+    filter(isHeavyChain(locus)), # Keep heavy chains only
+  groups = unique(c("sample_id", "subject_id", params$cloneby))
+)
+
+subject_levels <- str_sort(unique(clone_sizes$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(clone_sizes$sample_id),  numeric = TRUE)
+clone_sizes <- clone_sizes %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id)
+
+```
+
+
+```{r eval=any(isHeavyChain(db$locus))}
+tmp <- eetable(clone_sizes, 
+               caption=NULL, 
+               outdir=params$outdir, file="clone_sizes_table")
+
+db <- db %>%
+   left_join(clone_sizes) %>%
+   rename(
+      clone_size_count = seq_count,
+      clone_size_freq = seq_freq
+   ) %>% 
+   mutate_at(vars(starts_with("clone_size")), round,2)
+```
+
+```{r, results='asis', eval=any(isHeavyChain(db$locus))}
+num_clones_table <- db %>%
+   filter(isHeavyChain(locus)) %>% # Keep heavy chains only
+  group_by(sample_id, subject_id) %>%
+   mutate(sequences=n()) %>%
+   group_by(sample_id) %>%
+   mutate(
+      number_of_clones=length(unique(clone_id)),
+   ) %>%
+  group_by(!!!rlang::syms(unique(c("sample_id", "subject_id", "sequences", params$cloneby, "number_of_clones")))) %>%
+   summarize_at(vars(starts_with("clone_size")), list("min"=min, "median"=median, "max"=max)) %>%
+   mutate_at(vars(starts_with("clone_size")), round, 2)
+
+subject_levels <- str_sort(unique(num_clones_table$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(num_clones_table$sample_id),  numeric = TRUE)
+num_clones_table <- num_clones_table %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) %>%
+  mutate(
+    subject_id = as.character(subject_id),
+    sample_id  = as.character(sample_id)
+  )
+
+tab_caption <- "Summary of the number of clones, and clone size, per sample. Includes singletons (clone_size == 1)."
+tab <- eetable(num_clones_table, caption=tab_caption, outdir=params$outdir, file="num_clones_table")
+tab$table
+```
+```{r echo=FALSE, results='asis', eval=any(isHeavyChain(db$locus))}
+print_table_caption(tag="num_clones_table", text=tab$caption)
+```
+
+## Clone size distribution 
+
+<div class="introduction_paragraph">
+Plot of clone size distribution. Clone size is measured as number of heavy chain sequences belonging to the same clone. In most cases, the majority of clones are singletons (clone size = 1). To improve readability for non-singleton clones, we adopted two approaches and provided two corresponding plots. In the first plot, the y-axis (clone counts) was transformed to a logarithmic scale (base 10). In the second plot, the y-axis represents the cumulative fraction of clone counts, also known in statistics as the cumulative distribution function (CDF).
+</div>
+
+```{r clone-size-plot, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
+caption <- "Clone size distribution."
+
+clone_sizes_summary <- clone_sizes %>%
+  count(sample_id, seq_count, name = "count")
+
+n_samples <- length(unique(clone_sizes_summary$sample_id))
+if (n_samples==4){
+  n_col <- 2
+}else{
+  n_col <- 3
+}
+
+clone_size_plot<-ggplot(clone_sizes_summary, aes(x=seq_count, y=count,
+                                         color=sample_id, 
+                                         fill=sample_id, 
+                                         text = paste("Clone size: ", seq_count, 
+                                                                 "<br>Clone count: ", count, 
+                                                                 "<br>sample_id: ", sample_id))) +
+                geom_bar(stat = "identity") + 
+                scale_y_log10()+
+                theme_enchantr() +
+                facet_wrap(~sample_id, scales = "free_y", ncol = n_col) +
+                xlab("Clone size (Sequences per clone)") +
+                ylab("Clone counts") + 
+  theme(text = element_text(family = "Helvetica")) 
+
+clone_size_plot <- eeplot(clone_size_plot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('clone-size-plot'),
+                  caption=caption)
+                
+ggplotly(clone_size_plot + theme(panel.spacing=unit(2, 'lines'), legend.position="right"),tooltip = "text")  %>%
+  layout(font = list(family = "Helvetica")) 
+caption <- clone_size_plot$enchantr$html_caption
+```
+
+
+```{r clone-size-cdf-plot, eval=max(clone_sizes[['seq_count']])>1, fig.width=8, fig.height=min(50,max(4,0.7*length(unique(db[['sample_id']])))), fig.cap=caption}
+caption <- "CDF plot of clone size distribution."
+
+# Step : Calculate count and CDF
+clone_sizes_summary <- clone_sizes %>%
+  count(sample_id, seq_count, name = "count") %>%
+  group_by(sample_id) %>%
+  arrange(seq_count) %>%
+  mutate(
+    cum_count = cumsum(count),
+    total = sum(count),
+    cdf = cum_count / total,
+    text = paste("Clone size:", seq_count,
+                 "<br>Clone count:", count,
+                 "<br>sample_id:", sample_id,
+                 "<br>CDF:", signif(cdf, 3))
+  )
+
+# Step 2: CDF plot with line and points
+clone_size_cdf_plot <- ggplot(clone_sizes_summary, aes(x = seq_count, y = cdf,
+                                                       color = sample_id,
+                                                       group = sample_id,
+                                                       text = text)) +
+  geom_line() +
+  geom_point(size = 1, alpha = 0.9)+
+  scale_y_log10() +
+  scale_x_log10() +  # Optional: log-transform x-axis for clarity
+  theme_enchantr() +
+  facet_wrap(~sample_id, scales = "free_y", ncol = n_col) +
+  xlab("Clone size (Sequences per clone)") +
+  ylab("Cumulative Fraction") + 
+  theme(text = element_text(family = "Helvetica"))
+
+clone_size_cdf_plot <- eeplot(clone_size_cdf_plot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('clone-size-cdf-plot'),
+                  caption=caption)
+
+# Step 3: Convert to interactive plot
+ggplotly(clone_size_cdf_plot + 
+           theme(panel.spacing=unit(2, 'lines'), legend.position="right"),
+         tooltip = "text") %>%
+  layout(font = list(family = "Helvetica"))
+
+
+caption <- clone_size_cdf_plot$enchantr$html_caption
+```
+
+```{r, eval=max(clone_sizes[['seq_count']])<=1, results='asis'}
+cat("Only singletons detected: there aren't clones of size>1.\n\n")
+```
+
+# Clonal abundance {#clonal_abundance}
+
+<div class="introduction_paragraph">
+Clonal abundance is the size of each clone as a fraction of the entire repertoire. To correct for the different number of sequences in each of the samples, Function `estimateAbundance` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> estimates the clonal abundance distribution along with confidence intervals on these clone sizes using bootstrapping (i.e. selecting the same number of sequences and repeating this selection multiple times to compute the mean and confidence intervals on the clonal abundance for each sample). `r params$nboot` random bootstrap samples were taken, with size the number of sequences in the sample with less heavy chain sequences (N).
+</div>
+
+```{r}
+# Remove sample of only one clone
+if (any(num_clones_table$number_of_clones==1)){
+  single_clone_sample <- num_clones_table %>% filter(number_of_clones==1) %>% pull(sample_id)
+  db_keep_for_abundance <- db %>% filter(!sample_id %in% single_clone_sample)
+  skip_abundance_diversity <- nrow(db_keep_for_abundance) == 0
+  if(skip_abundance_diversity){
+      cat("Samples have only one clone. Skip clone abundance and diversity. \n")
+  }else{
+      cat("Samples with only one clone are removed from clone abundance and diversity analysis. \n")
+    }
+} else {
+  db_keep_for_abundance <- db
+  skip_abundance_diversity <- FALSE
+}
+
+```
+
+```{r}
+# set empty default abundance
+a <- new("AbundanceCurve")
+```
+
+```{r abundancebysample, results='asis', eval=isTRUE(any(isHeavyChain(db$locus))) && !isTRUE(skip_abundance_diversity)}
+
+
+# calculate the rank-abundance curve
+a <- estimateAbundance(
+  db_keep_for_abundance %>%
+    filter(isHeavyChain(locus)),
+  group = "sample_id", min_n = params$min_n
+)
+if (nrow(a@abundance) == 0) {
+  cat("\nAll groups failed to pass the threshold min_n=", params$min_n, ". Skipping clonal abundance report.\n\n")
+}
+```
+
+```{r, child=c('abundance.Rmd'), eval=nrow(a@abundance)>0}
+```
+
+
+# Clonal overlap
+
+<div class="introduction_paragraph">
+Clonal overlap analysis computes the number of clones that are present across any pair of samples within a cloneby group. The cloneby group for this anlaysis was `r params$cloneby`. 
+We perform clonal overlap computations without and with bootstrapping. In clonal overlap without bootstrapping, overlapping clones are counted using all sequences from each paired samples, so it will show the actual number of clones that are present in both samples.
+In clonal overlap with bootstrapping, the same number of sequences are selected from each sample before computing the clonal overlap, with bootstrapping repetitions (`r params$nboot`). This way  the average number and percentage of overlapping clones is calculated across bootstrap resamples, which corrects for differences in sequencing depth among samples.
+</div>
+
+```{r}
+# check whether to calculate clonal overlap
+cloneby_sample_count <- db %>% group_by(.data[[params$cloneby]]) %>% summarize(n_samples=n_distinct(sample_id))
+
+calculate_overlap <- any(cloneby_sample_count$n_samples>1)
+max_n_samples <- max(cloneby_sample_count$n_samples)
+fig_size <- min(8,max(4,0.7*max_n_samples))
+
+if (!calculate_overlap){
+  cat("Clonal overlap analysis was not performed since there is only one sample per cloneby group")
+}
+```
+
+```{r clonal_overlap, eval=calculate_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
+
+cat("## Clonal overlap without bootstrapping\n")
+
+cat("Clonal overlap among samples considering all sequences in each sample. Numbers in each cell are the number of clones shared by the x-axis sample and the y-axis sample. Percentages indicate the fraction of shared clones from the total number of clones in the y-axis sample. Each cell is colored by percentage of clonal overlap. For group with many samples, numbers and percentages are hidden to improve visualization.")
+
+
+calculate_overlap_list <- cloneby_sample_count %>% 
+                             filter(n_samples>1) %>% 
+                             pull(.data[[params$cloneby]])
+
+# build a list of htmlwidgets
+plot_list <- lapply(calculate_overlap_list, function(item) {
+  
+  n_sample <- n_distinct(db[db[[params$cloneby]] == item, ]['sample_id'])
+  if(n_sample > 12){
+    text_size <- 0
+  }else{
+    text_size <- floor(min(4,1+12/n_sample))
+  }
+  
+  clonal_overlap_p <- ClonalOverlap_plot(
+    db[db[[params$cloneby]] == item, ],
+    geom_text_size = text_size
+  )
+  
+  clonal_overlap_p <- clonal_overlap_p + ggtitle(item)
+
+  eeplot(
+    clonal_overlap_p,
+    outdir = params$outdir,
+    file   = paste0("Clonal_Overlap_", item)
+  )
+  
+  htmltools::div(
+    ggplotly(clonal_overlap_p, tooltip = c("sample_x", "sample_y", "overlap"))%>%
+    layout(width = fig_size+1,height = fig_size),
+    htmltools::h2("\n\n")
+  )
+})
+
+# output all widgets + headings
+htmltools::tagList(plot_list)
+
+#output link to Rdata
+htmltools::tagList(
+  htmltools::div(
+    "The ggplot files for clonal overlap plots are stored here:",
+    style = "margin-top:3px"
+  ),
+  lapply(calculate_overlap_list, function(item) {
+    rdata_path <- file.path(
+      basename(params$outdir),
+      paste0("Bootstrapping_Clonal_Overlap_", item, ".RData")
+    )
+
+    htmltools::div(
+      htmltools::a(
+        href = rdata_path,
+        paste0("Clonal_Overlap_", item, ".RData"),
+        target = "_blank"
+      ),
+      style = "margin-top:3px;"
+    )
+  })
+)
+
+```
+
+```{r clonal_overlap_table, eval=calculate_overlap, results='asis'}
+
+calculate_overlap_list <- cloneby_sample_count %>% 
+                             filter(n_samples>1) %>% 
+                             pull(.data[[params$cloneby]])
+
+cloneby_element <- c()
+sampleA <- c()
+sampleB <- c()
+overlap_clones <- c()
+
+for(item in calculate_overlap_list){
+  unique_group <-str_sort(unique(db[db[[params$cloneby]] == item,][['sample_id']]),numeric=TRUE)
+  pairs <- combn(unique_group, 2)
+  for (i in seq_len(ncol(pairs))){
+      x <- pairs[1, i]
+      y <- pairs[2, i]
+      overlap <- db %>% filter(sample_id %in% c(x,y)) %>% 
+             group_by(clone_id) %>% 
+            summarise(distinct_sample = n_distinct(sample_id)) %>%
+            filter(distinct_sample > 1) %>%
+            arrange(as.integer(clone_id)) %>%
+            pull(clone_id)
+      if(length(overlap)>0){
+        cloneby_element <- c(cloneby_element, item)
+        sampleA <- c(sampleA, x)
+        sampleB <- c(sampleB, y)
+        overlap_clones <- c(overlap_clones, overlap %>% paste(collapse = ", "))
+      }
+  }
+}
+
+clone_overlap_table <- data.frame(
+        setNames(list(cloneby_element), params$cloneby),
+        sampleA = sampleA,
+        sampleB = sampleB,
+        overlap_clone_id = overlap_clones
+      )
+
+tbl <- eetable(clone_overlap_table, caption="Clonal_Overlap_Table", outdir=params$outdir, file="clonal_overlap")
+  
+cat(
+  "Clonal overlap table can be found here: ",
+  "[clonal_overlap.tsv](tables/clonal_overlap.tsv)\n"
+)
+```
+
+```{r}
+# check whether to calculate bootstrapping clonal overlap
+bootstrapping_cloneby_sample_count <- db %>% 
+  filter(sample_id %in% unique(a@bootstrap$sample_id)) %>%       group_by(.data[[params$cloneby]]) %>%  
+  summarize(n_samples=n_distinct(sample_id))
+
+calculate_bootstrapping_overlap <- any(bootstrapping_cloneby_sample_count$n_samples>1)
+max_n_samples <- max(bootstrapping_cloneby_sample_count$n_samples)
+fig_size <- min(8,max(4,0.7*max_n_samples))
+```
+
+```{r bootstrapping_clonal_overlap, eval=calculate_bootstrapping_overlap, results='asis',fig.width=fig_size+1, fig.height=fig_size}
+cat("## Clonal overlap with bootstrapping\n")
+
+cat(paste0("\n Clonal overlap among samples after selecting the same number of sequences from each sample.", "This procedure is repeated using bootstrapping with `r params$nboot` repetitions. We drew ",unique(a@n), " sequences in each repetition.", "Each cell is colored by the percentage of the average clonal overlap over the bootstrapping repetitions in the y-axis sample."))
+    
+db_bootstrapping <- a@bootstrap
+
+calculate_overlap_list <- bootstrapping_cloneby_sample_count %>% 
+                             filter(n_samples>1) %>% 
+                             pull(.data[[params$cloneby]])
+
+# build a list of htmlwidgets
+plot_list <- lapply(calculate_overlap_list, function(item) {
+  n_sample <- n_distinct(db[db[[params$cloneby]] == item, ]['sample_id'])
+  if(n_sample > 12){
+    text_size <- 0
+  }else{
+    text_size <- floor(min(4,1+12/n_sample))
+  }
+  
+  samples <- clone_sizes %>% 
+    filter(.data[[params$cloneby]]==item)  %>%
+     pull(sample_id) %>%
+     unique()
+  
+  bootstrapping_clonal_overlap_p <- Bootstrapping_ClonalOverlap_plot(
+    db_bootstrapping %>% filter(sample_id %in% samples),
+    geom_text_size = text_size
+  )
+  
+  bootstrapping_clonal_overlap_p <- bootstrapping_clonal_overlap_p + ggtitle(item)
+
+  eeplot(
+    bootstrapping_clonal_overlap_p,
+    outdir = params$outdir,
+    file   = paste0("Bootstrapping_Clonal_Overlap_", item)
+  )
+  
+  rdata_path <- file.path(
+  params$outdir,
+  paste0("Bootstrapping_Clonal_Overlap_", item, ".RData")
+)
+
+  htmltools::div(
+    ggplotly(bootstrapping_clonal_overlap_p, tooltip = c("sample_x", "sample_y", "overlap"))%>%
+    layout(width = fig_size+1,height = fig_size),
+    htmltools::h2("\n\n")
+    )
+  }
+)
+
+# output all widgets + headings
+htmltools::tagList(plot_list)
+
+# output link to Rdata
+htmltools::tagList(
+  htmltools::div(
+    "The ggplot files for clonal overlap with bootstrapping plots are stored here:",
+    style = "margin-top:3px"
+  ),
+  lapply(calculate_overlap_list, function(item) {
+    rdata_path <- file.path(
+      basename(params$outdir),
+      paste0("Bootstrapping_Clonal_Overlap_", item, ".RData")
+    )
+
+    htmltools::div(
+      htmltools::a(
+        href = rdata_path,
+        paste0("Bootstrapping_Clonal_Overlap_", item, ".RData"),
+        target = "_blank"
+      ),
+      style = "margin-top:3px;"
+    )
+  })
+)
+
+
+```
+
+```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
+cat("# Mutation frequency\n")
+```
+
+<div class="introduction_paragraph">
+Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence to the germline reference. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations for each entire sequence. 
+</div>
+
+
+```{r mutation_frequency, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & !("mu_freq" %in% colnames(db)), results='asis'}
+db <- shazam::observedMutations(db,
+                                sequenceColumn = "sequence_alignment",
+                                germlineColumn = "germline_alignment_d_mask",
+                                frequency = T,
+                                combine = T,
+                                nproc = params$nproc)
+
+```
+
+```{r eval=TRUE, echo=F}
+getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
+    ncols <- min(nfacets, ncols)
+    min(max_w, max(ncols*2, min_w))
+}
+
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=40) {
+    nrows <- ceiling(nfacets/ncols)
+    min(max_h, max(nrows*2, min_h))
+}
+```
+
+```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
+cat("The mutation frequency per sequence is stored in the final dataframes in the `mu_freq` column.\n")
+
+BCRs <- any(db$locus %in% c("IGH", "IGL", "IGK")) 
+no_c_call <-  all(is.na(db$c_call))
+if(no_c_call){
+  cat("Mutation frequency per c_gene is skipped becasue no constant region is present in the sequences.\n ")
+}
+
+```
+
+
+
+```{r mufreqSample, eval=BCRs & !no_c_call, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+
+db_cgene <- db %>% filter(!is.na(c_gene), !(is.na(mu_freq)))
+db_cgene$mu_freq <- as.numeric(db_cgene$mu_freq)
+
+subject_levels <- str_sort(unique(db_cgene$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(db_cgene$sample_id),  numeric = TRUE)
+db_cgene <- db_cgene %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) 
+
+
+if (nrow(db_cgene) > 0) {
+    mufreqSample <- ggplot(db_cgene, aes(x=c_gene, y=mu_freq, fill=c_gene)) + 
+                    geom_boxplot() +
+                    facet_wrap(~ subject_id + sample_id, ncol=3, scales = "free") +
+                    theme_enchantr() +
+                    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+    mufreqSample <- eeplot(mufreqSample, 
+                        outdir=params$outdir, 
+                        file='mutation_frequency_sample',
+                        caption=paste0("Mutation frequency per C gene per `sample_id`."),
+                        mufreqSample)
+    print(mufreqSample +
+        theme(legend.position = "none"))
+    caption <- mufreqSample$enchantr$html_caption  
+}
+
+```
+
+```{r mufreqSampleLocus,fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+
+db_locus <- db %>% filter(!is.na(locus), !is.na(mu_freq))
+db_locus$mu_freq <- as.numeric(db_locus$mu_freq)
+
+subject_levels <- str_sort(unique(db_locus$subject_id), numeric = TRUE)
+sample_levels  <- str_sort(unique(db_locus$sample_id),  numeric = TRUE)
+db_locus <- db_locus %>%
+  mutate(
+    subject_id = factor(subject_id, levels = subject_levels),
+    sample_id  = factor(sample_id,  levels = sample_levels)
+  ) %>%
+  arrange(subject_id, sample_id) 
+
+if (nrow(db_locus) > 0) {
+    mufreqSampleLocus <- ggplot(db_locus, aes(x=locus, y=mu_freq, fill=locus)) + 
+                    geom_boxplot() +
+                    facet_wrap(~ subject_id + sample_id, ncol=3, scales = "free") +
+                    theme_enchantr() +
+                    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+    mufreqSampleLocus <- eeplot(mufreqSampleLocus, 
+                        outdir=params$outdir, 
+                        file='mutation_frequency_sample_locus',
+                        caption=paste0("Mutation frequency per locus per `sample_id`."),
+                        mufreqSampleLocus)
+    print(mufreqSampleLocus +
+        theme(legend.position = "none"))
+    caption <- mufreqSampleLocus$enchantr$html_caption 
+}
+
+```
+
+# Final tables and repertoires
+
+Summary tables:
+
+```{r, results='asis', echo=FALSE, eval=nrow(a@abundance)>0}
+cat("- [Summary of number of clones](tables/num_clones_table.tsv)\n", sep="")
+cat("- [Clone sizes table](tables/clone_sizes_table.tsv)\n", sep="")
+cat("- [Clonal abundance](tables/clonal_abundance.tsv)\n", sep="")
+cat("- [Clonal diversity](tables/clonal_diversity.tsv)\n", sep="")
+if(calculate_overlap){
+  cat("- [Clonal overlap](tables/clonal_overlap.tsv)\n", sep="")
+}
+
+```
+
+Find your final repertoires here:
+
+```{r fn, results='asis', echo=F}
+if (!is.null(params$outname)) {
+    output_fn <- paste0(params$outname,"_repertoire-pass.tsv")
+} else {
+    output_fn <- sub(".tsv$", "_repertoire-pass.tsv", basename(params$input))
+}
+
+if (!is.null(params$log)) {
+    log_fn <- file.path(params$outdir,paste0(params$log,".txt"))
+} else {
+    log_fn <- file.path(params$outdir,sub("_repertoire-pass.tsv$", "_command_log.txt", basename(output_fn)))
+}
+```
+
+```{r dbpass, results='asis', echo=FALSE}
+# Remove unnecessary columns
+db <- db %>% select(-clone_size_count, -clone_size_freq, -any_of(c("c_gene")))
+
+# due to multiple input files
+input_sizes_byoutput <- input_sizes_byoutput %>%
+    select(-input_files) %>%
+    ungroup() %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarise(across(everything(), function(x) {paste(x, collapse = ",")} ))
+    
+output_groups <- db %>%
+    ungroup() %>%
+    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarize(output_size = n()) %>%
+    right_join(input_sizes_byoutput) %>%
+    select(input_size, output_size, everything()) 
+    
+   
+output_files <- c()
+output_sizes <- c()
+input_sizes <- c()
+dir.create(file.path(params$outdir,"repertoires")) 
+for (i in 1:nrow(output_groups))  {
+    group_db <- left_join( output_groups[i,params$outputby,drop=F],
+                           db,
+                           by=c(params$outputby))
+    
+    group_db_label <- gsub("^id_","",makeLabel(group_db, fields= params$outputby))
+    group_fn <- file.path(params$outdir,"repertoires",paste0(group_db_label,"_",output_fn))
+    output_files <- c(output_files, group_fn)
+    output_sizes <- c(output_sizes, nrow(group_db))
+    i_input_size <- sum(as.numeric(strsplit(output_groups[["input_size"]][i],",")[[1]]))
+    input_sizes <- c(input_sizes, i_input_size)
+    write_rearrangement(group_db %>% select(-c(input_file,all)), file=group_fn)
+    cat("- [",group_db_label,"](",file.path("repertoires",basename(group_fn)),")\n", sep="")
+}
+```
+
+```{r log, echo=FALSE}
+cat("START> ClonePass", file=log_fn, append=F)
+for (i in 1:nrow(output_groups)) {
+    cat(paste0("\nFILE",i,"> ",basename(output_groups[['input_file']][i])), file=log_fn, append=T)
+    cat(paste0("\nOUTPUT",i,"> ",basename(output_files[i])), file=log_fn, append=T)
+    cat(paste0("\nPASS",i,"> ",output_sizes[i]), file=log_fn, append=T)
+    cat(paste0("\nFAIL",i,"> ",input_sizes[i]-output_sizes[i]), file=log_fn, append=T)    
+}
+```
+
+```{r, child=c('versions.Rmd')}
+```
