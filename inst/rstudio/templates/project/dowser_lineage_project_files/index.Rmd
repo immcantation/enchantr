@@ -40,7 +40,7 @@ params:
       label: "`outname`"
       input: text
       value: "dowser"
-   nproc:outname
+   nproc:
       label: "`nproc`"
       input: numeric
       value: 1
