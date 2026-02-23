@@ -2,7 +2,7 @@
 ```{r abundanceAnnotation}
 # annotate
 a@abundance <- a@abundance %>%
-   left_join( db %>% 
+   left_join( db_keep_for_abundance %>% 
                  select(any_of(c(unique(c("sample_id", 
                                                 "subject_id",
                                                 params$cloneby)))
@@ -43,14 +43,14 @@ getPrettyWidth <- function(nfacets, ncols, min_w=5, max_w=7) {
     min(max_w, max(ncols*2, min_w))
 }
 
-getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=20) {
+getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=40) {
     nrows <- ceiling(nfacets/ncols)
     min(max_h, max(nrows*2, min_h))
 }
 ```
 
 
-```{r abundanceSample, eval=TRUE, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r abundanceSample, eval=TRUE, fig.width=getPrettyWidth(length(unique(db_keep_for_abundance[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db_keep_for_abundance[['sample_id']])),ncols=3), fig.cap=caption}
 abundanceSample <- p + facet_wrap(~ subject_id + sample_id, ncol=3)
 abundanceSample <- eeplot(abundanceSample, 
                      outdir=params$outdir, 
@@ -59,7 +59,7 @@ abundanceSample <- eeplot(abundanceSample,
                       a@n,
                       " sequences with ",
                       a@nboot,
-                      " boostrapping repetitions."),
+                      " boostrapping repetitions. The y-axis shows the clonal abundance (i.e., the proportion of the clone in the repertoire as a percentage. The x-axis shows the rank of each clone (from 1 to N number of clones in the sample), where the rank is sorted by clone size from larger (rank 1, left) to smaller (right).  The x-axis rank number is represented on a logarithmic scale. The shaded areas are confidence intervals of the clonal abundance over the bootstrapping repetitions."),
                      a)
 abundanceSample +
     theme(legend.position = "none")
@@ -68,9 +68,11 @@ caption <- abundanceSample$enchantr$html_caption
 
 # Diversity
 <div class="introduction_paragraph">
-The clonal abundance distribution can be characterized using diversity statistics. Diversity scores (D) are calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
+The clonal abundance distribution can be characterized using diversity statistics. Diversity calculation is useful to determine whether there is any difference in clonal expansion or the clonal distribution between repertoires.
 
-The function alphaDiversity resamples the sequences (`r params$nboot` random bootstrapping events, with the number of sequences in the sample with less sequences (N)) and calculates diversity scores (D) over a interval of diversity orders (q). The diversity (D) is shown on the y-axis and the x-axis is the parameter q. - q = 0 corresponds to Species Richness - q = 1 corresponds to Shannon Entropy - q = 2 corresponds to Simpson Index
+Diversity scores (D) are calculated using the generalized diversity index (Hill numbers), which covers many different measures of diversity in a single function with a single varying parameter, the diversity order q.
+
+For diversity calculations, bootstrapping is also performed (i.e. selecting the same number of sequences and repeating this procedure multiple times for each sample). For this diversity computation, `r params$nboot` bootstrapping repetitions were performed.
 
 Inspection of this figure is useful to determine whether any difference in diversity between two repertoires depends on the statistic used or if it is a universal property. 
 
@@ -103,6 +105,7 @@ The intuition about the different Hill Diversity values is the following:
 * At $q=1$ the diversity index is the geometric mean of the clones in the sample,
 weighted by their proportion in the sample.
 * At $q>1$ more weight is given to the clones with higher proportions in the sample.
+* q = 2 corresponds to the Simpson Index.
 </div>
 
 ## Diversity curves
@@ -112,13 +115,14 @@ The following table shows the summary of the diversity calculations per sample.
 </div>
 
 ```{r diversity, results='asis'}
+
 # generate the Hill diversity curve
-d <- alphaDiversity(db %>% filter(isHeavyChain(locus)), 
+d <- alphaDiversity(db_keep_for_abundance %>% filter(isHeavyChain(locus)), 
                     group = "sample_id", 
                     min_n=params$min_n)
 
 d@diversity <- d@diversity %>%
-   left_join( db %>% 
+   left_join( db_keep_for_abundance %>% 
                  select(any_of(c(unique(c("sample_id", 
                                                 "subject_id", 
                                                 params$cloneby)))
@@ -151,7 +155,7 @@ print_table_caption("clonal_diversity", tab$caption)
 
 ## Diversity plot by sample
 
-```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3)}
+```{r diversitySample, eval=TRUE,  fig.cap=caption, fig.width=getPrettyWidth(length(unique(db_keep_for_abundance[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db_keep_for_abundance[['sample_id']])),ncols=3)}
 # plot duplicated cells
 diversitySample <- diversitySample + 
     geom_vline(xintercept = c(0,1,2), color = "grey50", linetype = "dashed") +
@@ -163,7 +167,7 @@ diversitySample <- eeplot(diversitySample,
                       d@n,
                       " sequences with ",
                       a@nboot,
-                      " boostrapping repetitions."),
+                      " boostrapping repetitions. The diversity (D) is shown on the y-axis and the x-axis represent the diversity orders q. Lower diversity generally indicates that there expanded clones in the repertoire."),
                      d)
 diversitySample +
     theme(legend.position = "none")
@@ -178,18 +182,19 @@ caption <- diversitySample$enchantr$html_caption
 </div>
 
 ```{r div_at_q, eval=TRUE,  fig.cap=caption, fig.width=5, fig.height=3}
+caption = "Diversity at different q values."
 # plot duplicated cells
 div_data <- d@diversity %>% dplyr::filter(q==0 | q==1 | q==2)
 
-div_at_q <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
+div_at_q_plot <- ggplot(div_data, aes(x=q, y=d, color=sample_id)) +
     geom_point() + theme_enchantr() +
     scale_x_continuous(breaks= c(0,1,2))+ 
     theme(text = element_text(family = "Helvetica"))
     
-div_at_q <- eeplot(div_at_q, 
+div_at_q_plot <- eeplot(div_at_q_plot, 
                      outdir=params$outdir, 
                      file=knitr::opts_current$get('label'),
-                     caption="Diversity at different q values.")
-ggplotly(div_at_q)
-caption <- div_at_q$enchantr$html_caption
+                     caption= caption)
+ggplotly(div_at_q_plot+theme(legend.position="right"))
+caption <- div_at_q_plot$enchantr$html_caption
 ```

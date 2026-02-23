@@ -40,7 +40,7 @@ params:
       label: "`outname`"
       input: text
       value: "dowser"
-   nproc:outname
+   nproc:
       label: "`nproc`"
       input: numeric
       value: 1
@@ -159,7 +159,7 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
 
     clones <- data.frame()
 
-    traits <- params[['traits']]
+    traits <- strsplit(params[['traits']], ",")[[1]]
     if (!is.null(traits)) {
         # check that traits exist and have data
         traits <- validateFields(traits, db, na_action="null")
@@ -172,7 +172,7 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
     db <- db %>%
         mutate(across(all_of(c(traits)), miss))
 
-    num_fields <- params[['num_fields']]
+    num_fields <- strsplit(params[['num_fields']], ",")[[1]]
     # check that num_fields exist and have data
     num_fields <- validateFields(num_fields, db, na_action="null")
 
