@@ -19,7 +19,7 @@ params:
    cloneby:
       label: "`cloneby`"
       input: text
-      value: "sample_id"   
+      value: "sample_id"
    crossby:
       label: "`crossby`"
       input: text

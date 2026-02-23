@@ -7,7 +7,7 @@ description="Full suite of the Immcantation framework tools and dependencies wit
 COPY . /tmp/enchantr
 
 # Install enchantr
-RUN rinstall -p "/tmp/enchantr"
+RUN rinstall -p "/tmp/enchantr" -u never
 
 # Set commands
 CMD echo -e " Version information:\n"\
