@@ -370,6 +370,8 @@ if (all(loci == "IGH")) {
   # Light chain: run per gene-range
   novel <- infer_novel_light_chain(db, germline_db, params)
 }
+
+eval_ <- !inherits(novel, "try-error") && nrow(novel) > 0
 ```
 
 # Filter and clean novel alleles
@@ -383,54 +385,78 @@ We retain at most two novel alleles per V gene. This guards against over-splitti
 *Repeated-read / recurrent SNP-pattern filter*
 We remove support from sequences that show repeated instances of the same novel-SNP motif inside a single read. These patterns are a common source of false positives from sequecing errors. 
 
-```{r clean-up}
+```{r clean-up, eval=eval_}
+novel <- tigger::selectNovel(novel) %>%
+   dplyr::distinct(novel_imgt, .keep_all = TRUE) %>%
+   dplyr::filter(!is.na(novel_imgt), nt_substitutions != "") %>%
+   dplyr::mutate(gene = alakazam::getGene(germline_call, strip_d = FALSE)) %>%
+   dplyr::group_by(gene) %>%
+   dplyr::top_n(n = 2, wt = novel_imgt_count)
 
-if (!inherits(novel, "try-error") && nrow(novel) > 0) {
-  novel <- tigger::selectNovel(novel) %>%
-    dplyr::distinct(novel_imgt, .keep_all = TRUE) %>%
-    dplyr::filter(!is.na(novel_imgt), nt_substitutions != "") %>%
-    dplyr::mutate(gene = alakazam::getGene(germline_call, strip_d = FALSE)) %>%
-    dplyr::group_by(gene) %>%
-    dplyr::top_n(n = 2, wt = novel_imgt_count)
+snp_xxxx <- check_repeated_snp_patterns(novel)
+novel <- novel[!snp_xxxx, ]
+novel <- novel[!duplicated(novel[["polymorphism_call"]]), ]
 
-  snp_xxxx <- check_repeated_snp_patterns(novel)
-  novel <- novel[!snp_xxxx, ]
-  novel <- novel[!duplicated(novel[["polymorphism_call"]]), ]
-}
-
+eval_ <- !inherits(novel, "try-error") && nrow(novel) > 0
 ```
 
 # Generate novel reference database
 
 We append the high-confidence novel alleles to the existing germline reference set, producing an updated “novel” reference database. Each novel allele retains its reference name plus a suffix identifying its novel variant
 
-```{r build-reference}
-if (!inherits(novel, "try-error") && nrow(novel) > 0) {
-  # Build novel reference database
-  novel_germline <- setNames(gsub("-", ".", novel[["novel_imgt"]], fixed = TRUE), novel[["polymorphism_call"]])
-  germline_db <- c(germline_db, novel_germline)
+```{r build-reference, eval=eval_}
+# Build novel reference database
+novel_germline <- setNames(gsub("-", ".", novel[["novel_imgt"]], fixed = TRUE), novel[["polymorphism_call"]])
+germline_db <- c(germline_db, novel_germline)
+```
+
+# Plot Novel Alleles Evidence
+
+<div class="introduction_paragraph">
+Plots showing evidence for each inferred novel allele. For every candidate, the plot summarizes the supporting sequence evidence across positions, as reported by TIgGER.
+</div>
+
+```{r plot-novel-alleles, eval=eval_, results='asis', echo=FALSE}
+for (i in seq_len(nrow(novel))) {
+   plot_env <- new.env()
+   plot_env$allele <- novel$polymorphism_call[i]
+   plot_env$p_obj <- plotNovel(db, novel[i,])
+   plot_env$ix <- i
+   plot_env$params <- params
+   plot_env$caption <- paste0("Novel allele evidence: ", plot_env$allele, ".")
+   
+   child <- paste0(
+     "\n## ", plot_env$allele, " \n\n",
+     "```{r novel-allele-", i, ", echo=FALSE, message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.cap=caption}\n",
+     "novel_allele_plot <- eeplot(p_obj, outdir=params$outdir, ",
+     "file=paste0('novel-allele-', ix), caption=caption)\n",
+     "plot(novel_allele_plot)\n",
+     "caption <- novel_allele_plot$enchantr$html_caption\n",
+     "```\n"
+   )
+   cat(knitr::knit_child(text = child, envir = plot_env, quiet = TRUE))
 }
 ```
 
 # Output files
 
-```{r save-results, results='asis'}
+```{r save-inference, eval=eval_, results='asis'}
 # Save novel report
-if (!inherits(novel, "try-error") && nrow(novel) > 0) {
-  dir.create(file.path(params$outdir, "tables"))
-  write.table(novel, file = file.path(params$outdir, "tables", report_output_fn),
-              row.names = FALSE, quote = FALSE, sep = "\t")
-  cat("Novel alleles report: [", report_output_fn, "](", report_output_fn, ") - Detailed results table\n")
-}
+dir.create(file.path(params$outdir, "tables"))
+write.table(novel, file = file.path(params$outdir, "tables", report_output_fn),
+            row.names = FALSE, quote = FALSE, sep = "\t")
+cat("Novel alleles report: [", report_output_fn, "](", report_output_fn, ") - Detailed results table\n")
+```
 
+```{r save-germline, results='asis'}
 # create the germline output directory
-germline_output_dir <- file.path(params$outdir, file.path("db_novel", params$species, "vdj"))
+germline_output_dir <- file.path(params$outdir, file.path("db_novel", species, "vdj"))
 dir.create(germline_output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # copy everything from the original germline db to the new location
-file.copy(list.files(file.path(imgt_db, params$species, "vdj"), full.names = TRUE),
+invisible(file.copy(list.files(file.path(imgt_db, species, "vdj"), full.names = TRUE),
           germline_output_dir,
-          recursive = TRUE)
+          recursive = TRUE))
 
 # get the V loci files
 loci_files <- list.files(germline_output_dir, paste0(loci, "V", collapse = "|"), full.names = TRUE)

@@ -154,6 +154,8 @@ reassign_segment <- function(db, seg, loci, references, treat_multigene_as_uncal
 #' @param keep_gene Character. One of "gene", "family", or "repertoire".
 #' @param ignored_regex Regex for characters to ignore when comparing.
 #' @param treat_multigene_as_uncalled Logical. Treat multi-gene calls as uncalled.
+#' @param top_k Integer. Number of top alleles to keep. If NULL, keep all alleles. Default is 3.
+#' @param top_by Character. One of "alphabetical" or "mutation_count". Default is "alphabetical".
 #' @return `data` with a new column like "v_call_reassigned" containing the reassigned calls.
 #' @export
 reassignAllelesVDJ <- function(
@@ -165,7 +167,9 @@ reassignAllelesVDJ <- function(
   trim_seq = FALSE,
   keep_gene = c("gene", "family", "repertoire"),
   ignored_regex = "[\\.N-]",
-  treat_multigene_as_uncalled = FALSE
+  treat_multigene_as_uncalled = FALSE,
+  top_k = 3,
+  top_by = "alphabetical"
 ) {
   keep_gene <- match.arg(keep_gene)
   sequences <- as.character(data[[seq]])
@@ -209,6 +213,9 @@ reassignAllelesVDJ <- function(
   calls <- getAllele(data[[call_column]], first = FALSE, strip_d = FALSE)
   calls_reassign <- rep("", length(calls))
 
+  # Identify valid calls (not empty/NA)
+  has_call <- !is.na(calls) & nzchar(calls)
+
   # Detect multi-gene calls when relevant
   if (keep_gene %in% c("gene", "repertoire") && treat_multigene_as_uncalled) {
     genes_full <- getGene(calls, first = FALSE, strip_d = FALSE)
@@ -247,7 +254,7 @@ reassignAllelesVDJ <- function(
   names(homo_alleles) <- homo
 
   # Homozygous: direct mapping, but skip multi-gene rows
-  homo_calls_i <- which(g %in% homo & !is_multigene)
+  homo_calls_i <- which(g %in% homo & !is_multigene & has_call)
   if (length(homo_calls_i) > 0) {
     calls_reassign[homo_calls_i] <- homo_alleles[g[homo_calls_i]]
   }
@@ -255,7 +262,7 @@ reassignAllelesVDJ <- function(
   # Heterozygous: choose best allele(s) within each gene/group, skip multi-gene rows
   if (length(hetero) > 0) {
     for (het in hetero) {
-      ind <- which(g %in% het & !is_multigene)
+      ind <- which(g %in% het & !is_multigene & has_call)
       if (length(ind) > 0) {
         het_alleles <- names(germline[which(germline == het)])
         het_seqs <- germline_db[het_alleles]
@@ -276,16 +283,24 @@ reassignAllelesVDJ <- function(
 
         best_match <- .best_match_indices(dist_mat)
         best_alleles <- lapply(best_match, function(x) het_alleles[x])
+
+        if (!is.null(top_k) && !is.na(top_k) && top_by == "alphabetical") {
+          best_alleles <- lapply(best_alleles, function(x) {
+            if (length(x) > top_k) head(sort(x), top_k) else x
+          })
+        }
+
         calls_reassign[ind] <- unlist(lapply(best_alleles, paste, collapse = ","))
       }
     }
   }
 
   # Rows already handled via homo/hetero (excluding multi-gene rows)
-  hetero_calls_i <- which(g %in% hetero & !is_multigene)
+  hetero_calls_i <- which(g %in% hetero & !is_multigene & has_call)
 
   # Everything else (including multi-gene rows) is treated as "not called"
-  not_called <- setdiff(seq_along(g), c(homo_calls_i, hetero_calls_i))
+  # We only reassign if there was an original call
+  not_called <- setdiff(which(has_call), c(homo_calls_i, hetero_calls_i))
 
   if (length(not_called) > 0) {
     if (method == "hamming") {
@@ -304,6 +319,13 @@ reassignAllelesVDJ <- function(
 
     best_match <- .best_match_indices(dist_mat)
     best_alleles <- lapply(best_match, function(x) names(germline_db[x]))
+
+    if (!is.null(top_k) && !is.na(top_k) && top_by == "alphabetical") {
+      best_alleles <- lapply(best_alleles, function(x) {
+        if (length(x) > top_k) head(sort(x), top_k) else x
+      })
+    }
+
     calls_reassign[not_called] <- unlist(lapply(best_alleles, paste, collapse = ","))
   }
 
