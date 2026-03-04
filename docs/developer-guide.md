@@ -123,43 +123,7 @@ and contains:
 
 To add a new report to `enchantr`, follow these steps:
 
-### 1. Create an R file with report specific functions
-
-Create a new file `R/<report_name>.R` with a project function:
-
-```r
-#' Create an Immcantation <Report Name> Project
-#'
-#' @param  path path to the directory where the project will be created
-#' @export
-<report_name>_project <- function(path, ...) {
-    skeleton_dir <- file.path(system.file(package = "enchantr"), 
-                              "rstudio", "templates", "project",
-                              "<report_name>_project_files")
-    project_dir <- path
-    if (!dir.exists(project_dir)) {
-        message("Creating project_dir ", project_dir)
-        dir.create(project_dir, recursive = TRUE, showWarnings = FALSE)
-    }
-
-    project_files <- list.files(skeleton_dir, full.names = TRUE)
-    file.copy(project_files, project_dir, recursive = TRUE)
-}
-```
-
-Add any specific analysis functions needed for the report in the same file. Functions should be documented using roxygen. Add unit tests for relevant functions.
-
-### 2. Create the DCF File
-
-Create `inst/rstudio/templates/project/<report_name>.dcf`:
-
-```
-Binding: <report_name>_project
-Title: Immcantation <Report Title>
-OpenFiles: index.Rmd, _bookdown.yml
-```
-
-### 3. Create the Project Files Directory
+### 1. Create the Project Files Directory
 
 Create `inst/rstudio/templates/project/<report_name>_project_files/` with:
 
@@ -289,7 +253,33 @@ Multiple citations can be combined: `[@Gupta2015; @AnotherCitation2020]`
 
 Add any required data files, additional Rmd files, or other resources.
 
-### 4. Update `enchantr_report()`
+### 2. Create an R file with report specific functions
+
+Create a new file `R/<report_name>.R` with a project function:
+
+```r
+#' Create an Immcantation <Report Name> Project
+#'
+#' @param  path path to the directory where the project will be created
+#' @export
+<report_name>_project <- function(path, ...) {
+    skeleton_dir <- file.path(system.file(package = "enchantr"), 
+                              "rstudio", "templates", "project",
+                              "<report_name>_project_files")
+    project_dir <- path
+    if (!dir.exists(project_dir)) {
+        message("Creating project_dir ", project_dir)
+        dir.create(project_dir, recursive = TRUE, showWarnings = FALSE)
+    }
+
+    project_files <- list.files(skeleton_dir, full.names = TRUE)
+    file.copy(project_files, project_dir, recursive = TRUE)
+}
+```
+
+Add any specific analysis functions needed for the report in the same file. Functions should be documented using roxygen. Add unit tests for relevant functions.
+
+### 3. Update `enchantr_report()`
 
 Edit `R/report.R` to add the new report to both:
 
@@ -311,7 +301,19 @@ switch (name,
 )
 ```
 
-### 6. Test the New Report
+
+### 4. Create the DCF File
+
+Create `inst/rstudio/templates/project/<report_name>.dcf`:
+
+```
+Binding: <report_name>_project
+Title: Immcantation <Report Title>
+OpenFiles: index.Rmd, _bookdown.yml
+```
+
+
+### 5. Test the New Report
 
 
 **Interactively**
