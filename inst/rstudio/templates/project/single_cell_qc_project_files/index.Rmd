@@ -26,6 +26,10 @@ params:
       label: "`outputby` name of the column in `input` that contains identifiers that will be used to split the output db."      
       input: text
       value: "sample_id"      
+   checkcontamination:
+      label: "`checkcontamination`: Check contamination among samples. "
+      input: checkbox
+      value: TRUE
    log:
       label: "`log`"
       input: text
@@ -218,14 +222,20 @@ db_no_doublets_size <- nrow(db)
 
 Sequences in different samples that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) can indicate contamination.
 
-```{r sc-duplicates, results="asis"}
+```{r eval= ! params$checkcontamination, results="asis"}
+cat("Skip checking for contamination as the parameter `checkcontamination` was set to `FALSE`.")
+dups_found <- FALSE
+```
+
+
+```{r sc-duplicates, eval=params$checkcontamination, results="asis"}
 # Find duplicated sequences
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
                                  seq = "sequence_alignment", mode = "sequences")
 dups_found <- sum(dups$dups$sc_duplicate, na.rm = T) > 0
 ```
 
-```{r sc-duplicates-zero, results="asis", eval=!dups_found, echo=FALSE}
+```{r sc-duplicates-zero, results="asis", eval= params$checkcontamination && !dups_found, echo=FALSE}
 if (nrow(dups[["dups"]]) == 0) {
   cat("No suspicious overlaps detected.\n\n")
 }
@@ -295,7 +305,7 @@ ggplotly(p_sc_duplicates) %>% layout(barmode = "stack")
 
 ## Cell overlaps matrix
 
-```{r overlap-summary}
+```{r overlap-summary, eval=dups_found}
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
