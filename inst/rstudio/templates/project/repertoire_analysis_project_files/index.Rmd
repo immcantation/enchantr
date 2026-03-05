@@ -15,8 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires files"
       input: file
-      #value: "Example_clone-pass.tsv"
-      value: "R4__clone-pass.tsv,R5__clone-pass.tsv,R8__clone-pass.tsv"
+      value: "Example_clone-pass.tsv"
    cloneby:
       label: "`cloneby`"
       input: text
