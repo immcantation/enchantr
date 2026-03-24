@@ -139,6 +139,7 @@ suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("tigger"))
+suppressPackageStartupMessages(library("purrr"))
 
 if (!dir.exists(params$outdir)) {
   dir.create(params$outdir, recursive = TRUE)
@@ -256,6 +257,7 @@ if (!is.null(params$log)) {
 }
 ```
 
+
 # Read germline database
 
 Import the nucleotide germline reference used for alignment.
@@ -273,7 +275,6 @@ if (params$imgt_db != "") {
   references <- NA
 }
 ```
-
 
 # Clonal representative selection (optional)
 
@@ -295,6 +296,9 @@ if (params$single_clone_representative) {
   db <- db %>% filter(clone_representative)
 }
 ```   
+
+
+### **This analysis is produced for subject `r paste(unique(db$subject_id), collapse=", ")` using the samples `r paste(unique(db$sample_id), collapse=", ")`.**
 
 # TIgGER Bayesian genotype inference
 
@@ -358,20 +362,42 @@ print_table_caption(tag="tab_genotype", text=tab_genotype$caption)
 The genotype plot provides a visual representation of the inferred alleles for each gene. 
 </div>
 
-```{r plot-genotype-inference, results='asis', fig.cap=caption, fig.height=12, fig.width=8}
-genotype_plot <- plot_genotype(genotypes, allele_column = "genotyped_alleles", silent=TRUE)
+```{r plot-genotype-inference, results='asis', echo=FALSE}
+genotype_plots <- genotypes %>%
+  mutate(gene_type = substr(gene, 4, 4)) %>%
+  group_split(gene_type) %>%
+  set_names(map_chr(., ~ unique(.x$gene_type))) %>%
+  map(~ plot_genotype(
+    .x,
+    allele_column = "genotyped_alleles",
+    silent = TRUE
+  ))
 
-caption <- "Genotype inference summary. Each row represents a specific gene, where the colored bars indicate the inferred alleles."
+fig_heights <- genotypes %>%
+  mutate(gene_type = substr(gene, 4, 4)) %>%
+  group_by(gene_type) %>%
+  summarise(n = n()) %>%
+  mutate(fig_height = n * 0.5)
 
-genotype_plot <- eeplot(genotype_plot,
-  caption = caption,
-  outdir = params$outdir,
-  file = "plot-genotype-inference"
-)
-
-print(genotype_plot)
-
-caption <- genotype_plot$enchantr$html_caption
+for (i in seq_along(genotype_plots)) {
+   plot_env <- new.env()
+   plot_env$gene_type <- names(genotype_plots)[i]
+   plot_env$p_obj <- genotype_plots[[i]]
+   plot_env$ix <- i
+   plot_env$params <- params
+   plot_env$caption <- paste0("Genotype inference summary: ", plot_env$gene_type, ". Each row represents a specific gene, where the colored bars indicate the inferred alleles.")
+   plot_env$fig_height <- fig_heights$fig_height[[i]]
+   child <- paste0(
+     "\n## ", plot_env$gene_type, " \n\n",
+     "```{r genotype-inference-", i, ", echo=FALSE, message=FALSE, warning=FALSE, fig.height=", plot_env$fig_height, ", fig.width=8, fig.cap=caption}\n",
+     "genotype_plot <- eeplot(p_obj, outdir=params$outdir, ",
+     "file=paste0('genotype-inference-', ix), caption=caption)\n",
+     "plot(genotype_plot)\n",
+     "caption <- genotype_plot$enchantr$html_caption\n",
+     "```\n"
+   )
+   cat(knitr::knit_child(text = child, envir = plot_env, quiet = TRUE))
+}
 ```
 
 
@@ -417,6 +443,8 @@ generate_genotyped_reference(
 
 ```{r log-end}
 cat("START> TIgGER Bayesian Genotype Inference", file = log_fn, append = FALSE)
+cat(paste0("\nSUBJECT> ", paste(unique(db$subject_id), collapse = ", ")), file = log_fn, append = TRUE)
+cat(paste0("\nSAMPLE> ", paste(unique(db$sample_id), collapse = ", ")), file = log_fn, append = TRUE)
 cat(paste0("\nMETHOD> TIgGER Bayesian"), file = log_fn, append = TRUE)
 cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
 cat(paste0("\nGENOTYPE_LOCI> ", paste0(loci, collapse = ",")), file = log_fn, append = TRUE)

@@ -302,6 +302,15 @@ if (all(c("subject_id", "sample_id") %in% colnames(db))){
 db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
 ```
 
+This report is produced for subject `r paste(unique(db$subject_id), collapse=", ")` using the samples `r paste(unique(db$sample_id), collapse=", ")`.
+
+```{r log}
+cat("START> InferNovelAlleles", file = log_fn, append = FALSE)
+cat(paste0("\nSUBJECT> ", paste(unique(db$subject_id), collapse=", ")), file = log_fn, append = TRUE)
+cat(paste0("\nSAMPLE> ", paste(unique(db$sample_id), collapse=", ")), file = log_fn, append = TRUE)
+cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
+```
+
 # Read Germline database
 
 Import the nucleotide germline reference used for alignment.
@@ -316,11 +325,6 @@ imgt_db <- prepareIMGT(params$imgt_db)
 references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
 ## filter the germline database to include only alleles of params$v_call
 germline_db <- unlist(lapply(loci, function(locus) references[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
-```
-
-```{r log}
-cat("START> InferNovelAlleles", file = log_fn, append = FALSE)
-cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
 ```
 
 # Run `findNovelAlleles`
