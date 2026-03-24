@@ -46,7 +46,7 @@ test_that("file size report issue 49", {
     expeted_log <- data.frame(
             input = c("Sample8_quality-pass.tsv", "Sample8_quality-pass.tsv"), 
             output = c("Sample8_productive-F.tsv", "Sample8_productive-T.tsv"),
-            task = structure(c(1L, 1L), class = "factor", levels = "ParseDb-split"), 
+            task = c("ParseDb-split", "ParseDb-split"), 
             input_size = c(92, 92), 
             output_size = c(3, 89))
     expect_equal(out_log, expeted_log)
