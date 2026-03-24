@@ -164,14 +164,14 @@ for (i in order(ids)) {
                    file=out_filename)
     
     p <- ggplot(plot_table, 
-           aes(x=filename, y=num_seqs, group=name)) +
+           aes(x=name, y=num_seqs, group=name)) +
         geom_bar(stat="identity") +
+        scale_x_discrete(labels=setNames(plot_table$filename, plot_table$name)) +
         theme_enchantr() +
         theme(
             axis.text.x = element_text(angle = 90, hjust=0.5, vjust=0)
         ) +
-        labs(x="File", y="Number of sequences") # +
-        # scale_x_discrete(labels= function(x) { gsub("(.*_)([^_]*$)","\\2",x)} ) # Do we need this for shorter x-axis labels?
+        labs(x="File", y="Number of sequences")
         
     cat(tab$caption)
     # Remove file extension safely
