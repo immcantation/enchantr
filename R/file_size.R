@@ -232,7 +232,7 @@ formatConsoleLog <- function(log_file){
             log_table[['input_size']] <- NA
         }
     }
-    log_table[['task']] <- task
+    log_table[['task']] <- as.character(task)
     log_table[['input_size']] <- as.numeric(log_table[['input_size']])
     log_table[['output_size']] <- as.numeric(log_table[['output_size']])
     log_table %>%
