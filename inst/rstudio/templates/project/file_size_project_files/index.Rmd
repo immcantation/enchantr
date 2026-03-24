@@ -130,7 +130,7 @@ cat("\n\n")
 ```{r, results="asis", echo=FALSE, fig.width=8,fig.height=6}
 ids <- names(log_data_graphs$by_sample)
 for (i in order(ids)) {
-    this_id <- ids[i]
+    this_id <- sub("_root$","",ids[i])
     
     log_plot <- plotLogGraph(log_data_graphs$by_sample[[i]])
     
