@@ -46,7 +46,7 @@ test_that("file size report issue 49", {
     expeted_log <- data.frame(
             input = c("Sample8_quality-pass.tsv", "Sample8_quality-pass.tsv"), 
             output = c("Sample8_productive-F.tsv", "Sample8_productive-T.tsv"),
-            task = structure(c(1L, 1L), class = "factor", levels = "ParseDb-split"), 
+            task = c("ParseDb-split", "ParseDb-split"), 
             input_size = c(92, 92), 
             output_size = c(3, 89))
     expect_equal(out_log, expeted_log)
@@ -77,4 +77,40 @@ test_that("makedb igblast parses OUTPUT>", {
     )
     expect_equivalent(as.matrix(out_log), as.matrix(expected_log))
     
+})
+
+test_that("consoleLogsAsGraphs handles same filename+size at different pipeline stages (cycle bug)", {
+    # HCD_3_db-pass.tsv exists both as the original pipeline input (root) and
+    # as the output of MakeDB-igblast, with identical filenames and sequence counts.
+    # The node ID paste(filename, size) collapses both into one vertex, creating a
+    # cycle: HCD_3_db-pass.tsv -> RenameFile -> ... -> MakeDB -> HCD_3_db-pass.tsv
+    # The fix splits the collision vertex into a "root" node (original file) and the
+    # produced node (MakeDB output), resulting in a valid DAG.
+    logs <- data.frame(
+        log_id     = paste0("log_", 1:5),
+        input      = c("HCD_3_db-pass.tsv",     # RenameFile: original file -> HCD_3.tsv
+                       "HCD_3.tsv",              # ConvertDb
+                       "HCD_3_sequences.fasta",  # AssignGenes
+                       "HCD_3_igblast.fmt7",     # MakeDB: produces HCD_3_db-pass.tsv again
+                       "HCD_3_db-pass.tsv"),     # FilterQuality: consumes MakeDB output
+        output     = c("HCD_3.tsv",
+                       "HCD_3_sequences.fasta",
+                       "HCD_3_igblast.fmt7",
+                       "HCD_3_db-pass.tsv",      # same name AND size as the root input
+                       "HCD_3_quality-pass.tsv"),
+        task       = c("RenameFile", "ConvertDb-fasta", "AssignGenes-igblast",
+                       "MakeDB-igblast", "FilterQuality"),
+        input_size  = c(100, 100, 100, 100, 100),
+        output_size = c(100, 100, 100, 100,  95),
+        stringsAsFactors = FALSE
+    )
+
+    result <- consoleLogsAsGraphs(logs, metadata = NULL)
+
+    # Graph must be a valid DAG (no cycles)
+    expect_true(igraph::is_dag(result$workflow))
+
+    # There must be at least one identifiable root node (in-degree 0)
+    root_count <- sum(igraph::degree(result$workflow, mode = "in") == 0)
+    expect_gte(root_count, 1)
 })
