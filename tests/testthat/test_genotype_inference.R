@@ -5,6 +5,7 @@ test_that("genotype inference 1:1", {
   # Input in one file, output in 1 file.
   # All sequences have sampletype = FNA
   skip_on_cran()
+  skip_if_not_installed("ggplot2")
   input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "data_to_test_novel_alleles.tsv"))
   tmp_dir <- file.path(tempdir(), "genotype_inference_1_1")
   enchantr_report("tigger_bayesian_genotype",
@@ -21,4 +22,17 @@ test_that("genotype inference 1:1", {
   genotypes <- list.files(file.path(report_dir, "genotypes"), full.names = TRUE)
   genotype <- read.delim(genotypes, sep = "\t")
   expect_equal(nrow(genotype), 41)
+
+  plot_paths <- list.files(
+    file.path(report_dir, "ggplots"),
+    pattern = "^genotype-inference-[0-9]+\\.RData$",
+    full.names = TRUE
+  )
+  expect_equal(length(plot_paths), length(unique(substr(genotype$gene, 4, 4))))
+
+  load(plot_paths[[1]])
+  expect_true(exists("p_obj"))
+  expect_true(exists("p_obj_extra_objects"))
+  expect_s3_class(p_obj, "ggplot")
+  expect_no_error(ggplot2::ggplot_build(p_obj))
 })

@@ -122,6 +122,10 @@ Because repertoire sequencing captures rearranged V(D)J gene assignmentsrather t
 Accurate genotype inference corrects for missing or misassigned alleles in the reference database, ensuring that subsequent analyses—such as mutation quantification, lineage reconstruction, and repertoire comparison—are based on the subject’s actual germline profile.
 </div>
 
+<div class="introduction_paragraph">
+<strong>Note:</strong> This method has not been thoroughly tested for genotyping single-cell repertoires.
+</div>
+
 ```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(
   fig.width = 7, fig.height = 4, fig.path = "figures/",
