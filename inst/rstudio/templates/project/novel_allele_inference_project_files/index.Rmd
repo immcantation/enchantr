@@ -43,7 +43,7 @@ params:
    pos_range:
       label: "`pos_range`"
       input: text
-      value: "1:318"
+      value: "1:312"
    pos_range_max:
       label: "`pos_range_max`"
       input: numeric
@@ -132,6 +132,10 @@ editor_options:
 This report performs novel allele inference using TIgGER to identify potential new immunoglobulin alleles in repertoire sequencing data. Novel alleles are detected by identifying positions with unexpectedly high mutation frequencies compared to the germline reference database.
 </div>
 
+<div class="introduction_paragraph">
+<strong>Limitation:</strong> This report currently supports immunoglobulin (IG) loci only. It does not work for T-cell receptor (TR) loci.
+</div>
+
 ```{r global-options, include = FALSE, cache = FALSE}
 knitr::opts_chunk$set(fig.width = 7, fig.height = 4, fig.path = "figures/",
                       echo = params$echo, cache = params$cache,
@@ -176,8 +180,8 @@ if (is.character(pos_range)) {
       pos_range <- unlist(strsplit(pos_range, ":"))
       pos_range <- pos_range[1]:pos_range[2]
    } else {
-      warning("Couldn't parse pos_range; reverting to default 1:318")
-      pos_range <- 1:318
+      warning("Couldn't parse pos_range; reverting to default 1:312")
+      pos_range <- 1:312
    }
 }
 
@@ -264,6 +268,9 @@ if (params$species =="auto") {
 if (!"locus" %in% colnames(db)) {
   db[["locus"]] <- getLocus(db[[params$v_call]])
 }
+if (any(grepl("^TR", db[["locus"]]))) {
+  stop("The novel allele inference report supports IG loci only; TR loci are not supported.")
+}
 heavy_chains <- isHeavyChain(db[["locus"]])
 
 if (!is.null(params$outname)) {
@@ -327,6 +334,30 @@ references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
 germline_db <- unlist(lapply(loci, function(locus) references[[locus]][[toupper(substr(params$v_call, 1, 1))]]))
 ```
 
+# Allele frequency distribution
+
+Verify that at least one allele in the germline database has enough supporting sequences to be evaluated. Alleles with fewer than `r params$germline_min` supporting sequences are excluded from the TIgGER novel-allele inference step.
+
+```{r allele-frequency-distribution, results='asis'}
+allele_groups <- lapply(names(germline_db), function(allele) {
+  grep(allele, db[[params$v_call]], fixed = TRUE)
+})
+names(allele_groups) <- names(germline_db)
+
+allele_frequency <- vapply(allele_groups, length, integer(1))
+eligible_alleles <- allele_frequency >= params$germline_min
+kept_alleles <- sum(eligible_alleles)
+can_run_inference <- kept_alleles > 0
+has_novel <- FALSE
+
+cat(paste0("- Germline alleles evaluated: ", length(germline_db), "\n"))
+cat(paste0("- Alleles meeting `germline_min` (", params$germline_min, "): ", kept_alleles, "\n"))
+
+if (!can_run_inference) {
+  cat("\nNo alleles in the germline database have enough supporting sequences. Novel allele inference is skipped for this report.\n")
+}
+```
+
 # Run `findNovelAlleles`
 
 `findNovelAlleles` evaluates each germline allele represented in the dataset to detect potential polymorphic positions.
@@ -345,7 +376,7 @@ Positions with a disproportionately high baseline mutation frequency (high y-int
 
 *Expected*: only a small fraction of alleles show candidate polymorphic sites; most known alleles return no novel calls.
 
-```{r infer-novel-alleles}
+```{r infer-novel-alleles, eval=can_run_inference}
 
 # Run TIgGER novel allele inference
 if (all(loci == "IGH")) {
@@ -375,7 +406,7 @@ if (all(loci == "IGH")) {
   novel <- infer_novel_light_chain(db, germline_db, params)
 }
 
-eval_ <- !inherits(novel, "try-error") && nrow(novel) > 0
+has_novel <- !inherits(novel, "try-error") && nrow(novel) > 0
 ```
 
 # Filter and clean novel alleles
@@ -389,7 +420,7 @@ We retain at most two novel alleles per V gene. This guards against over-splitti
 *Repeated-read / recurrent SNP-pattern filter*
 We remove support from sequences that show repeated instances of the same novel-SNP motif inside a single read. These patterns are a common source of false positives from sequecing errors. 
 
-```{r clean-up, eval=eval_}
+```{r clean-up, eval=has_novel}
 novel <- tigger::selectNovel(novel) %>%
    dplyr::distinct(novel_imgt, .keep_all = TRUE) %>%
    dplyr::filter(!is.na(novel_imgt), nt_substitutions != "") %>%
@@ -401,14 +432,14 @@ snp_xxxx <- check_repeated_snp_patterns(novel)
 novel <- novel[!snp_xxxx, ]
 novel <- novel[!duplicated(novel[["polymorphism_call"]]), ]
 
-eval_ <- !inherits(novel, "try-error") && nrow(novel) > 0
+has_novel <- !inherits(novel, "try-error") && nrow(novel) > 0
 ```
 
 # Generate novel reference database
 
 We append the high-confidence novel alleles to the existing germline reference set, producing an updated “novel” reference database. Each novel allele retains its reference name plus a suffix identifying its novel variant
 
-```{r build-reference, eval=eval_}
+```{r build-reference, eval=has_novel}
 # Build novel reference database
 novel_germline <- setNames(gsub("-", ".", novel[["novel_imgt"]], fixed = TRUE), novel[["polymorphism_call"]])
 germline_db <- c(germline_db, novel_germline)
@@ -420,7 +451,7 @@ germline_db <- c(germline_db, novel_germline)
 Plots showing evidence for each inferred novel allele. For every candidate, the plot summarizes the supporting sequence evidence across positions, as reported by TIgGER.
 </div>
 
-```{r plot-novel-alleles, eval=eval_, results='asis', echo=FALSE}
+```{r plot-novel-alleles, eval=has_novel, results='asis', echo=FALSE}
 for (i in seq_len(nrow(novel))) {
    plot_env <- new.env()
    plot_env$allele <- novel$polymorphism_call[i]
@@ -444,7 +475,7 @@ for (i in seq_len(nrow(novel))) {
 
 # Output files
 
-```{r save-inference, eval=eval_, results='asis'}
+```{r save-inference, eval=has_novel, results='asis'}
 # Save novel report
 dir.create(file.path(params$outdir, "tables"))
 write.table(novel, file = file.path(params$outdir, "tables", report_output_fn),
@@ -476,6 +507,9 @@ for (locus in loci) {
 
 ```{r log-end}
 cat("\nEND> InferNovelAlleles", file = log_fn, append = TRUE)
+if (!can_run_inference) {
+  cat(paste0("\nSKIP> No germline alleles met germline_min=", params$germline_min), file = log_fn, append = TRUE)
+}
 if (exists("novel") && !inherits(novel, "try-error") && nrow(novel) > 0) {
   cat(paste0("\nOUTPUT> ", report_output_fn), file = log_fn, append = TRUE)
   cat(paste0("\nNOVEL-ALLELES-DETECTED> ", nrow(novel)), file = log_fn, append = TRUE)
