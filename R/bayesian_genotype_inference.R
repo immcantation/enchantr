@@ -150,6 +150,147 @@ infer_genotype <- function(
   return(genotype)
 }
 
+#' Summarize single-assignment support for genotype genes
+#'
+#' Internal helper that counts raw productive sequences and unique clones
+#' supporting each genotyped gene. Counts are restricted to single-assignment
+#' calls so they can be compared against TIgGER's ambiguity-weighted `counts`
+#' column.
+#'
+#' @param db A data.frame/tibble of productive repertoire records.
+#' @param genotypeby Optional grouping column name used for per-group genotype
+#'   inference.
+#' @param clone_id_column Optional clone identifier column name.
+#' @return A data.frame with `gene`, `allele`, `sequence_count`,
+#'   `clone_count`, and the grouping column when `genotypeby` is provided.
+#' @keywords internal
+.single_assignment_support_counts <- function(db, genotypeby = NULL, clone_id_column = NULL) {
+  if (is.null(db) || nrow(db) == 0) {
+    return(data.frame())
+  }
+
+  count_by_segment <- lapply(c("v", "d", "j"), function(seg) {
+    call_col <- paste0(seg, "_call")
+    if (!call_col %in% colnames(db)) {
+      return(NULL)
+    }
+
+    seg_db <- db[!is.na(db[[call_col]]) & nzchar(db[[call_col]]) & !grepl(",", db[[call_col]]), , drop = FALSE]
+    if (nrow(seg_db) == 0) {
+      return(NULL)
+    }
+
+    seg_db$gene <- alakazam::getGene(seg_db[[call_col]], strip_d = FALSE)
+    seg_db$allele <- sub(".*\\*", "", seg_db[[call_col]])
+    group_cols <- c(if (!is.null(genotypeby) && genotypeby %in% colnames(seg_db)) genotypeby, "gene", "allele")
+
+    sequence_counts <- seg_db %>%
+      dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) %>%
+      dplyr::summarise(sequence_count = dplyr::n(), .groups = "drop")
+
+    if (!is.null(clone_id_column) &&
+      nzchar(clone_id_column) &&
+      clone_id_column %in% colnames(seg_db)) {
+      clone_counts <- seg_db %>%
+        dplyr::filter(!is.na(.data[[clone_id_column]]), .data[[clone_id_column]] != "") %>%
+        dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) %>%
+        dplyr::summarise(clone_count = dplyr::n_distinct(.data[[clone_id_column]]), .groups = "drop")
+
+      dplyr::left_join(sequence_counts, clone_counts, by = group_cols)
+    } else {
+      sequence_counts$clone_count <- NA_integer_
+      sequence_counts
+    }
+  })
+
+  dplyr::bind_rows(count_by_segment)
+}
+
+#' Add interpretation-oriented columns to genotype output
+#'
+#' Internal helper used by the genotype report to rename display columns,
+#' attach raw single-assignment support counts, and enforce a stable
+#' presentation order for report tables and TSV outputs.
+#'
+#' @param genotypes A data.frame returned by `infer_genotype()`.
+#' @param db_support A productive repertoire data.frame used to compute support
+#'   counts before clone-representative downsampling.
+#' @param genotypeby Optional grouping column name.
+#' @param clone_id_column Optional clone identifier column name.
+#' @return A data.frame with added `sequence_count`/`clone_count`, renamed
+#'   `candidate_alleles`, and reordered columns.
+#' @keywords internal
+.augment_genotype_table <- function(genotypes, db_support, genotypeby = NULL, clone_id_column = NULL) {
+  if (is.null(genotypes) || nrow(genotypes) == 0) {
+    return(genotypes)
+  }
+
+  if ("alleles" %in% colnames(genotypes) && !"candidate_alleles" %in% colnames(genotypes)) {
+    genotypes <- dplyr::rename(genotypes, candidate_alleles = alleles)
+  }
+
+  support_counts <- .single_assignment_support_counts(
+    db = db_support,
+    genotypeby = genotypeby,
+    clone_id_column = clone_id_column
+  )
+  count_group_cols <- c(if (!is.null(genotypeby) && genotypeby %in% colnames(genotypes)) genotypeby, "gene")
+  has_clone_counts <- nrow(support_counts) > 0 && !all(is.na(support_counts$clone_count))
+
+  summarize_counts <- function(row_idx, count_col) {
+    allele_string <- genotypes[row_idx, "genotyped_alleles"]
+    if (is.na(allele_string) || allele_string == "") {
+      return(NA_character_)
+    }
+
+    row_counts <- support_counts
+    for (col in count_group_cols) {
+      row_counts <- row_counts[row_counts[[col]] == genotypes[row_idx, col], , drop = FALSE]
+    }
+
+    alleles <- trimws(unlist(strsplit(allele_string, ",")))
+    values <- vapply(alleles, function(allele) {
+      hit <- row_counts[row_counts$allele == allele, count_col, drop = TRUE]
+      if (length(hit) == 0 || all(is.na(hit))) {
+        if (identical(count_col, "clone_count") && !has_clone_counts) {
+          return(NA_character_)
+        }
+        return("0")
+      }
+      as.character(hit[[1]])
+    }, character(1))
+
+    if (identical(count_col, "clone_count") && !has_clone_counts) {
+      return(NA_character_)
+    }
+    paste(values, collapse = ",")
+  }
+
+  genotypes$sequence_count <- vapply(seq_len(nrow(genotypes)), summarize_counts, character(1), count_col = "sequence_count")
+  genotypes$clone_count <- vapply(seq_len(nrow(genotypes)), summarize_counts, character(1), count_col = "clone_count")
+
+  ordered_cols <- c(
+    if (!is.null(genotypeby) && genotypeby %in% colnames(genotypes)) genotypeby,
+    "gene",
+    "genotyped_alleles",
+    "sequence_count",
+    "clone_count",
+    "k_diff",
+    "note",
+    "candidate_alleles",
+    "counts",
+    "total",
+    "kh",
+    "kd",
+    "kt",
+    "kq"
+  )
+  ordered_cols <- intersect(ordered_cols, colnames(genotypes))
+  remaining_cols <- setdiff(colnames(genotypes), ordered_cols)
+
+  genotypes[, c(ordered_cols, remaining_cols), drop = FALSE]
+}
+
 #' Write genotype report(s) to disk
 #'
 #' Write genotype result tables to `out_dir`. If `genotypeby` is provided,
@@ -165,10 +306,22 @@ write_genotypes <- function(genotypes, out_dir, out_fn, genotypeby = NULL) {
     groups <- unique(genotypes[[genotypeby]])
     for (val in groups) {
       genotypes_genotypeby <- genotypes[genotypes[[genotypeby]] == val, ]
-      write.table(genotypes_genotypeby, file = file.path(out_dir, paste0(val, "_", out_fn)), row.names = FALSE, quote = FALSE)
+      write.table(
+        genotypes_genotypeby,
+        file = file.path(out_dir, paste0(val, "_", out_fn)),
+        row.names = FALSE,
+        quote = FALSE,
+        sep = "\t"
+      )
     }
   } else {
-    write.table(genotypes, file = file.path(out_dir, out_fn), row.names = FALSE, quote = FALSE)
+    write.table(
+      genotypes,
+      file = file.path(out_dir, out_fn),
+      row.names = FALSE,
+      quote = FALSE,
+      sep = "\t"
+    )
   }
 }
 
@@ -190,7 +343,8 @@ write_genotypes <- function(genotypes, out_dir, out_fn, genotypeby = NULL) {
   # Add genotyped alleles
   for (i in seq_len(nrow(genotype))) {
     gene <- genotype[i, "gene"]
-    alleles <- if (genotype[i, "genotyped_alleles"] == "") genotype[i, "alleles"] else genotype[i, "genotyped_alleles"]
+    candidate_col <- if ("candidate_alleles" %in% colnames(genotype)) "candidate_alleles" else "alleles"
+    alleles <- if (genotype[i, "genotyped_alleles"] == "") genotype[i, candidate_col] else genotype[i, "genotyped_alleles"]
     alleles <- unlist(strsplit(alleles, ","))
     ind <- names(reference) %in% paste(gene, alleles, sep = "*")
     genotype_reference <- c(genotype_reference, reference[ind])
@@ -264,9 +418,12 @@ generate_genotyped_reference <- function(
           if (any(grepl(call, genotypes_genotypeby_locus$gene))) {
             seg_references <- references[[locus]][[seg]]
             # get the genotype reference
-            seg_ref_group <- .genotyped_reference(genotypes_genotypeby_locus[grepl(call, genotypes_genotypeby$gene), ], seg_references)
+            seg_ref_group <- .genotyped_reference(genotypes_genotypeby_locus[grepl(call, genotypes_genotypeby_locus$gene), ], seg_references)
             # write the genotype reference
-            seg_ref_file <- grep(seg, locus_file, value = TRUE)
+            seg_ref_file <- locus_file[grepl(paste0(locus, seg, "\\."), basename(locus_file))]
+            if (length(seg_ref_file) != 1) {
+              stop(sprintf("Expected exactly one reference file for %s, found %d.", call, length(seg_ref_file)))
+            }
             tigger::writeFasta(seg_ref_group, file.path(output_dir_genotypeby, basename(seg_ref_file)))
             if (!quiet) {
               message(sprintf("%s Genotyped Reference database for %s: [%s](%s)\n", call, val, seg_ref_file, seg_ref_file))
@@ -305,7 +462,10 @@ generate_genotyped_reference <- function(
           # get the genotype reference
           seg_ref_group <- .genotyped_reference(genotypes_locus[grepl(call, genotypes_locus$gene), ], seg_references)
           # write the genotype reference
-          seg_ref_file <- grep(seg, locus_file, value = TRUE)
+          seg_ref_file <- locus_file[grepl(paste0(locus, seg, "\\."), basename(locus_file))]
+          if (length(seg_ref_file) != 1) {
+            stop(sprintf("Expected exactly one reference file for %s, found %d.", call, length(seg_ref_file)))
+          }
           tigger::writeFasta(seg_ref_group, file.path(output_dir, basename(seg_ref_file)))
           if (!quiet) {
             message(sprintf("%s Genotyped Reference database: [%s](%s)\n", call, seg_ref_file, seg_ref_file))
@@ -340,15 +500,8 @@ plot_genotype <- function(genotype, allele_column = "alleles", facet_by = NULL, 
 
   # Split genes' alleles into their own rows
   alleles <- strsplit(genotype[[allele_column]], ",")
-  geno2 <- genotype
-  r <- 1
-  for (g in 1:nrow(genotype)) {
-    for (a in 1:length(alleles[[g]])) {
-      geno2[r, ] <- genotype[g, ]
-      geno2[r, ]$alleles <- alleles[[g]][a]
-      r <- r + 1
-    }
-  }
+  geno2 <- genotype[rep(seq_len(nrow(genotype)), lengths(alleles)), , drop = FALSE]
+  geno2$alleles <- trimws(unlist(alleles, use.names = FALSE))
 
   # Set the gene order
   geno2$gene <- factor(geno2$gene,

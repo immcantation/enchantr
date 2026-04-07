@@ -7,7 +7,7 @@ test_that("genotype inference 1:1", {
   skip_on_cran()
   skip_if_not_installed("ggplot2")
   input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "data_to_test_novel_alleles.tsv"))
-  tmp_dir <- file.path(tempdir(), "genotype_inference_1_1")
+  tmp_dir <- tempfile("genotype_inference_1_1_")
   enchantr_report("tigger_bayesian_genotype",
     report_params = list(
       "input" = input,
@@ -22,6 +22,35 @@ test_that("genotype inference 1:1", {
   genotypes <- list.files(file.path(report_dir, "genotypes"), full.names = TRUE)
   genotype <- read.delim(genotypes, sep = "\t")
   expect_equal(nrow(genotype), 41)
+  expect_false("alleles" %in% names(genotype))
+
+  expected_cols <- c(
+    "gene", "genotyped_alleles", "sequence_count", "clone_count",
+    "k_diff", "note", "candidate_alleles", "counts",
+    "total", "kh", "kd", "kt", "kq"
+  )
+  expect_equal(names(genotype)[seq_along(expected_cols)], expected_cols)
+  expect_true(all(is.na(genotype$clone_count)))
+
+  input_db <- read.delim(input, sep = "\t", quote = "")
+  expected_sequence_count <- vapply(seq_len(nrow(genotype)), function(i) {
+    gene <- genotype$gene[[i]]
+    seg <- tolower(substr(gene, 4, 4))
+    call_col <- paste0(seg, "_call")
+    seg_db <- input_db[
+      input_db$productive == TRUE &
+        !is.na(input_db[[call_col]]) &
+        !grepl(",", input_db[[call_col]]),
+      ,
+      drop = FALSE
+    ]
+    alleles <- trimws(strsplit(genotype$genotyped_alleles[[i]], ",", fixed = TRUE)[[1]])
+    counts <- vapply(alleles, function(allele) {
+      sum(seg_db[[call_col]] == paste0(gene, "*", allele))
+    }, integer(1))
+    paste(counts, collapse = ",")
+  }, character(1))
+  expect_equal(unname(genotype$sequence_count), unname(expected_sequence_count))
 
   plot_paths <- list.files(
     file.path(report_dir, "ggplots"),
@@ -35,4 +64,47 @@ test_that("genotype inference 1:1", {
   expect_true(exists("p_obj_extra_objects"))
   expect_s3_class(p_obj, "ggplot")
   expect_no_error(ggplot2::ggplot_build(p_obj))
+})
+
+test_that("genotype report with novel alleles", {
+  skip_on_cran()
+  skip_if_not_installed("ggplot2")
+
+  input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "genotype_input_retained.tsv.gz"))
+  novel_db <- normalizePath(file.path("..", "data-tests", "novel_genotype", "db_novel"))
+  evidence_path <- normalizePath(file.path("..", "data-tests", "novel_genotype", "tigger-novel_novel_allele_evidence.rda"))
+
+  tmp_dir <- file.path(tempdir(), "genotype_retained_report")
+  enchantr_report("tigger_bayesian_genotype",
+    report_params = list(
+      "input" = input,
+      "imgt_db" = novel_db,
+      "species" = "human",
+      "outdir" = tmp_dir,
+      "log" = "test_allele_inference_command_log",
+      "novel_allele_evidence" = evidence_path
+    )
+  )
+
+  genotype <- read.delim(
+    file.path(tmp_dir, "enchantr", "genotypes", "tigger_genotype_report.tsv"),
+    sep = "\t"
+  )
+  retained_novel <- genotype[grepl("_", genotype$genotyped_alleles, fixed = TRUE), ]
+  expect_equal(nrow(retained_novel), 1)
+  expect_equal(retained_novel$gene, "IGHV1-2")
+  expect_equal(retained_novel$genotyped_alleles, "02_A318G,02,04")
+
+  report_html <- paste(
+    readLines(file.path(tmp_dir, "enchantr", "index.html"), warn = FALSE),
+    collapse = "\n"
+  )
+
+  expect_match(report_html, "Novel allele evidence", fixed = TRUE)
+  expect_match(report_html, "IGHV1-2*02_A318G", fixed = TRUE)
+  expect_false(grepl(
+    "no candidate novel alleles were retained in the current genotype call",
+    report_html,
+    fixed = TRUE
+  ))
 })

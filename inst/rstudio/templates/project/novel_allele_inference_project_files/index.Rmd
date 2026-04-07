@@ -276,9 +276,11 @@ heavy_chains <- isHeavyChain(db[["locus"]])
 if (!is.null(params$outname)) {
   output_fn <- paste0(basename(params$outname), "_novel-pass.tsv.gz")
   report_output_fn <- paste0(basename(params$outname), "_novel_report.tsv")
+  evidence_output_fn <- paste0(basename(params$outname), "_novel_allele_evidence.rda")
 } else {
   output_fn <- sub(".tsv$", "_novel-pass.tsv", basename(params$input))
   report_output_fn <- sub(".tsv$", "_novel_report.tsv", basename(params$input))
+  evidence_output_fn <- sub(".tsv$", "_novel_allele_evidence.rda", basename(params$input))
 }
 
 if (!is.null(params$log)) {
@@ -452,6 +454,8 @@ Plots showing evidence for each inferred novel allele. For every candidate, the 
 </div>
 
 ```{r plot-novel-alleles, eval=has_novel, results='asis', echo=FALSE}
+novel_allele_figures <- list()
+
 for (i in seq_len(nrow(novel))) {
    plot_env <- new.env()
    plot_env$allele <- novel$polymorphism_call[i]
@@ -470,6 +474,7 @@ for (i in seq_len(nrow(novel))) {
      "```\n"
    )
    cat(knitr::knit_child(text = child, envir = plot_env, quiet = TRUE))
+   novel_allele_figures[[plot_env$allele]] <- plot_env$p_obj
 }
 ```
 
@@ -481,6 +486,15 @@ dir.create(file.path(params$outdir, "tables"))
 write.table(novel, file = file.path(params$outdir, "tables", report_output_fn),
             row.names = FALSE, quote = FALSE, sep = "\t")
 cat("Novel alleles report: [", report_output_fn, "](", report_output_fn, ") - Detailed results table\n")
+```
+
+```{r save-evidence, eval=has_novel, results='asis'}
+save(
+  novel,
+  novel_allele_figures,
+  file = file.path(params$outdir, evidence_output_fn)
+)
+cat("Novel allele evidence: [", evidence_output_fn, "](", evidence_output_fn, ") - R data file with novel allele table and figure objects\n")
 ```
 
 ```{r save-germline, results='asis'}
@@ -512,6 +526,7 @@ if (!can_run_inference) {
 }
 if (exists("novel") && !inherits(novel, "try-error") && nrow(novel) > 0) {
   cat(paste0("\nOUTPUT> ", report_output_fn), file = log_fn, append = TRUE)
+  cat(paste0("\nOUTPUT_EVIDENCE> ", evidence_output_fn), file = log_fn, append = TRUE)
   cat(paste0("\nNOVEL-ALLELES-DETECTED> ", nrow(novel)), file = log_fn, append = TRUE)
 }
 ```
