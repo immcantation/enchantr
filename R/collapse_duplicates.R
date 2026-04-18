@@ -67,8 +67,16 @@ findDuplicates <- function (db,
         }
     }
 
+    cell_id <- NULL
+    if ("cell_id" %in% colnames(db)) {
+        if (any(!is.na(db[['cell_id']]))) {
+            cell_id <- "cell_id"
+            message("Single-cell data detected (cell_id column present): adding 'cell_id' to collapsing groups.")
+        }
+    }
+
     columns <- c(groups, id, seq, text_fields, num_fields, seq_fields,
-                "v_call", d_call, "j_call", "junction_length", c_call, "productive")
+                "v_call", d_call, "j_call", "junction_length", c_call, cell_id, "productive")
     columns <- columns[!is.null(columns)]
     check <- alakazam::checkColumns(db, columns)
     if (!check == TRUE ) { stop(check) }
@@ -80,7 +88,7 @@ findDuplicates <- function (db,
         mutate(v_gene=getGene(v_call),
                 d_gene=getGene(d_call),
                 j_gene=getGene(j_call)) %>%
-        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, "junction_length", "productive", "seq_len"))) %>%
+        group_by(!!!rlang::syms(c(groups, "v_gene", "j_gene", c_call, cell_id, "junction_length", "productive", "seq_len"))) %>%
         group_indices()
 
     db_subset <- db %>%
