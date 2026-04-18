@@ -36,6 +36,29 @@ test_that("findDuplicates", {
   expect_equivalent(obs, exp)
 })
 
+test_that("findDuplicates respects cell_id in single-cell data", {
+  # Two records from different cells share the same sequence — they must NOT be collapsed.
+  # One additional record from cell2 has a unique sequence and should pass as-is.
+  db <- data.frame(
+    sequence_id        = c("cell1_contig1", "cell2_contig1", "cell2_contig2"),
+    sequence_alignment = c("CCCCTGGG",      "CCCCTGGG",      "ATCGGGGA"),
+    cell_id            = c("cell1",         "cell2",         "cell2"),
+    sample_id          = rep("S1", 3),
+    v_call             = rep("IGHV1", 3),
+    d_call             = rep("d_call", 3),
+    j_call             = rep("IGHJ2", 3),
+    junction_length    = rep(48, 3),
+    productive         = rep(TRUE, 3),
+    stringsAsFactors   = FALSE
+  )
+
+  obs <- findDuplicates(db, groups = "sample_id", num_fields = NULL)
+
+  # All three records should pass: identical sequences from different cells must be kept separate.
+  expect_true(all(obs$collapse_pass))
+  expect_equal(nrow(obs[obs$collapse_pass, ]), 3)
+})
+
 
 
 test_that("mask_5prime_sequence_alignment", {
