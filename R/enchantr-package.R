@@ -1,4 +1,5 @@
 #' @keywords internal
+#' @useDynLib enchantr, .registration = TRUE
 "_PACKAGE"
 
 ## usethis namespace: start
@@ -52,6 +53,6 @@
 #' @importFrom  stringr str_replace str_replace_all
 #' @importFrom  tidyr pivot_longer pivot_wider
 #' @importFrom  xfun       in_dir
-#' 
+#'
 ## usethis namespace: end
 NULL

@@ -105,17 +105,19 @@ findThresholdDb <- function(db,
             }
             threshold <- NULL
             threshold <- withTimeout(
-                findThreshold(db_group[[distanceColumn]],
-                    cross = cross_distances,
-                    method = method,
-                    model = model,
-                    cutoff = cutoff,
-                    spc = spc,
-                    edge = edge,
-                    subsample = subsample
-                ),
-                timeout = 3600, onTimeout = "warning"
-            )
+                            findThreshold(
+                              db_group[[distanceColumn]],
+                              cross     = cross_distances,
+                              method    = method,
+                              model     = model,
+                              cutoff    = cutoff,
+                              spc       = spc,
+                              edge      = edge,
+                              subsample = subsample
+                            ),
+                            timeout = 3600,
+                            onTimeout = "warning"
+                        )
 
             p <- NULL
             if (!is.null(threshold)) {
