@@ -26,6 +26,10 @@ params:
       label: "`outputby` name of the column in `input` that contains identifiers that will be used to split the output db."      
       input: text
       value: "sample_id"      
+   checkcontamination:
+      label: "`checkcontamination`: Check contamination among samples. "
+      input: checkbox
+      value: TRUE
    log:
       label: "`log`"
       input: text

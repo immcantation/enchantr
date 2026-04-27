@@ -317,7 +317,7 @@ cat("## Sequences per constant region\n")
 
 ```{r input-cgene-summary, eval=any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db) , results='asis'}
 
-# Create c_gene column only for plotting (will be removed before storing the df again)
+# Create c_gene column 
 db <- db %>% filter(locus %in% c("IGH", "IGK", "IGL")) %>%
     mutate(c_gene = alakazam::getGene(c_call, first=TRUE)) %>%
     mutate(c_gene = substr(c_gene,1,4))
