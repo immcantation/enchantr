@@ -229,23 +229,31 @@ if(nrow(db)==0){
 
 # Check for contamination
 
-```{r}
-# check whether to check contamination
+Sequences in different samples that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) can indicate contamination.
+
+```{r results="asis"}
 sample_count <- n_distinct(db$sample_id)
-calculate_contamination <- sample_count > 1
+
+if(!params$checkcontamination){
+  cat("Skip checking for contamination as the parameter `checkcontamination` was set to `FALSE`.")
+  calculate_contamination <- FALSE
+}else if(sample_count<=1){
+  cat("Contamination checking was skipped because the dataset did not have multiple samples left.")
+  calculate_contamination <- FALSE
+}else{
+  calculate_contamination <- TRUE
+}
 dups_found <- FALSE
 ```
 
-Sequences in different samples that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) can indicate contamination.
-
 ```{r sc-duplicates, eval=calculate_contamination, results="asis"}
-# Find duplicated sequences
+## Find duplicated sequences
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
                                  seq = "sequence_alignment", mode = "sequences")
 dups_found <- sum(dups$dups$sc_duplicate, na.rm = T) > 0
 ```
 
-```{r sc-duplicates-zero, results="asis", eval=!dups_found, echo=FALSE}
+```{r sc-duplicates-zero, results="asis", eval=calculate_contamination && !dups_found, echo=FALSE}
 cat("No suspicious overlaps detected.\n\n")
 ```
 
@@ -295,9 +303,10 @@ tab_dups_summary$table %>%
 print_table_caption(tag = "dups_summary", text = tab_dups_summary$caption)
 ```
 
-## Stacked bar plot
-
 ```{r p-sc-duplicates, fig.cap=p_sc_duplicates$enchantr$html_caption, results="asis", eval=dups_found}
+
+cat("## Stacked bar plot")
+
 caption <- "Number of sequences that share cell_id and sequence with other samples."
 p_sc_duplicates <- ggplot(dups[["dups"]],
                           aes(x = sample_id, fill = sc_duplicate_cell)) +
@@ -311,9 +320,12 @@ p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir,
 ggplotly(p_sc_duplicates) %>% layout(barmode = "stack")
 ```
 
-## Cell overlaps matrix
 
-```{r overlap-summary, eval=dups_found}
+
+```{r overlap-summary, eval=dups_found, results="asis"}
+
+cat("## Cell overlaps matrix")
+
 # find the number of cells having same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
