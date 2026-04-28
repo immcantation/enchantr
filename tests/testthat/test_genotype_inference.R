@@ -70,14 +70,69 @@ test_that("genotype report with novel alleles", {
   skip_on_cran()
   skip_if_not_installed("ggplot2")
 
-  input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "genotype_input_retained.tsv.gz"))
-  novel_db <- normalizePath(file.path("..", "data-tests", "novel_genotype", "db_novel"))
-  evidence_path <- normalizePath(file.path("..", "data-tests", "novel_genotype", "tigger-novel_novel_allele_evidence.rda"))
+  input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "data_to_test_novel_alleles.tsv"))
+
+  tmp_dir <- file.path(tempdir(), "genotype_novel_inference")
+  enchantr_report("novel_allele_inference",
+    report_params = list(
+      "input" = input,
+      "imgt_db" = imgt_url,
+      "species" = "human",
+      "outdir" = tmp_dir,
+      "pos_range" = "1:318",
+      "nproc" = 1,
+      "log" = "test_allele_inference_command_log"
+    )
+  )
+
+  novel_report_dir <- file.path(tmp_dir, "enchantr")
+  novel_db <- file.path(novel_report_dir, "db_novel")
+  evidence_path <- file.path(novel_report_dir, "tigger-novel_novel_allele_evidence.rda")
+
+  tmp_dir <- file.path(tempdir(), "genotype_novel_reassign")
+  enchantr_report("reassign_alleles",
+    report_params = list(
+      "input" = input,
+      "imgt_db" = novel_db,
+      "species" = "human",
+      "outputby" = "subject_id",
+      "outdir" = tmp_dir,
+      "segments" = "v",
+      "log" = "test_reassign_alleles_command_log"
+    )
+  )
+
+  reassigned_input <- list.files(
+    file.path(tmp_dir, "enchantr", "repertoires"),
+    full.names = TRUE
+  )
+  expect_length(reassigned_input, 1)
+
+  db <- read.delim(reassigned_input, sep = "\t", quote = "")
+  target_call <- "IGHV1-2*02_A318G"
+  target_gene <- sub("\\*.*", "", target_call)
+  gene_db <- db[grepl(paste0("^", target_gene, "\\*"), db$v_call), ]
+  target_db <- db[db$v_call == target_call, ]
+  expect_gt(nrow(target_db), 0)
+
+  genotype_input <- rbind(
+    gene_db,
+    target_db[rep(seq_len(nrow(target_db)), 20), ]
+  )
+  genotype_input$sequence_id <- paste0("genotype_novel_", seq_len(nrow(genotype_input)))
+  genotype_input_path <- file.path(tempdir(), "genotype_input_with_novel.tsv")
+  write.table(
+    genotype_input,
+    file = genotype_input_path,
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
+  )
 
   tmp_dir <- file.path(tempdir(), "genotype_retained_report")
   enchantr_report("tigger_bayesian_genotype",
     report_params = list(
-      "input" = input,
+      "input" = genotype_input_path,
       "imgt_db" = novel_db,
       "species" = "human",
       "outdir" = tmp_dir,
