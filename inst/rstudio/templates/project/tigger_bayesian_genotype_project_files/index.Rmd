@@ -604,8 +604,8 @@ cat(paste0("\nMETHOD> TIgGER Bayesian"), file = log_fn, append = TRUE)
 cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
 cat(paste0("\nGENOTYPE_LOCI> ", paste0(loci, collapse = ",")), file = log_fn, append = TRUE)
 cat(paste0("\nGENOTYPE_SEGMENTS> ", paste0(segments_to_genotype, collapse = ",")), file = log_fn, append = TRUE)
-cat(paste0("\nOUTPUT> ", genotypes_output_dir), file = log_fn, append = TRUE)
-cat(paste0("\nOUTPUT_REFERENCE> ", file.path(params$outdir, "references")), file = log_fn, append = TRUE)
+cat(paste0("\nOUTPUT> ", basename(genotypes_output_dir)), file = log_fn, append = TRUE)
+cat(paste0("\nOUTPUT_REFERENCE> ", basename(file.path(params$outdir, "references"))), file = log_fn, append = TRUE)
 ```
 
 ```{r, child=c('versions.Rmd')}
