@@ -1,3 +1,9 @@
+Version 0.1.25.999: Unreleased
+-----------------------------------
+
++ Added tigger as new dependency. Bumped alakazam requirement to >=1.3.0 to
+  satisfy tigger requirements.
+
 Version 0.1.25: January 30, 2026
 -----------------------------------
 General:
