@@ -436,7 +436,7 @@ generate_genotyped_reference <- function(
     }
   } else {
     # create output dir for this group
-    output_dir <- file.path(output_dir, species, "vdj")
+    output_dir <- file.path(output_dir, "sample", germline_dir, species, "vdj")
     dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
     # copy the files from the original references dir
