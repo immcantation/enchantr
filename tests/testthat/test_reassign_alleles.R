@@ -61,7 +61,7 @@ test_that("reassign_alleles_after_genotype_inference", {
 
   report_dir <- file.path(tmp_dir, "enchantr")
   tmp_dir <- file.path(tempdir(), "reassign_alleles_after_genotype_inference")
-  genotype_db <- file.path(report_dir, "db_genotype")
+  genotype_db <- file.path(report_dir, "references", "sample", "db_genotype")
 
   enchantr_report("reassign_alleles",
     report_params = list(
@@ -77,5 +77,6 @@ test_that("reassign_alleles_after_genotype_inference", {
   report_dir <- file.path(tmp_dir, "enchantr")
   repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
   db <- read_rearrangement(repertoires)
-  expect_equal(length(grep("_", db$v_call)), 1259)
+  expect_equal(unique(grep("IGHJ3", db$j_call, value = TRUE)), "IGHJ3*02")
+  expect_equal(sum(db$j_call == "IGHJ3*02"), 172)
 })
