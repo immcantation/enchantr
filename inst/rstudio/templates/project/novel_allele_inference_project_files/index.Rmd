@@ -15,7 +15,7 @@ params:
    input:
       label: "`input`: Path to repertoires files"
       input: file
-      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/airrflow/testdata-genotyping/airr_data_to_test_novel_alleles.tsv"
    imgt_db:
       label: "`imgt_db`: Path to IMGT reference  database."
       input: file
