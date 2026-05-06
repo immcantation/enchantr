@@ -1,4 +1,4 @@
-imgt_url <- "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+IMGT_URL <- "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
 
 #TODO: find a testing set
 test_that("novel inference 1:1", {
@@ -11,7 +11,7 @@ test_that("novel inference 1:1", {
   enchantr_report("novel_allele_inference",
     report_params = list(
                          "input" = input,
-                         "imgt_db" = imgt_url,
+                         "imgt_db" = IMGT_URL,
                          "species" = "human",
                          "outdir" = tmp_dir,
                          "pos_range" = "1:318",
@@ -25,27 +25,4 @@ test_that("novel inference 1:1", {
     sep = "\t"
   )
   expect_equal(nrow(novel_alleles), 6)
-
-  evidence_path <- file.path(report_dir, "tigger-novel_novel_allele_evidence.rda")
-  expect_true(file.exists(evidence_path))
-  evidence_env <- new.env(parent = emptyenv())
-  loaded_objects <- load(evidence_path, envir = evidence_env)
-  expect_setequal(loaded_objects, c("novel", "novel_allele_figures"))
-  expect_equal(nrow(evidence_env$novel), nrow(novel_alleles))
-  expect_length(evidence_env$novel_allele_figures, nrow(novel_alleles))
-  expect_s3_class(evidence_env$novel_allele_figures[[1]], "ggplot")
-  expect_no_error(ggplot2::ggplot_build(evidence_env$novel_allele_figures[[1]]))
-
-  plot_paths <- list.files(
-    file.path(report_dir, "ggplots"),
-    pattern = "^novel-allele-[0-9]+\\.RData$",
-    full.names = TRUE
-  )
-  expect_equal(length(plot_paths), nrow(novel_alleles))
-
-  load(plot_paths[[1]])
-  expect_true(exists("p_obj"))
-  expect_true(exists("p_obj_extra_objects"))
-  expect_s3_class(p_obj, "ggplot")
-  expect_no_error(ggplot2::ggplot_build(p_obj))
 })

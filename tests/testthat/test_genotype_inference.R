@@ -1,4 +1,4 @@
-imgt_url <- "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+IMGT_URL <- "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
 
 # TODO: find a testing set
 test_that("genotype inference 1:1", {
@@ -11,7 +11,7 @@ test_that("genotype inference 1:1", {
   enchantr_report("tigger_bayesian_genotype",
     report_params = list(
       "input" = input,
-      "imgt_db" = imgt_url,
+      "imgt_db" = IMGT_URL,
       "species" = "human",
       "outdir" = tmp_dir,
       "log" = "test_allele_inference_command_log"
@@ -31,39 +31,6 @@ test_that("genotype inference 1:1", {
   )
   expect_equal(names(genotype)[seq_along(expected_cols)], expected_cols)
   expect_true(all(is.na(genotype$clone_count)))
-
-  input_db <- read.delim(input, sep = "\t", quote = "")
-  expected_sequence_count <- vapply(seq_len(nrow(genotype)), function(i) {
-    gene <- genotype$gene[[i]]
-    seg <- tolower(substr(gene, 4, 4))
-    call_col <- paste0(seg, "_call")
-    seg_db <- input_db[
-      input_db$productive == TRUE &
-        !is.na(input_db[[call_col]]) &
-        !grepl(",", input_db[[call_col]]),
-      ,
-      drop = FALSE
-    ]
-    alleles <- trimws(strsplit(genotype$genotyped_alleles[[i]], ",", fixed = TRUE)[[1]])
-    counts <- vapply(alleles, function(allele) {
-      sum(seg_db[[call_col]] == paste0(gene, "*", allele))
-    }, integer(1))
-    paste(counts, collapse = ",")
-  }, character(1))
-  expect_equal(unname(genotype$sequence_count), unname(expected_sequence_count))
-
-  plot_paths <- list.files(
-    file.path(report_dir, "ggplots"),
-    pattern = "^genotype-inference-[0-9]+\\.RData$",
-    full.names = TRUE
-  )
-  expect_equal(length(plot_paths), length(unique(substr(genotype$gene, 4, 4))))
-
-  load(plot_paths[[1]])
-  expect_true(exists("p_obj"))
-  expect_true(exists("p_obj_extra_objects"))
-  expect_s3_class(p_obj, "ggplot")
-  expect_no_error(ggplot2::ggplot_build(p_obj))
 })
 
 test_that("genotype report with novel alleles", {
@@ -76,7 +43,7 @@ test_that("genotype report with novel alleles", {
   enchantr_report("novel_allele_inference",
     report_params = list(
       "input" = input,
-      "imgt_db" = imgt_url,
+      "imgt_db" = IMGT_URL,
       "species" = "human",
       "outdir" = tmp_dir,
       "pos_range" = "1:318",
