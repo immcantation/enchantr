@@ -232,7 +232,7 @@ formatConsoleLog <- function(log_file){
             log_table[['input_size']] <- NA
         }
     }
-    log_table[['task']] <- task
+    log_table[['task']] <- as.character(task)
     log_table[['input_size']] <- as.numeric(log_table[['input_size']])
     log_table[['output_size']] <- as.numeric(log_table[['output_size']])
     log_table %>%
@@ -327,7 +327,69 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
                                    rename(name=input_id),
                                directed = TRUE,
                                vertices = vertex_meta)
-    
+
+    # We found situations where a file from an earlier pipeline stage and a file
+    # produced by a later step have the same name AND the same number of sequences
+    # (e.g. the original HCD_3_db-pass.tsv used as input to RenameFile, and the
+    # HCD_3_db-pass.tsv produced by MakeDB when no sequences were lost before that
+    # step). Both get the same vertex ID (paste(filename, size)), which creates a
+    # cycle in the graph and prevents the root node from being identified.
+    #
+    # Fix: find the vertex that sits at the "exit" of the cycle -- it has an
+    # in-edge from within the cycle (produced by e.g. MakeDB) and an out-edge
+    # escaping it (consumed by e.g. FilterQuality). Create a new root node with
+    # the same filename/size and redirect the cycle-bound out-edges to it.
+    # Repeat until the graph is a DAG.
+    while (!igraph::is_dag(g)) {
+        scc       <- igraph::components(g, mode = "strong")
+        cycle_ids <- which(scc$csize > 1)
+        if (length(cycle_ids) == 0) break
+
+        scc_id    <- cycle_ids[1]
+        scc_verts <- which(scc$membership == scc_id)
+
+        split_v <- NA_integer_
+        for (v in scc_verts) {
+            in_v  <- as.integer(igraph::neighbors(g, v, mode = "in"))
+            out_v <- as.integer(igraph::neighbors(g, v, mode = "out"))
+            if (any(in_v %in% scc_verts) && any(!(out_v %in% scc_verts))) {
+                split_v <- v
+                break
+            }
+        }
+        if (is.na(split_v)) {
+            warning("Could not resolve cycle in log graph; check that log files are correct.")
+            break
+        }
+
+        v_filename <- V(g)$filename[split_v]
+        v_num_seqs <- V(g)$num_seqs[split_v]
+        root_name  <- paste0(V(g)$name[split_v], "_root")
+        warning("Cycle detected: '", v_filename, "' appears with the same name and ",
+                "sequence count at different pipeline stages (e.g. original input vs ",
+                "MakeDB output). A root node '", root_name,
+                "' has been created for the original input file.")
+
+        # Out-edges of split_v that go to other SCC members: move them to the root node
+        out_edges <- as.integer(igraph::incident(g, split_v, mode = "out"))
+        out_to    <- matrix(igraph::ends(g, out_edges, names = FALSE), ncol = 2)[, 2]
+        scc_mask  <- out_to %in% scc_verts
+        scc_out_e <- out_edges[scc_mask]
+
+        g <- igraph::add_vertices(g, 1,
+                                  name     = root_name,
+                                  filename = v_filename,
+                                  num_seqs = v_num_seqs)
+        root_idx <- igraph::vcount(g)
+
+        for (e_id in scc_out_e) {
+            to_v   <- igraph::ends(g, e_id, names = FALSE)[1, 2]
+            e_task <- igraph::E(g)$task[e_id]
+            g <- igraph::add_edges(g, c(root_idx, to_v), task = e_task)
+        }
+        g <- igraph::delete_edges(g, scc_out_e)
+    }
+
     # Identify graph components, belonging to the different
     # groups of files that belong to the same original data
     # source

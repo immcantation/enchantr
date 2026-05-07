@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.1.24
-Date: 2025-10-31
+Date: 2026-04-28
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
              person("Edel", "Aron", role=c("aut"),
@@ -31,11 +31,12 @@ BuildVignettes: true
 VignetteBuilder: knitr
 Encoding: UTF-8
 biocViews:
+LinkingTo: Rcpp
 Depends:
     R (>= 3.5.0),
 Imports:
     airr (>= 1.4.1),
-    alakazam (>= 1.2.1),
+    alakazam (>= 1.3.0),
     bookdown (>= 0.35),
     ComplexHeatmap,
     data.table,
@@ -65,7 +66,9 @@ Imports:
     stringi,
     stringr,
     tidyr,
-    xfun
+    tigger,
+    xfun,
+    Rcpp
 Suggests:
     optparse,
     testthat

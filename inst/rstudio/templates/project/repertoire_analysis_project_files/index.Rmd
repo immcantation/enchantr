@@ -129,8 +129,8 @@ if (! "clone_id" %in% colnames(db)) {
     stop("The column `clone_id` does not exist in `db`.")
 }
 
-# Create c_gene column only for plotting (will be removed before storing the df again)
-if (any(db$locus %in% c("IGH")) & "c_call" %in% colnames(db)) {
+# Create c_gene column 
+if (any(db$locus %in% c("IGH")) && "c_call" %in% colnames(db) && !"c_gene" %in% colnames(db)) {
   db <- db %>% filter(locus %in% c("IGH", "IGK", "IGL")) %>%
     mutate(c_gene = alakazam::getGene(c_call, first=TRUE)) %>%
     mutate(c_gene = substr(c_gene, 1, 4))
@@ -619,16 +619,18 @@ htmltools::tagList(
 
 ```
 
-```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
-cat("# Mutation frequency\n")
+```{r}
+BCRs <- any(db$locus %in% c("IGH", "IGL", "IGK")) 
 ```
 
-<div class="introduction_paragraph">
+```{r eval=BCRs, results='asis'}
+cat("# Mutation frequency\n")
+cat('<div class="introduction_paragraph">
 Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence to the germline reference. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations for each entire sequence. 
-</div>
+</div>')
+```
 
-
-```{r mutation_frequency, eval=any(db$locus %in% c("IGH", "IGL", "IGK")) & !("mu_freq" %in% colnames(db)), results='asis'}
+```{r mutation_frequency, eval=BCRs & !("mu_freq" %in% colnames(db)), results='asis'}
 db <- shazam::observedMutations(db,
                                 sequenceColumn = "sequence_alignment",
                                 germlineColumn = "germline_alignment_d_mask",
@@ -650,20 +652,16 @@ getPrettyHeight <- function(nfacets, ncols, min_h=5, max_h=40) {
 }
 ```
 
-```{r eval=any(db$locus %in% c("IGH", "IGL", "IGK")), results='asis'}
+```{r eval=BCRs, results='asis'}
 cat("The mutation frequency per sequence is stored in the final dataframes in the `mu_freq` column.\n")
 
-BCRs <- any(db$locus %in% c("IGH", "IGL", "IGK")) 
-no_c_call <-  all(is.na(db$c_call))
-if(no_c_call){
+if(all(is.na(db$c_call))){
   cat("Mutation frequency per c_gene is skipped becasue no constant region is present in the sequences.\n ")
 }
 
 ```
 
-
-
-```{r mufreqSample, eval=BCRs & !no_c_call, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r mufreqSample, eval=BCRs & ! all(is.na(db$c_call)), fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 
 db_cgene <- db %>% filter(!is.na(c_gene), !(is.na(mu_freq)))
 db_cgene$mu_freq <- as.numeric(db_cgene$mu_freq)
@@ -697,7 +695,7 @@ if (nrow(db_cgene) > 0) {
 
 ```
 
-```{r mufreqSampleLocus,fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
+```{r mufreqSampleLocus, eval=BCRs, fig.width=getPrettyWidth(length(unique(db[['sample_id']])), ncols=3), fig.height=getPrettyHeight(length(unique(db[['sample_id']])),ncols=3), fig.cap=caption}
 
 db_locus <- db %>% filter(!is.na(locus), !is.na(mu_freq))
 db_locus$mu_freq <- as.numeric(db_locus$mu_freq)
