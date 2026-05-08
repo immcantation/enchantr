@@ -1,18 +1,17 @@
-Version 0.1.25.999: Unreleased
------------------------------------
-
-+ Added tigger as new dependency. Bumped alakazam requirement to >=1.3.0 to
-  satisfy tigger requirements.
-
-Version 0.1.25: January 30, 2026
+Version 0.1.25: May 8, 2026
 -----------------------------------
 General:
 
++ Add proper error message if no cell is left after qc steps in single cell qc report.
++ Add novel allele inference project.
++ Add piglet and tigger bayesian genotype project. 
 + Delete repertoire analysis (eg.abundance, diversity and mutation frequency) from clonal assignment report  
 + Add an independent repertoire analysis report 
 + Combine C_gene subclass in tables and plots in repertoire analysis report
 + Increase the maximum height for clonal abundance and diversity plots
 + Add Clonal Overlap plots in repertoire analysis report
++ Add tigger as new dependency. Bumped alakazam requirement to >=1.3.0 to satisfy tigger requirements.
+
 
 Bug fixes:
 
