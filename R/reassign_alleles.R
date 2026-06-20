@@ -72,276 +72,59 @@ reassign_segment <- function(db, seg, loci, references, treat_multigene_as_uncal
     ignored_regex <- "[\\.N-]"
   }
 
-  # call the TIgGER helper (keeps same arg names as your original)
-  db <- reassignAllelesVDJ(db,
-    germline_db = seg_references,
-    call_column = call_col,
+  # call the TIgGER helper (top_k = 3 / "alphabetical" reproduces the prior
+  # enchantr defaults; TIgGER caps the equally-best alleles reported per row).
+  # overwrite = TRUE reassigns the call column in place.
+  original_calls <- db[[call_col]]
+  db <- tigger::reassignAlleles(db,
+    genotype_db = seg_references,
+    v_call = call_col,
     seq = seq_col,
     trim_seq = trim_seq,
+    overwrite = TRUE,
     treat_multigene_as_uncalled = treat_multigene_as_uncalled,
-    ignored_regex = ignored_regex
+    ignored_regex = ignored_regex,
+    top_k = 3,
+    top_by = "alphabetical"
   )
 
-  # If reassignAlleles created the genotype column, count changes and copy back
-  if (paste0(seg, "_call_reassigned") %in% names(db)) {
-    num_changes <- sum(db[[call_col]] != db[[paste0(seg, "_call_reassigned")]], na.rm = TRUE)
-    if (num_changes > 0 && !quiet) {
-      message(sprintf("Reassigned %d sequences for %s segment.", num_changes, toupper(seg)))
-    }
-    db[[call_col]] <- db[[paste0(seg, "_call_reassigned")]]
-    db[[paste0(seg, "_call_reassigned")]] <- NULL
-  } else {
-    warning(sprintf("Expected column '%s_call_reassigned' not found after reassignAlleles for segment '%s'.", seg, toupper(seg)))
+  num_changes <- sum(original_calls != db[[call_col]], na.rm = TRUE)
+  if (num_changes > 0 && !quiet) {
+    message(sprintf("Reassigned %d sequences for %s segment.", num_changes, toupper(seg)))
   }
 
   return(db)
 }
 
-# Internal helper: compute Hamming distance matrix between query sequences and a list
-# of reference sequences. Returns a numeric matrix with rows = queries and
-# columns = references.
-.compute_hamming_dist_mat <- function(sequences, ref_list, trim_seq = FALSE, data = NULL, germline_trim_columns = NULL, indices = NULL, ignored_regex = "[\\.N-]") {
-  # sequences: character vector of full-length sequences (subset already taken)
-  # ref_list: named list/vector of reference sequences
-  n_q <- length(sequences)
-  n_r <- length(ref_list)
-  if (n_q == 0 || n_r == 0) {
-    return(matrix(numeric(0), nrow = n_q, ncol = n_r))
-  }
-
-  dists <- lapply(ref_list, function(x) {
-    ref_seqs <- if (trim_seq && !is.null(indices) && !is.null(germline_trim_columns) && !is.null(data)) {
-      # repeat and trim the reference sequence for each query according to data
-      substr(rep(x, n_q), data[[germline_trim_columns[1]]][indices], data[[germline_trim_columns[2]]][indices])
-    } else {
-      rep(x, n_q)
-    }
-    sapply(
-      getMutatedPositions(
-        sequences,
-        ref_seqs,
-        match_instead = FALSE,
-        ignored_regex = ignored_regex
-      ),
-      length
-    )
-  })
-  matrix(unlist(dists), ncol = n_r, byrow = FALSE)
-}
-
-
-# Internal helper: for each row of a distance matrix, return indices of minima
-.best_match_indices <- function(dist_mat) {
-  if (length(dist_mat) == 0) {
-    return(list())
-  }
-  lapply(seq_len(nrow(dist_mat)), function(i) which(dist_mat[i, ] == min(dist_mat[i, ])))
-}
-
-#' Reassign alleles by simple Hamming distance to a germline database
+#' Reassign alleles per locus and recombine
 #'
-#' This function attempts to reassign allele calls (V/D/J) based on the
-#' provided `germline_db` by computing simple Hamming distances between the
-#' (optionally trimmed) query sequences and candidate germline sequences.
+#' Reassigns each locus' sequences against only that locus' alleles (so a gene
+#' absent from the genotype is never compared across loci), running only the
+#' segments applicable to the locus' chain (no D for light chains), then
+#' row-binds the loci back together in the original row order.
 #'
-#' @param data A data.frame/tibble containing sequence and call columns.
-#' @param germline_db A named list of germline alleles (names are allele ids).
-#' @param call_column Character. Column holding original allele calls (e.g. "v_call").
-#' @param seq Character. Column holding the alignment used for distance (default "sequence_alignment").
-#' @param method Character. Only "hamming" is currently supported.
-#' @param trim_seq Logical. If TRUE, reference sequences are trimmed using
-#'   *_germline_start/_germline_end positions from `data`.
-#' @param keep_gene Character. One of "gene", "family", or "repertoire".
-#' @param ignored_regex Regex for characters to ignore when comparing.
-#' @param treat_multigene_as_uncalled Logical. Treat multi-gene calls as uncalled.
-#' @param top_k Integer. Number of top alleles to keep. If NULL, keep all alleles. Default is 3.
-#' @param top_by Character. One of "alphabetical" or "mutation_count". Default is "alphabetical".
-#' @return `data` with a new column like "v_call_reassigned" containing the reassigned calls.
+#' @param db AIRR \code{data.frame} with a \code{locus} column.
+#' @param loci Character vector of locus names present in \code{db}.
+#' @param segments Character vector of segments to reassign (subset of
+#'   \code{c("v", "d", "j")}).
+#' @param references Nested list of reference alleles indexed by locus and
+#'   segment (as returned by \code{dowser::readIMGT}).
+#' @return \code{db} with reassigned \code{<seg>_call} columns, in the original row order.
 #' @export
-reassignAllelesVDJ <- function(
-  data,
-  germline_db,
-  call_column = "v_call",
-  seq = "sequence_alignment",
-  method = "hamming",
-  trim_seq = FALSE,
-  keep_gene = c("gene", "family", "repertoire"),
-  ignored_regex = "[\\.N-]",
-  treat_multigene_as_uncalled = FALSE,
-  top_k = 3,
-  top_by = "alphabetical"
-) {
-  keep_gene <- match.arg(keep_gene)
-  sequences <- as.character(data[[seq]])
-
-  seg <- substr(call_column, 1, 1)
-
-  # Optional trimming of input sequences based on alignment positions
-  # useful for D and J reassignment
-  if (trim_seq) {
-    germline_trim_columns <- c(
-      paste0(seg, "_germline_start"),
-      paste0(seg, "_germline_end")
+reassign_loci <- function(db, loci, segments, references) {
+  db[[".ord"]] <- seq_len(nrow(db))
+  db <- dplyr::bind_rows(lapply(loci, function(locus) {
+    locus_db <- db[db[["locus"]] == locus, ]
+    locus_segments <- intersect(
+      segments,
+      if (isHeavyChain(locus)) c("v", "d", "j") else c("v", "j")
     )
-    if (seq == "sequence_alignment") {
-      seq_trim_columns <- germline_trim_columns
-    } else if (seq == "sequence") {
-      seq_trim_columns <- c(
-        paste0(seg, "_sequence_start"),
-        paste0(seg, "_sequence_end")
-      )
-    } else {
-      stop("seq column for trimming must be either sequence_alignment or sequence")
+    for (seg in locus_segments) {
+      locus_db <- reassign_segment(locus_db, seg, locus, references)
     }
-
-    missing_cols <- setdiff(seq_trim_columns, colnames(data))
-    if (length(missing_cols) > 0) {
-      stop(
-        "Cannot trim sequences: missing columns ",
-        paste(missing_cols, collapse = ", ")
-      )
-    }
-
-    sequences <- substr(
-      sequences,
-      data[[seq_trim_columns[1]]],
-      data[[seq_trim_columns[2]]]
-    )
-  }
-
-  # Original calls and container for reassigned calls
-  calls <- getAllele(data[[call_column]], first = FALSE, strip_d = FALSE)
-  calls_reassign <- rep("", length(calls))
-
-  # Identify valid calls (not empty/NA)
-  has_call <- !is.na(calls) & nzchar(calls)
-
-  # Detect multi-gene calls when relevant
-  if (keep_gene %in% c("gene", "repertoire") && treat_multigene_as_uncalled) {
-    genes_full <- getGene(calls, first = FALSE, strip_d = FALSE)
-    genes_split <- strsplit(genes_full, ",")
-    is_multigene <- vapply(
-      genes_split,
-      function(x) length(unique(trimws(x))) > 1,
-      logical(1)
-    )
-  } else {
-    is_multigene <- rep(FALSE, length(calls))
-  }
-
-  # Grouping variable g (by gene/family/repertoire) and germline labels
-  if (keep_gene == "gene") {
-    g <- getGene(calls, first = TRUE, strip_d = FALSE)
-    germline <- getGene(names(germline_db), strip_d = TRUE)
-    names(germline) <- names(germline_db)
-  } else if (keep_gene == "family") {
-    g <- getFamily(calls, first = TRUE, strip_d = FALSE)
-    germline <- getFamily(names(germline_db), strip_d = TRUE)
-    names(germline) <- names(germline_db)
-  } else if (keep_gene == "repertoire") {
-    # same behaviour as original code
-    g <- rep(calls, length(calls))
-    germline <- rep(calls, length(germline_db))
-    names(germline) <- names(germline_db)
-  } else {
-    stop("Unknown keep_gene value: ", keep_gene)
-  }
-
-  # Define heterozygous vs homozygous groups in the genotype
-  hetero <- unique(germline[which(duplicated(germline))])
-  homo <- germline[!(germline %in% hetero)]
-  homo_alleles <- names(homo)
-  names(homo_alleles) <- homo
-
-  # Homozygous: direct mapping, but skip multi-gene rows
-  homo_calls_i <- which(g %in% homo & !is_multigene & has_call)
-  if (length(homo_calls_i) > 0) {
-    calls_reassign[homo_calls_i] <- homo_alleles[g[homo_calls_i]]
-  }
-
-  # Heterozygous: choose best allele(s) within each gene/group, skip multi-gene rows
-  if (length(hetero) > 0) {
-    for (het in hetero) {
-      ind <- which(g %in% het & !is_multigene & has_call)
-      if (length(ind) > 0) {
-        het_alleles <- names(germline[which(germline == het)])
-        het_seqs <- germline_db[het_alleles]
-
-        if (method == "hamming") {
-          dist_mat <- .compute_hamming_dist_mat(
-            sequences = sequences[ind],
-            ref_list = het_seqs,
-            trim_seq = trim_seq,
-            data = data,
-            germline_trim_columns = germline_trim_columns,
-            indices = ind,
-            ignored_regex = ignored_regex
-          )
-        } else {
-          stop("Only Hamming distance is currently supported as a method.")
-        }
-
-        best_match <- .best_match_indices(dist_mat)
-        best_alleles <- lapply(best_match, function(x) het_alleles[x])
-
-        if (!is.null(top_k) && !is.na(top_k) && top_by == "alphabetical") {
-          best_alleles <- lapply(best_alleles, function(x) {
-            if (length(x) > top_k) head(sort(x), top_k) else x
-          })
-        }
-
-        calls_reassign[ind] <- unlist(lapply(best_alleles, paste, collapse = ","))
-      }
-    }
-  }
-
-  # Rows already handled via homo/hetero (excluding multi-gene rows)
-  hetero_calls_i <- which(g %in% hetero & !is_multigene & has_call)
-
-  # Everything else (including multi-gene rows) is treated as "not called"
-  # We only reassign if there was an original call
-  not_called <- setdiff(which(has_call), c(homo_calls_i, hetero_calls_i))
-
-  if (length(not_called) > 0) {
-    if (method == "hamming") {
-      dist_mat <- .compute_hamming_dist_mat(
-        sequences = sequences[not_called],
-        ref_list = germline_db,
-        trim_seq = trim_seq,
-        data = data,
-        germline_trim_columns = germline_trim_columns,
-        indices = not_called,
-        ignored_regex = ignored_regex
-      )
-    } else {
-      stop("Only Hamming distance is currently supported as a method.")
-    }
-
-    best_match <- .best_match_indices(dist_mat)
-    best_alleles <- lapply(best_match, function(x) names(germline_db[x]))
-
-    if (!is.null(top_k) && !is.na(top_k) && top_by == "alphabetical") {
-      best_alleles <- lapply(best_alleles, function(x) {
-        if (length(x) > top_k) head(sort(x), top_k) else x
-      })
-    }
-
-    calls_reassign[not_called] <- unlist(lapply(best_alleles, paste, collapse = ","))
-  }
-
-  # Informative warning if nothing changed
-  if (all(calls_reassign == data[[call_column]])) {
-    msg <- "No allele assignment corrections made."
-    if (all(g %in% homo) && length(hetero) > 0) {
-      keep_opt <- eval(formals(reassignAlleles)$keep_gene)
-      i <- match(keep_gene, keep_opt)
-      rec_opt <- paste(keep_opt[(i + 1):length(keep_opt)], collapse = ", ")
-      msg <- paste(msg, "Consider setting keep_gene to one of:", rec_opt)
-    }
-    warning(msg)
-  }
-
-  # Write result column (e.g. v_call_reassigned / d_call_reassigned / j_call_reassigned)
-  data[[paste0(seg, "_call_reassigned")]] <- calls_reassign
-  return(data)
+    locus_db
+  }))
+  db <- db[order(db[[".ord"]]), ]
+  db[[".ord"]] <- NULL
+  db
 }

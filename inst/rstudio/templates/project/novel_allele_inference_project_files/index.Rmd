@@ -48,6 +48,10 @@ params:
       label: "`pos_range_max`"
       input: numeric
       value: NULL
+   auto_pos_range:
+      label: "`auto_pos_range`"
+      input: checkbox
+      value: TRUE
    y_intercept:
       label: "`y_intercept`"
       input: numeric
@@ -188,45 +192,6 @@ if (is.character(pos_range)) {
 ```
 
 
-```{r helper-functions, include = FALSE, cache = FALSE}
-
-# Helper for light chain inference by gene range
-infer_novel_light_chain <- function(db, germline_db, params) {
-  gene_range <- tigger_upper_bound(db)
-  purrr::map_dfr(seq_along(gene_range), function(i) {
-    upper_range <- as.numeric(names(gene_range)[i])
-    genes <- gene_range[i]
-    sub_db <- db[stringi::stri_detect_regex(db[[params$v_call]], genes), ]
-    if (nrow(sub_db) == 0) return(NULL)
-    low_range <- min(sub_db$v_germline_start)
-    novel_df <- try(findNovelAlleles(
-      data = sub_db,
-      germline_db = germline_db,
-      pos_range = low_range:upper_range,
-      v_call = params$v_call,
-      j_call = params$j_call,
-      seq = params$seq,
-      junction = params$junction,
-      junction_length = params$junction_length,
-      nproc = params$nproc,
-      germline_min = params$germline_min,
-      min_seqs = params$min_seqs,
-      y_intercept = params$y_intercept,
-      alpha = params$alpha,
-      j_max = params$j_max,
-      min_frac = params$min_frac,
-      auto_mutrange = params$auto_mutrange,
-      mut_range = mut_range
-    ))
-    if (inherits(novel_df, "try-error")) return(NULL)
-    novel_df
-  })
-}
-
-
-```
-
-
 # Input parameters
 
 ```{r input-parameters, results = 'asis'}
@@ -271,7 +236,6 @@ if (!"locus" %in% colnames(db)) {
 if (any(grepl("^TR", db[["locus"]]))) {
   stop("The novel allele inference report supports IG loci only; TR loci are not supported.")
 }
-heavy_chains <- isHeavyChain(db[["locus"]])
 
 if (!is.null(params$outname)) {
   output_fn <- paste0(basename(params$outname), "_novel-pass.tsv.gz")
@@ -374,41 +338,21 @@ Positions with a disproportionately high baseline mutation frequency (high y-int
 
 - `auto_mutrange` / `mut_range`: controls which sequences (by mutation count) are included to balance sensitivity vs noise.
 
-- `pos_range`: limits the region analyzed to reliably aligned V-segment positions, avoiding false SNPs near the CDR3 junction.
+- `pos_range`: limits the region analyzed to reliably aligned V-segment positions, avoiding false SNPs near the CDR3 junction. It is applied to heavy-chain genes, and to light-chain genes when `auto_pos_range` is off.
+
+- `auto_pos_range`: for light chains only, derive each V gene's positional range from the data (the 95th percentile of `v_germline_end`) instead of using the fixed `pos_range`. This adapts to the variable 3' end of light-chain V genes and reduces false novel SNPs there; it has no effect on heavy chains. Heavy and light chains are inferred separately, so a repertoire mixing both loci is handled correctly.
 
 *Expected*: only a small fraction of alleles show candidate polymorphic sites; most known alleles return no novel calls.
 
 ```{r infer-novel-alleles, eval=can_run_inference}
 
-# Run TIgGER novel allele inference
-if (all(loci == "IGH")) {
-  # Heavy chain: run as usual
-  novel <- try(findNovelAlleles(
-    data = db,
-    germline_db = germline_db,
-    v_call = params$v_call,
-    j_call = params$j_call,
-    seq = params$seq,
-    junction = params$junction,
-    junction_length = params$junction_length,
-    germline_min = params$germline_min,
-    min_seqs = params$min_seqs,
-    y_intercept = params$y_intercept,
-    alpha = params$alpha,
-    j_max = params$j_max,
-    min_frac = params$min_frac,
-    auto_mutrange = params$auto_mutrange,
-    mut_range = mut_range,
-    pos_range = pos_range,
-    nproc = params$nproc
-  ))
+# Infer novel alleles, splitting heavy/light chains so each uses the appropriate
+# positional-range strategy (see enchantr::infer_novel_alleles). heavy_chains is
+# computed here because `db` has been filtered/reordered since it was read in.
+heavy_chains <- isHeavyChain(db[["locus"]])
+novel <- infer_novel_alleles(db, germline_db, heavy_chains, params, pos_range, mut_range)
 
-} else {
-  # Light chain: run per gene-range
-  novel <- infer_novel_light_chain(db, germline_db, params)
-}
-
-has_novel <- !inherits(novel, "try-error") && nrow(novel) > 0
+has_novel <- is.data.frame(novel) && nrow(novel) > 0
 ```
 
 # Filter and clean novel alleles

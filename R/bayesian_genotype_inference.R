@@ -23,22 +23,6 @@ tigger_bayesian_genotype_project <- function(path, ...) {
   file.copy(project_files, project_dir, recursive = TRUE)
 }
 
-# Helper function to get most likely genotyped alleles
-#' Helper: extract most likely genotyped alleles from inferGenotypeBayesian output
-#'
-#' Internal helper used to convert columns returned by
-#' `tigger::inferGenotypeBayesian()` into a comma-separated list of the
-#' most-likely alleles.
-#'
-#' @param row A single-row character/numeric vector where the first element is
-#'   a comma-separated allele list and elements 2:5 are likelihood scores.
-#' @return A character string with the top N alleles (comma-separated).
-#' @keywords internal
-.genotyped_alleles <- function(row) {
-  m <- which.max(as.numeric(row[2:5]))
-  paste0(unlist(strsplit(row[1], ","))[1:m], collapse = ",")
-}
-
 ## wrapper to infer genotype by segment, and by genotypeby column and return the results
 #' Infer genotype (Bayesian) for a segment
 #'
@@ -95,59 +79,37 @@ infer_genotype <- function(
   # Remove NA values
   db <- db[!is.na(db[[call_col]]), ]
 
-  if (!is.null(genotypeby)) {
-    # run inference per-group, collect genotype tables and per-group references
-    groups <- unique(db[[genotypeby]])
-    genotype_list <- list()
-    for (val in groups) {
-      db_genotypeby <- db[db[[genotypeby]] == val, ]
-      genotype_try <- try(
-        tigger::inferGenotypeBayesian(
-          db_genotypeby,
-          find_unmutated = find_unmutated,
-          germline_db = seg_references,
-          v_call = call_col,
-          seq = seq,
-          priors = priors
-        )
-      )
-      if (inherits(genotype_try, "try-error")) {
-        genotype_list[[as.character(val)]] <- NULL
-        next
-      }
-      genotype_try$genotyped_alleles <- apply(genotype_try[, c(2, 6:9)], 1, .genotyped_alleles)
-      gt_df <- genotype_try
-      if (is.data.frame(gt_df)) {
-        gt_df[[genotypeby]] <- val
-      }
-      genotype_list[[as.character(val)]] <- gt_df
-    }
-    genotype_bound <- NULL
-    non_null_gts <- genotype_list[!vapply(genotype_list, is.null, logical(1))]
-    if (length(non_null_gts) > 0) {
-      genotype_bound <- do.call(rbind, non_null_gts)
-    }
-    genotype <- genotype_bound
-  } else {
-    genotype <- try(
+  # Run Bayesian inference on one repertoire (or sub-group); NULL on failure.
+  run_one <- function(d) {
+    g <- try(
       tigger::inferGenotypeBayesian(
-        db,
+        d,
         find_unmutated = find_unmutated,
         germline_db = seg_references,
         v_call = call_col,
         seq = seq,
-        priors = priors
+        priors = priors,
+        genotyped_alleles = TRUE
       )
     )
-
-    if (inherits(genotype, "try-error")) {
-      return(NULL)
-    }
-
-    genotype$genotyped_alleles <- apply(genotype[, c(2, 6:9)], 1, .genotyped_alleles)
+    if (inherits(g, "try-error")) NULL else g
   }
 
-  return(genotype)
+  # Whole-repertoire inference
+  if (is.null(genotypeby)) {
+    return(run_one(db))
+  }
+
+  # Per-group inference: tag each result with the grouping value and bind
+  parts <- lapply(unique(db[[genotypeby]]), function(val) {
+    g <- run_one(db[db[[genotypeby]] == val, ])
+    if (is.data.frame(g)) {
+      g[[genotypeby]] <- val
+    }
+    g
+  })
+  parts <- parts[!vapply(parts, is.null, logical(1))]
+  if (length(parts) > 0) do.call(rbind, parts) else NULL
 }
 
 #' Summarize single-assignment support for genotype genes
@@ -302,67 +264,30 @@ infer_genotype <- function(
 #' @param genotypeby Optional column name in `genotypes` that contains grouping values.
 #' @export
 write_genotypes <- function(genotypes, out_dir, out_fn, genotypeby = NULL) {
-  if (!is.null(genotypeby)) {
-    groups <- unique(genotypes[[genotypeby]])
-    for (val in groups) {
-      genotypes_genotypeby <- genotypes[genotypes[[genotypeby]] == val, ]
-      write.table(
-        genotypes_genotypeby,
-        file = file.path(out_dir, paste0(val, "_", out_fn)),
-        row.names = FALSE,
-        quote = FALSE,
-        sep = "\t"
-      )
-    }
+  write_one <- function(df, fn) {
+    write.table(df, file = file.path(out_dir, fn), row.names = FALSE, quote = FALSE, sep = "\t")
+  }
+  if (is.null(genotypeby)) {
+    write_one(genotypes, out_fn)
   } else {
-    write.table(
-      genotypes,
-      file = file.path(out_dir, out_fn),
-      row.names = FALSE,
-      quote = FALSE,
-      sep = "\t"
-    )
+    for (val in unique(genotypes[[genotypeby]])) {
+      write_one(genotypes[genotypes[[genotypeby]] == val, ], paste0(val, "_", out_fn))
+    }
   }
-}
-
-# Helper to build personal germline reference from genotype table
-#' Helper: build personal germline reference from genotype table
-#'
-#' Internal helper used to construct a personal germline reference sequence
-#' list from a genotype table and the original reference sequences.
-#'' @param genotype A data.frame with genotype results for a segment.
-#' @param reference Named character/list of original germline sequences (names like "GENE*ALLELE").
-#' @return A named character/list of germline sequences for the personal genotype.
-#' @keywords internal
-.genotyped_reference <- function(genotype, reference) {
-  if (is.null(reference)) {
-    return(NULL)
-  }
-  not_in_genotype <- !(sapply(strsplit(names(reference), "*", fixed = TRUE), `[`, 1) %in% genotype$gene)
-  genotype_reference <- reference[not_in_genotype]
-  # Add genotyped alleles
-  for (i in seq_len(nrow(genotype))) {
-    gene <- genotype[i, "gene"]
-    candidate_col <- if ("candidate_alleles" %in% colnames(genotype)) "candidate_alleles" else "alleles"
-    alleles <- if (genotype[i, "genotyped_alleles"] == "") genotype[i, candidate_col] else genotype[i, "genotyped_alleles"]
-    alleles <- unlist(strsplit(alleles, ","))
-    ind <- names(reference) %in% paste(gene, alleles, sep = "*")
-    genotype_reference <- c(genotype_reference, reference[ind])
-  }
-
-  genotype_reference
 }
 
 #' Generate genotype-informed reference FASTA files
 #'
 #' For a combined genotype table (optionally containing a grouping column
 #' given by `genotypeby`), build per-locus, per-segment genotype-aware
-#' reference FASTA files. When `genotypeby` is provided, a separate
-#' output tree is created for each group under `file.path(output_dir, group, species, "vdj")`.
+#' reference FASTA files via \code{tigger::genotypeFasta(..., include_unseen = TRUE)}
+#' (genes absent from the genotype keep all their reference alleles; genes
+#' present are restricted to their genotyped alleles). When `genotypeby` is
+#' provided a separate output tree is created per group, otherwise a single
+#' "sample" tree is written.
 #'
-#' The function copies the baseline files from `references_dir` into the
-#' target location and overwrites locus FASTA files with genotype-filtered
-#' sequences derived from `genotypes` and `references`.
+#' The baseline files from `references_dir` are copied into the target location
+#' and the per-locus FASTA files are overwritten with the genotyped sequences.
 #'
 #' @param genotypes A data.frame with genotype results. Must contain a column `gene` and,
 #'   when `genotypeby` is set, a grouping column with that name.
@@ -388,159 +313,50 @@ generate_genotyped_reference <- function(
   genotypeby = NULL,
   quiet = FALSE
 ) {
-  if (!is.null(genotypeby)) {
-    groups <- unique(genotypes[[genotypeby]])
-    for (val in groups) {
-      genotypes_genotypeby <- genotypes[genotypes[[genotypeby]] == val, ]
+  # tigger::genotypeFasta uses an `alleles` column as the fallback when
+  # genotyped_alleles is empty; enchantr renames it to candidate_alleles.
+  if (!"alleles" %in% colnames(genotypes) && "candidate_alleles" %in% colnames(genotypes)) {
+    genotypes$alleles <- genotypes$candidate_alleles
+  }
 
-      # create output dir for this group
-      output_dir_genotypeby <- file.path(output_dir, as.character(val), germline_dir, species, "vdj")
-      dir.create(output_dir_genotypeby, showWarnings = FALSE, recursive = TRUE)
+  # Treat the non-grouped case as a single "sample" group so the loop is shared.
+  groups <- if (!is.null(genotypeby)) unique(genotypes[[genotypeby]]) else "sample"
 
-      # copy the files from the original references dir
-      file.copy(list.files(references_dir, full.names = TRUE), output_dir_genotypeby, recursive = TRUE)
+  for (val in groups) {
+    group_genotypes <- if (is.null(genotypeby)) genotypes else genotypes[genotypes[[genotypeby]] == val, ]
 
-      # get the loci files
-      loci_files <- list.files(output_dir_genotypeby, paste0(loci, collapse = "|"), full.names = TRUE)
+    out_dir <- file.path(output_dir, as.character(val), germline_dir, species, "vdj")
+    dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+    file.copy(list.files(references_dir, full.names = TRUE), out_dir, recursive = TRUE)
+    loci_files <- list.files(out_dir, paste0(loci, collapse = "|"), full.names = TRUE)
 
-      # for each locus, and segment, build the reference and save it
-      for (locus in loci) {
-        locus_file <- loci_files[grep(locus, loci_files)]
-        if (length(locus_file) == 0) {
-          next
-        }
-        # get the locus genotype
-        genotypes_genotypeby_locus <- genotypes_genotypeby[grepl(locus, genotypes_genotypeby$gene), ]
-
-        for (seg in c("V", "D", "J")) {
-          call <- paste0(locus, seg)
-          # check that there are genes for the locus and segment
-          if (any(grepl(call, genotypes_genotypeby_locus$gene))) {
-            seg_references <- references[[locus]][[seg]]
-            # get the genotype reference
-            seg_ref_group <- .genotyped_reference(genotypes_genotypeby_locus[grepl(call, genotypes_genotypeby_locus$gene), ], seg_references)
-            # write the genotype reference
-            seg_ref_file <- locus_file[grepl(paste0(locus, seg, "\\."), basename(locus_file))]
-            if (length(seg_ref_file) != 1) {
-              stop(sprintf("Expected exactly one reference file for %s, found %d.", call, length(seg_ref_file)))
-            }
-            tigger::writeFasta(seg_ref_group, file.path(output_dir_genotypeby, basename(seg_ref_file)))
-            if (!quiet) {
-              message(sprintf("%s Genotyped Reference database for %s: [%s](%s)\n", call, val, seg_ref_file, seg_ref_file))
-            }
-          } else {
-            next
-          }
-        }
-      }
-    }
-  } else {
-    # create output dir for this group
-    output_dir <- file.path(output_dir, "sample", germline_dir, species, "vdj")
-    dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
-
-    # copy the files from the original references dir
-    file.copy(list.files(references_dir, full.names = TRUE), output_dir, recursive = TRUE)
-
-    # get the loci files
-    loci_files <- list.files(output_dir, paste0(loci, collapse = "|"), full.names = TRUE)
-
-    # for each locus, and segment, build the reference and save it
     for (locus in loci) {
       locus_file <- loci_files[grep(locus, loci_files)]
       if (length(locus_file) == 0) {
         next
       }
-      # get the locus genotype
-      genotypes_locus <- genotypes[grepl(locus, genotypes$gene), ]
+      group_locus <- group_genotypes[grepl(locus, group_genotypes$gene), ]
 
       for (seg in c("V", "D", "J")) {
         call <- paste0(locus, seg)
-        # check that there are genes for the locus and segment
-        if (any(grepl(call, genotypes_locus$gene))) {
-          seg_references <- references[[locus]][[seg]]
-          # get the genotype reference
-          seg_ref_group <- .genotyped_reference(genotypes_locus[grepl(call, genotypes_locus$gene), ], seg_references)
-          # write the genotype reference
-          seg_ref_file <- locus_file[grepl(paste0(locus, seg, "\\."), basename(locus_file))]
-          if (length(seg_ref_file) != 1) {
-            stop(sprintf("Expected exactly one reference file for %s, found %d.", call, length(seg_ref_file)))
-          }
-          tigger::writeFasta(seg_ref_group, file.path(output_dir, basename(seg_ref_file)))
-          if (!quiet) {
-            message(sprintf("%s Genotyped Reference database: [%s](%s)\n", call, seg_ref_file, seg_ref_file))
-          }
-        } else {
+        seg_references <- references[[locus]][[seg]]
+        # skip segments with no genotyped genes or no reference
+        if (!any(grepl(call, group_locus$gene)) || is.null(seg_references)) {
           next
+        }
+
+        seg_ref_group <- tigger::genotypeFasta(
+          group_locus[grepl(call, group_locus$gene), ], seg_references, include_unseen = TRUE
+        )
+        seg_ref_file <- locus_file[grepl(paste0(locus, seg, "\\."), basename(locus_file))]
+        if (length(seg_ref_file) != 1) {
+          stop(sprintf("Expected exactly one reference file for %s, found %d.", call, length(seg_ref_file)))
+        }
+        tigger::writeFasta(seg_ref_group, file.path(out_dir, basename(seg_ref_file)))
+        if (!quiet) {
+          message(sprintf("%s Genotyped Reference database for %s: [%s](%s)\n", call, val, seg_ref_file, seg_ref_file))
         }
       }
     }
   }
-}
-
-#' Plot genotype
-#'
-#' \code{plot_genotype} plots a genotype.
-#'
-#' @param    genotype       data frame of genotype information.
-#' @param    allele_column  name of the column containing alleles.
-#' @param    facet_by       column name to facet the plot by.
-#' @param    gene_sort      method to sort genes ("name" or "position").
-#' @param    text_size      size of the text in the plot.
-#' @param    silent         if \code{TRUE}, do not plot the result.
-#' @param    ...            additional arguments to pass to \code{theme()}.
-#'
-#' @return   A \code{ggplot} object.
-#'
-#' @export
-plot_genotype <- function(genotype, allele_column = "alleles", facet_by = NULL, gene_sort = c("name", "position"),
-                          text_size = 12, silent = FALSE, ...) {
-  # Check arguments
-  gene_sort <- match.arg(gene_sort)
-
-  # Split genes' alleles into their own rows
-  alleles <- strsplit(genotype[[allele_column]], ",")
-  geno2 <- genotype[rep(seq_len(nrow(genotype)), lengths(alleles)), , drop = FALSE]
-  geno2$alleles <- trimws(unlist(alleles, use.names = FALSE))
-
-  # Set the gene order
-  geno2$gene <- factor(geno2$gene,
-    levels = rev(sortAlleles(unique(geno2$gene), method = gene_sort))
-  )
-
-  # Create the base plot
-  p <- ggplot(geno2, aes(
-    x = !!rlang::sym("gene"),
-    fill = !!rlang::sym("alleles")
-  )) +
-    theme_bw() +
-    theme(
-      axis.ticks = element_blank(),
-      axis.text.x = element_blank(),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      text = element_text(size = text_size),
-      strip.background = element_blank(),
-      strip.text = element_text(face = "bold")
-    ) +
-    geom_bar(position = "fill") +
-    coord_flip() +
-    xlab("Gene") +
-    ylab("") +
-    scale_fill_hue(name = "Allele", h = c(0, 270), h.start = 10)
-
-  # Plot, with facets by SUBJECT if that column is present
-  if (!is.null(facet_by)) {
-    p <- p + facet_grid(paste0(".~", facet_by))
-  }
-
-  # Add additional theme elements
-  p <- p + do.call(theme, list(...))
-
-  # Plot
-  if (!silent) {
-    plot(p)
-  }
-
-  invisible(p)
 }

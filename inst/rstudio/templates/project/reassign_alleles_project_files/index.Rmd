@@ -228,9 +228,9 @@ in order to save time, initial gene assignments are preserved and the allele cal
 
 ```{r reassign, message = TRUE, warning = TRUE}
 if (!all(is.na(references))) {
-  for (seg in segments_to_reassign) {
-    db <- reassign_segment(db, seg, loci, references)
-  }
+  # Reassign per locus so each repertoire is only compared against its own
+  # locus' alleles, then recombine in the original row order.
+  db <- reassign_loci(db, loci, segments_to_reassign, references)
 }
 ```
 

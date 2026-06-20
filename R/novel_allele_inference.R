@@ -137,3 +137,101 @@ tigger_upper_bound <- function(data) {
    gene_range <- setNames(range_genes$GENES, range_genes$RANGE)
    return(gene_range)
 }
+
+
+#' Run TIgGER novel-allele inference with the report parameters
+#'
+#' Thin wrapper around \code{tigger::findNovelAlleles()} that forwards the
+#' standard novel-inference parameters and returns \code{NULL} on failure.
+#'
+#' @param sub_db AIRR \code{data.frame} for one chain (or gene sub-group).
+#' @param germline_db Named character vector of germline V sequences.
+#' @param pos_range Integer vector of IMGT positions to analyse.
+#' @param params Named list of report parameters (\code{v_call}, \code{j_call},
+#'   \code{seq}, \code{junction}, \code{junction_length}, \code{germline_min},
+#'   \code{min_seqs}, \code{y_intercept}, \code{alpha}, \code{j_max},
+#'   \code{min_frac}, \code{auto_mutrange}, \code{nproc}).
+#' @param mut_range Integer vector passed to \code{findNovelAlleles(mut_range=)}.
+#' @return A novel-allele \code{data.frame}, or \code{NULL} on error.
+#' @keywords internal
+run_find_novel <- function(sub_db, germline_db, pos_range, params, mut_range) {
+  novel_df <- try(tigger::findNovelAlleles(
+    data = sub_db,
+    germline_db = germline_db,
+    pos_range = pos_range,
+    v_call = params$v_call,
+    j_call = params$j_call,
+    seq = params$seq,
+    junction = params$junction,
+    junction_length = params$junction_length,
+    nproc = params$nproc,
+    germline_min = params$germline_min,
+    min_seqs = params$min_seqs,
+    y_intercept = params$y_intercept,
+    alpha = params$alpha,
+    j_max = params$j_max,
+    min_frac = params$min_frac,
+    auto_mutrange = params$auto_mutrange,
+    mut_range = mut_range
+  ))
+  if (inherits(novel_df, "try-error")) NULL else novel_df
+}
+
+#' Light-chain novel-allele inference using a data-driven positional range
+#'
+#' Groups light-chain V genes by their 95th-percentile germline end
+#' (\code{\link{tigger_upper_bound}}) and runs novel-allele inference per group
+#' with a per-gene \code{pos_range}.
+#'
+#' @param db AIRR \code{data.frame} of light-chain records.
+#' @param germline_db Named character vector of germline V sequences.
+#' @param params Named list of report parameters (see \code{run_find_novel}).
+#' @param mut_range Integer vector passed to \code{findNovelAlleles(mut_range=)}.
+#' @return A novel-allele \code{data.frame} (possibly with zero rows).
+#' @keywords internal
+infer_novel_light_chain <- function(db, germline_db, params, mut_range) {
+  gene_range <- tigger_upper_bound(db)
+  dplyr::bind_rows(lapply(seq_along(gene_range), function(i) {
+    upper_range <- as.numeric(names(gene_range)[i])
+    genes <- gene_range[i]
+    sub_db <- db[stringi::stri_detect_regex(db[[params$v_call]], genes), ]
+    if (nrow(sub_db) == 0) {
+      return(NULL)
+    }
+    low_range <- min(sub_db$v_germline_start)
+    run_find_novel(sub_db, germline_db, low_range:upper_range, params, mut_range)
+  }))
+}
+
+#' Infer novel alleles across heavy and light chains
+#'
+#' Splits the repertoire by chain so each uses the appropriate positional-range
+#' strategy and row-binds the results: heavy chains use the fixed
+#' \code{pos_range}; light chains use a data-driven per-gene range when
+#' \code{params$auto_pos_range} is \code{TRUE}, otherwise the fixed
+#' \code{pos_range}. This keeps the report correct for repertoires mixing IG loci.
+#'
+#' @param db AIRR \code{data.frame} (any mix of IG loci).
+#' @param germline_db Named character vector of germline V sequences.
+#' @param heavy_chains Logical vector of length \code{nrow(db)} marking heavy-chain rows.
+#' @param params Named list of report parameters (see \code{run_find_novel}; uses
+#'   \code{auto_pos_range} to toggle the light-chain strategy).
+#' @param pos_range Integer vector of IMGT positions for the fixed-range path.
+#' @param mut_range Integer vector passed to \code{findNovelAlleles(mut_range=)}.
+#' @return A novel-allele \code{data.frame} (possibly with zero rows).
+#' @export
+infer_novel_alleles <- function(db, germline_db, heavy_chains, params, pos_range, mut_range) {
+  dplyr::bind_rows(
+    if (any(heavy_chains)) {
+      run_find_novel(db[heavy_chains, ], germline_db, pos_range, params, mut_range)
+    },
+    if (any(!heavy_chains)) {
+      light_db <- db[!heavy_chains, ]
+      if (isTRUE(params$auto_pos_range)) {
+        infer_novel_light_chain(light_db, germline_db, params, mut_range)
+      } else {
+        run_find_novel(light_db, germline_db, pos_range, params, mut_range)
+      }
+    }
+  )
+}
