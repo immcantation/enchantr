@@ -65,9 +65,9 @@ params:
       input: checkbox
       value: FALSE
    single_assignments:
-      label: "`single_assignments`: Filter to single gene assignments only"
+      label: "`single_assignments`: Filter to single gene assignments only. Keep FALSE for IMGT references with duplicate alleles (e.g. IGHV1-69D*01), which only appear in ambiguous multi-allele calls and would otherwise never be genotyped."
       input: checkbox
-      value: TRUE
+      value: FALSE
    v_priors:
       label: "`v_priors`: V gene priors (comma-separated)"
       input: text
