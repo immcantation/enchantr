@@ -439,7 +439,7 @@ genotype_plots <- plot_data %>%
 fig_heights <- plot_data %>%
   group_by(plot_group) %>%
   summarise(n = n()) %>%
-  mutate(fig_height = n * 0.5)
+  mutate(fig_height = pmax(n * 0.5 + 1.5, 3))
 
 for (i in seq_along(genotype_plots)) {
    plot_env <- new.env()
