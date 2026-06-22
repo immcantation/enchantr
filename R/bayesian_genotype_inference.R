@@ -346,7 +346,8 @@ generate_genotyped_reference <- function(
         }
 
         seg_ref_group <- tigger::genotypeFasta(
-          group_locus[grepl(call, group_locus$gene), ], seg_references, include_unseen = TRUE
+          group_locus[grepl(call, group_locus$gene), ], seg_references,
+          include_unseen = TRUE, strip_d = FALSE
         )
         seg_ref_file <- locus_file[grepl(paste0(locus, seg, "\\."), basename(locus_file))]
         if (length(seg_ref_file) != 1) {

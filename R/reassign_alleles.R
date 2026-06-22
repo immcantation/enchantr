@@ -72,9 +72,6 @@ reassign_segment <- function(db, seg, loci, references, treat_multigene_as_uncal
     ignored_regex <- "[\\.N-]"
   }
 
-  # call the TIgGER helper (top_k = 3 / "alphabetical" reproduces the prior
-  # enchantr defaults; TIgGER caps the equally-best alleles reported per row).
-  # overwrite = TRUE reassigns the call column in place.
   original_calls <- db[[call_col]]
   db <- tigger::reassignAlleles(db,
     genotype_db = seg_references,
@@ -85,7 +82,9 @@ reassign_segment <- function(db, seg, loci, references, treat_multigene_as_uncal
     treat_multigene_as_uncalled = treat_multigene_as_uncalled,
     ignored_regex = ignored_regex,
     top_k = 3,
-    top_by = "alphabetical"
+    top_by = "alphabetical",
+    strip_d = FALSE,
+    reassign_uncalled = FALSE
   )
 
   num_changes <- sum(original_calls != db[[call_col]], na.rm = TRUE)
