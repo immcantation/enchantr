@@ -181,7 +181,7 @@ caption <- diversitySample$enchantr$html_caption
 - `q=2` corresponds to Simpson diversity.
 </div>
 
-```{r div_at_q, eval=TRUE,  fig.cap=caption, fig.width=5, fig.height=3}
+```{r div-at-q, eval=TRUE,  fig.cap=caption, fig.width=5, fig.height=3}
 caption = "Diversity at different q values."
 # plot duplicated cells
 div_data <- d@diversity %>% dplyr::filter(q==0 | q==1 | q==2)

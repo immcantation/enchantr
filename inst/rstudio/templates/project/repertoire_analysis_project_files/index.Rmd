@@ -98,6 +98,7 @@ suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("ComplexHeatmap"))
 suppressPackageStartupMessages(library("plotly"))
 suppressPackageStartupMessages(library("fastcluster"))
+suppressPackageStartupMessages(library(patchwork))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive=T)
@@ -728,6 +729,207 @@ if (nrow(db_locus) > 0) {
 
 ```
 
+# V gene usage
+<div class="introduction_paragraph">
+The V gene family and V gene usage in each of the sample is represented below. Function `countGenes` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used to calculate the count and relative abundance of V genes or families within groups. V gene usage by sequence presents the distribution of V gene in each sequence in groups. V gene usage by clone presents the distribution of the most common V gene within each clone across groups.
+</div>
+
+## V gene family usage by sequence
+```{r v-gene-family, echo=F, fig.width=9, fig.height=4, fig.cap=caption, results='asis'}
+caption <- "V gene family usage by sequence"
+
+family <- countGenes(db, gene="v_call", groups=c("sample_id","subject_id","locus"), mode="family") %>%    
+                       arrange(sample_id, subject_id, locus)
+
+v_family_plot <- ggplot(family, aes(x=gene, y=seq_freq, fill=sample_id, group=sample_id)) +
+    facet_grid(. ~ locus, scales = "free_x", space = "free_x") +
+    geom_bar(position = "dodge", stat="identity") +
+    theme_classic() +
+    ggtitle("V Gene Family Usage at Sequence Level") +
+    theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
+    ylab("Frequency") +
+    xlab("") +
+    theme(legend.position = "right")
+
+
+v_family_plot <- eeplot(v_family_plot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('label'),           
+                  caption=caption)
+
+ggplotly(v_family_plot + theme(legend.position="right"),tooltip = "text") %>%
+                           layout(font = list(family = "Helvetica"))
+
+tbl <- eetable(family, caption="V_Family_Usage_Table", outdir=params$outdir, file="V_family_usage_bySequence")
+cat(
+  "V family usage by sequence table can be found here: ",
+  "[V_family_usage_bySequence.tsv](tables/V_family_usage_bySequence.tsv)\n"
+)
+
+```
+
+## V gene family usage by clone
+```{r v-gene-family-by-clone, echo=F, fig.width=9, fig.height=4, fig.cap=caption, results='asis'}
+
+caption <- "V gene family usuage by clone"
+family_clone <- countGenes(db, gene="v_call", groups=c("sample_id","subject_id","locus"), mode="family", clone='clone_id') %>%      
+                       arrange(sample_id, subject_id, locus)
+
+v_family_clone_plot <- ggplot(family_clone, aes(x=gene, y=clone_freq, fill=sample_id, group=sample_id)) +
+    facet_grid(. ~ locus, scales = "free_x", space = "free_x") +
+    geom_bar(position = "dodge", stat="identity") +
+    theme_classic() +
+    ggtitle("V Gene Family Usage at Clone Level") +
+    theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
+    ylab("Frequency") +
+    xlab("") +
+    theme(legend.position = "right")
+
+
+v_family_clone_plot <- eeplot(v_family_clone_plot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('v_family_clone_plot'),
+                  caption=caption)
+
+ggplotly(v_family_clone_plot + theme(legend.position="right"),tooltip = "text") %>%
+                           layout(font = list(family = "Helvetica"))
+
+tbl <- eetable(family_clone, caption="V_Family_Usage_by_Clone_Table", outdir=params$outdir, file="V_family_usage_byClone")
+cat(
+  "V family usage by clone table can be found here: ",
+  "[V_family_usage_byClone.tsv](tables/V_family_usage_byClone.tsv)\n"
+)
+
+```
+
+## V gene usage by sequence
+```{r v-gene, echo=F, fig.width=9, fig.height=4, results='asis'}
+v_gene_usage <- countGenes(db, gene="v_call", groups=c("sample_id","subject_id","locus"), mode="gene") %>%
+                       arrange(sample_id, subject_id, locus)
+
+v_gene_usage <- v_gene_usage %>%
+  mutate(gene = as.character(gene))
+
+loci <- unique(v_gene_usage$locus)
+
+v_gene_plots <- lapply(loci, function(l) {
+
+  p <- ggplot(
+    v_gene_usage %>% filter(locus == l),
+    aes(x = gene, y = seq_freq, fill = sample_id, group = sample_id)
+  ) +
+    geom_col(position = "dodge") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+    ggtitle(paste0("V Gene Usage at Sequence Level", " (", l, ")")) +
+    ylab("Frequency") +
+    xlab("") +
+    theme(legend.position = "right")
+
+  eeplot(
+    p,
+    outdir = params$outdir,
+    file = paste0("v_gene_plot_", l)
+  )
+
+  ggplotly(p)
+})
+
+htmltools::tagList(v_gene_plots)
+
+tbl <- eetable(
+  v_gene_usage,
+  caption = "V_Usage_Table",
+  outdir = params$outdir,
+  file = "V_usage_bySequence"
+)
+cat(
+  "V family usage by sequence table can be found here: ",
+  "[V_usage_bySequence.tsv](tables/V_usage_bySequence.tsv)\n"
+)
+```
+
+## V gene usage by clone
+```{r v-gene-by-clone, echo=F, fig.width=9, fig.height=4, results='asis'}
+v_gene_usage_clone <- countGenes(db, gene="v_call", groups=c("sample_id","subject_id","locus"), mode="gene",clone='clone_id') %>%  
+                       arrange(sample_id, subject_id, locus)
+
+loci <- unique(v_gene_usage_clone$locus)
+
+v_gene_by_clone_plots <- lapply(loci, function(l) {
+
+  p <- ggplot(
+    v_gene_usage_clone %>% filter(locus == l),
+    aes(x = gene, y = clone_freq, fill = sample_id, group = sample_id)
+  ) +
+    geom_col(position = "dodge") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+    ggtitle(paste0("V Gene Usage at Clone Level", " (", l, ")")) +
+    ylab("Frequency") +
+    xlab("") +
+    theme(legend.position = "right")
+
+  eeplot(
+    p,
+    outdir = params$outdir,
+    file = paste0("v_gene_by_clone_plot_", l)
+  )
+
+  ggplotly(p)
+})
+
+htmltools::tagList(v_gene_by_clone_plots)
+
+tbl <- eetable(v_gene_usage_clone, caption="V_Usage_by_Clone_Table", outdir=params$outdir, file="V_usage_byClone")
+cat(
+  "V family usage by clone table can be found here: ",
+  "[V_usage_byClone.tsv](tables/V_usage_byClone.tsv)\n"
+)
+```
+
+# Isotype distribution
+<div class="introduction_paragraph">
+The isotype distribution in each of the sample is represented below. Function `countGenes` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used to calculate the count and relative abundance of isotypes within groups. 
+</div>
+
+```{r results='asis'}
+no_c_call <-  all(is.na(db$c_call))
+if(no_c_call){
+  cat("Istype distribution skipped becasue no constant region is present in the sequences.\n ")
+}
+```
+
+```{r isotype-distribution, eval= !no_c_call, echo=F, fig.width=8, fig.height=4, fig.cap=caption, results='asis'}
+
+caption <- "Isotype Distribution"
+
+isotype_distribution <- countGenes(db, gene="c_call", groups=c("sample_id","subject_id","locus"), mode="family") %>%    
+                       arrange(sample_id, subject_id, locus)
+
+isotype_distribution_plot <- ggplot(isotype_distribution, aes(x=gene, y=seq_freq, fill=sample_id, group=sample_id)) +
+    facet_grid(. ~ locus, scales = "free_x", space = "free_x") +
+    geom_bar(position = "dodge", stat="identity") +
+    theme_classic() +
+    ggtitle("Isotype Distribution") +
+    theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
+    ylab("Frequency") +
+    xlab("") +
+    theme(legend.position = "right")
+
+
+isotype_distribution_plot <- eeplot(isotype_distribution_plot, 
+                  outdir=params$outdir, 
+                  file=knitr::opts_current$get('isotype_distribution_plot'),
+                  caption = caption)
+
+ggplotly(isotype_distribution_plot)
+
+tbl <- eetable(isotype_distribution, caption="Isotype_Distribution_Table", outdir=params$outdir, file="Isotype_Distribution")
+cat(
+  "Isotype distribution table can be found here: ",
+  "[Isotype_Distribution.tsv](tables/Isotype_Distribution.tsv)\n"
+)
+```
+
 # Final tables and repertoires
 
 Summary tables:
@@ -740,6 +942,11 @@ cat("- [Clonal diversity](tables/clonal_diversity.tsv)\n", sep="")
 if(calculate_overlap){
   cat("- [Clonal overlap](tables/clonal_overlap.tsv)\n", sep="")
 }
+cat("- [V_family_usage_bySequence](tables/V_family_usage_bySequence.tsv)\n", sep="")
+cat("- [V_family_usage_byClone](tables/V_family_usage_byClone.tsv)\n", sep="")
+cat("- [V_usage_bySequence](tables/V_usage_bySequence.tsv)\n", sep="")
+cat("- [V_usage_byClone](tables/V_usage_byClone.tsv)\n", sep="")
+cat("- [Isotype_Distribution](tables/Isotype_Distribution.tsv)\n", sep="")
 
 ```
 
