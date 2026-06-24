@@ -435,15 +435,15 @@ tmp <- lapply(threshold, function(thr) {
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- paste(params$outname,"threshold-pass.tsv", sep="_")
+    output_fn <- paste(params$outname,"threshold-pass.tsv.gz", sep="_")
 } else {
-    output_fn <- sub(".tsv$", "_threshold-pass.tsv", basename(params$input))
+    output_fn <- sub("\\.tsv(\\.gz)?$", "_threshold-pass.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("threshold-pass.tsv$", "command_log.txt", basename(output_fn))
+    log_fn <- sub("threshold-pass.tsv.gz$", "command_log.txt", basename(output_fn))
 }
 
 # write_rearrangement(db , file=output_fn)
@@ -453,7 +453,7 @@ if (!dir.exists(tables_dir)) {
 }
 cat(threshold_summary[['mean_threshold']][1], 
     file=file.path(tables_dir,
-                   sub("threshold-pass.tsv$", "threshold-mean.tsv" ,output_fn)),
+                   sub("threshold-pass.tsv.gz$", "threshold-mean.tsv" ,output_fn)),
     append=F
 )
 ```

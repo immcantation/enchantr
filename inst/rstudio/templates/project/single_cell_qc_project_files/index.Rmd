@@ -17,7 +17,7 @@ params:
    input: 
       label: "`input`: Path to repertoires file"
       input: file
-      value: "input.tsv"
+      value: "scExampleDb.tsv.gz"
    outname:
       label: "`outname`"
       input: text
@@ -392,15 +392,15 @@ if (dups_found) {
 }
 
 if (!is.null(params$outname)) {
-  output_fn <- paste0(params$outname, "_scqc-pass.tsv")
+  output_fn <- paste0(params$outname, "_scqc-pass.tsv.gz")
 } else {
-  output_fn <- sub(".tsv$", "_scqc-pass.tsv", basename(params$input))
+  output_fn <- sub("\\.tsv(\\.gz)?$", "_scqc-pass.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
   log_fn <- paste0(params$log, ".txt")
 } else {
-  log_fn <- sub("_scqc-pass.tsv$", "_command_log.txt", basename(output_fn))
+  log_fn <- sub("_scqc-pass.tsv.gz$", "_command_log.txt", basename(output_fn))
 }
 ```
 

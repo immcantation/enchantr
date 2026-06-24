@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoires files"
       input: file
-      value: "Example_clone-pass.tsv"
+      value: "Example_clone-pass.tsv.gz"
    cloneby:
       label: "`cloneby`"
       input: text
@@ -98,7 +98,7 @@ suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("ComplexHeatmap"))
 suppressPackageStartupMessages(library("plotly"))
 suppressPackageStartupMessages(library("fastcluster"))
-suppressPackageStartupMessages(library(patchwork))
+suppressPackageStartupMessages(library("patchwork"))
 
 if (!dir.exists(params[['outdir']])) {
     dir.create(params[['outdir']], recursive=T)
@@ -954,15 +954,15 @@ Find your final repertoires here:
 
 ```{r fn, results='asis', echo=F}
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_repertoire-pass.tsv")
+    output_fn <- paste0(params$outname,"_repertoire-pass.tsv.gz")
 } else {
-    output_fn <- sub(".tsv$", "_repertoire-pass.tsv", basename(params$input))
+    output_fn <- sub("\\.tsv(\\.gz)?$", "_repertoire-pass.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
     log_fn <- file.path(params$outdir,paste0(params$log,".txt"))
 } else {
-    log_fn <- file.path(params$outdir,sub("_repertoire-pass.tsv$", "_command_log.txt", basename(output_fn)))
+    log_fn <- file.path(params$outdir,sub("_repertoire-pass.tsv.gz$", "_command_log.txt", basename(output_fn)))
 }
 ```
 

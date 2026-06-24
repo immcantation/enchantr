@@ -307,15 +307,15 @@ if(params$collapse_filter_threshold > 1){
 }
 
 if (!is.null(params$outname)) {
-   output_fn <- paste0(params$outname,"_collapse-pass.tsv")
+   output_fn <- paste0(params$outname,"_collapse-pass.tsv.gz")
 } else {
-   output_fn <- sub(".tsv$", "_collapse-pass.tsv", basename(params$input))
+   output_fn <- sub("\\.tsv(\\.gz)?$", "_collapse-pass.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
    log_fn <- paste0(params$log,".txt")
 } else {
-   log_fn <- sub("_collapse-pass.tsv$", "_command_log.txt", basename(output_fn))
+   log_fn <- sub("_collapse-pass.tsv.gz$", "_command_log.txt", basename(output_fn))
 }
 
 input_sizes_byoutput <- input_sizes_byoutput %>%
