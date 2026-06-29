@@ -242,9 +242,9 @@ if (!is.null(params$outname)) {
   report_output_fn <- paste0(basename(params$outname), "_novel_report.tsv")
   evidence_output_fn <- paste0(basename(params$outname), "_novel_allele_evidence.rda")
 } else {
-  output_fn <- sub(".tsv$", "_novel-pass.tsv", basename(params$input))
-  report_output_fn <- sub(".tsv$", "_novel_report.tsv", basename(params$input))
-  evidence_output_fn <- sub(".tsv$", "_novel_allele_evidence.rda", basename(params$input))
+  output_fn <- sub("\\.tsv(\\.gz)?$", "_novel-pass.tsv", basename(params$input))
+  report_output_fn <- sub("\\.tsv(\\.gz)?$", "_novel_report.tsv", basename(params$input))
+  evidence_output_fn <- sub("\\.tsv(\\.gz)?$", "_novel_allele_evidence.rda", basename(params$input))
 }
 
 if (!is.null(params$log)) {

@@ -272,7 +272,7 @@ if (!is.null(params$outname)) {
   outname <- basename(params$outname)
   report_output_fn <- paste0(outname, "_genotype_report.tsv")
 } else {
-  base <- sub(".tsv$", "", basename(params$input))
+  base <- sub("\\.tsv(\\.gz)?$", "", basename(params$input))
   report_output_fn <- paste0(base, "_genotype_report.tsv")
 }
 

@@ -15,7 +15,7 @@ params:
    input:
       label: "`input`: Path to repertoires files"
       input: file
-      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/airrflow/testdata-genotyping/airr_data_to_test_novel_alleles.tsv"
    imgt_db:
       label: "`imgt_db`: Path to IMGT reference  database."
       input: file
@@ -241,15 +241,15 @@ Find your final repertoires here:
 ```{r fn, results='asis', echo=F}
 
 if (!is.null(params$outname)) {
-  output_fn <- paste0(params$outname, "_reassign-pass.tsv")
+  output_fn <- paste0(params$outname, "_reassign-pass.tsv.gz")
 } else {
-  output_fn <- sub(".tsv$", "_reassign-pass.tsv", basename(params$input))
+  output_fn <- sub("\\.tsv(\\.gz)?$", "_reassign-pass.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
   log_fn <- file.path(params$outdir, paste0(params$log, ".txt"))
 } else {
-  log_fn <- file.path(params$outdir, sub("_reassign-pass.tsv$", "_command_log.txt", basename(output_fn)))
+  log_fn <- file.path(params$outdir, sub("_reassign-pass.tsv.gz$", "_command_log.txt", basename(output_fn)))
 }
 ```
 
