@@ -47,25 +47,41 @@ if (sum(heavy_chains)>0) {
 
 ## Heatmap
 
-```{r overlap, eval="convergent_cluster_id" %in% colnames(db)}
-convergence_overlap <- plotDbOverlap(db %>% 
-                                         filter(isHeavyChain(locus)) %>%
-                                         rowwise() %>%
-                                         mutate(clone_id = paste(
-                                             unique(c(!!rlang::sym(params$cloneby), 
-                                                      clone_id)), collapse ="_")
-                                         ), 
-                                     group="sample_id", 
-                                     features=c("convergent_cluster_id","clone_id"), 
-                                     heatmap_colors=c("white","orange", "grey80"), 
-                                     print_zero=FALSE, long_x_angle=90,
-                                     title=NULL,xlab=NULL, ylab=NULL,
-                                     plot_order="sample_id", 
-                                     silent=T, similarity=c("min","min"),
-                                     na.rm=FALSE, 
-                                     identity=c('exact', 'exact'), 
-                                     threshold=0,
-                                     geom_text_size=3) 
+```{r overlap, eval="convergent_cluster_id" %in% colnames(db) }
+if ("clone_id" %in% colnames(db)) {
+    convergence_overlap <- plotDbOverlap(db %>% 
+                                             filter(isHeavyChain(locus)) %>%
+                                             rowwise() %>%
+                                             mutate(clone_id = paste(
+                                                 unique(c(!!rlang::sym(params$cloneby), 
+                                                          clone_id)), collapse ="_")
+                                             ), 
+                                         group="sample_id", 
+                                         features=c("convergent_cluster_id","clone_id"), 
+                                         heatmap_colors=c("white","orange", "grey80"), 
+                                         print_zero=FALSE, long_x_angle=90,
+                                         title=NULL,xlab=NULL, ylab=NULL,
+                                         plot_order="sample_id", 
+                                         silent=T, similarity=c("min","min"),
+                                         na.rm=FALSE, 
+                                         identity=c('exact', 'exact'), 
+                                         threshold=0,
+                                         geom_text_size=3)
+} else {
+    convergence_overlap <- plotDbOverlap(db %>% 
+                                             filter(isHeavyChain(locus)), 
+                                         group="sample_id", 
+                                         features=c("convergent_cluster_id"), 
+                                         heatmap_colors=c("white","orange", "grey80"), 
+                                         print_zero=FALSE, long_x_angle=90,
+                                         title=NULL,xlab=NULL, ylab=NULL,
+                                         plot_order="sample_id", 
+                                         silent=T, similarity=c("min"),
+                                         na.rm=FALSE, 
+                                         identity=c('exact'), 
+                                         threshold=0,
+                                         geom_text_size=3)   
+}
 ```
 
 ```{r overlapconvergenceplot, fig.width=min(10,max(5,0.5*length(unique(db[['sample_id']])))),  fig.height=min(50,max(5,0.5*length(unique(db[['sample_id']])))), fig.cap=caption, eval=exists("convergence_overlap")}
@@ -84,7 +100,7 @@ caption <- overlapconvergenceplot$enchantr$html_caption
 ```{r upset, results='asis', eval="convergent_cluster_id" %in% colnames(db)}
 # Add clone_size
 convergent_clone_sizes <- countClones(
-            db %>% filter(isHeavyChain(locus)) %>% select(-clone_id), # Keep heavy chains only
+            db %>% filter(isHeavyChain(locus)) %>% select(-any_of("clone_id")),
             groups="sample_id",
             clone = "convergent_cluster_id")
 upset_plot <- plotConvergenceUpSet(convergent_clone_sizes)
