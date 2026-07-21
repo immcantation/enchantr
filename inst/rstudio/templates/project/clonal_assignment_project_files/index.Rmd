@@ -12,10 +12,10 @@ link-citations: yes
 description: "enchantr clonal assignment"
 output: enchantr::immcantation
 params:
-   input: 
+   input:
       label: "`input`: Path to repertoires files"
       input: file
-      value: "https://yale.box.com/shared/static/dajikxtvbc3c5yw1o2v69fjtx5bh58r2.tsv"
+      value: "https://raw.githubusercontent.com/immcantation/enchantr/refs/heads/master/data-raw/example_data_subject1.tsv"
    imgt_db:
       label: "`imgt_db`: Path to IMGT reference  database."
       input: file
@@ -39,7 +39,7 @@ params:
    threshold:
       label: "`threshold`"
       input: numeric
-      value: 1
+      value: 0.2
    outputby:
       label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
       input: text
