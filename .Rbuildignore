@@ -9,3 +9,10 @@
 LICENSE
 mkdocs.yml
 bitbucket-pipelines.yml
+
+# bookdown/knitr render artifacts that can end up in project template
+# dirs if a report is rendered directly in the source tree
+_main\.Rmd$
+_main\.knit\.md$
+project_files/enchantr/
+project_files/assets/

@@ -457,13 +457,24 @@ plotDbOverlap <- function(db, group="sample",
     p <- p + ggtitle(title) +
         theme(plot.title = element_text(lineheight=.8, face="bold"))
     if (!silent) print(p)
+
+    # xlab/ylab may be identical (e.g. a single feature compared across
+    # group with itself), in which case Var1/Var2 can't both be renamed
+    # to the same name.
+    xcol <- xlab
+    ycol <- ylab
+    if (xcol == ycol) {
+        xcol <- paste0(xcol, ".1")
+        ycol <- paste0(ycol, ".2")
+    }
+
     invisible(list("p"=p,
                    "perc"=melt_overlap_perc %>%
-                       rename(!!rlang::sym(xlab) := Var1,
-                              !!rlang::sym(ylab) := Var2),
+                       rename(!!rlang::sym(xcol) := Var1,
+                              !!rlang::sym(ycol) := Var2),
                    "note"=melt_overlap_note %>%
-                       rename(!!rlang::sym(xlab) := Var1,
-                              !!rlang::sym(ylab) := Var2))
+                       rename(!!rlang::sym(xcol) := Var1,
+                              !!rlang::sym(ycol) := Var2))
     )
 }
 

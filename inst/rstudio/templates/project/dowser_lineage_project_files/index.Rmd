@@ -15,7 +15,7 @@ params:
    input:
       label: "`input`: Path to repertoires file"
       input: file
-      value: "https://yale.box.com/shared/static/tx1mg3u13nsz04sa9u7p3j1fg3he1f0v.tsv"
+      value: "https://raw.githubusercontent.com/immcantation/enchantr/refs/heads/master/data-raw/example_data_subject1_clone33.tsv"
    build:
        label: "`build`"
        input: text

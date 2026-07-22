@@ -1,22 +1,65 @@
 IMGT_URL <- "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
 IMGT_DB <- prepareIMGT(IMGT_URL)
 
-# test_that("plotDbOverlap", {
-#     
-#     db <- data.frame(
-#         'sample_id' = c("s1","s1","s1","s2","s2","s2","s2"),
-#         'junction' = c("AAA","AAT","GTG","TAA","TTA","AAT","AAA"),
-#         'clone_id' = c(1,1,2,3,4,5,6)
-#     ) 
-# 
-#     
-#     overlap <- plotDbOverlap(db, group="sample_id", 
-#                              features=c("junction","clone_id"), 
-#                              identity=c("ham_nt","exact"), 
-#                              similarity=c("jaccard","jaccard"),
-#                              threshold=0)
-#  
-# })
+test_that("plotDbOverlap", {
+
+    db <- data.frame(
+        'sample_id' = c("s1","s1","s1","s2","s2","s2","s2"),
+        'junction' = c("AAA","AAT","GTG","TAA","TTA","AAT","AAA"),
+        'clone_id' = c(1,1,2,3,4,5,6)
+    )
+
+    # Two features: junction (ham_nt identity) and clone_id (exact identity).
+    overlap <- plotDbOverlap(db, group="sample_id",
+                             features=c("junction","clone_id"),
+                             identity=c("ham_nt","exact"),
+                             similarity=c("jaccard","jaccard"),
+                             threshold=0, silent=TRUE)
+
+    expect_s3_class(overlap$p, "ggplot")
+
+    expect_equal(as.character(overlap$perc$junction), c("s1","s2","s1","s2"))
+    expect_equal(as.character(overlap$perc$clone_id), c("s1","s1","s2","s2"))
+    # Diagonal (s1 vs s1, s2 vs s2) is not colored/compared against itself
+    expect_equal(overlap$perc$value, c(NA, 133.3, 0, NA))
+
+    expect_equal(as.character(overlap$note$value), c(NA, "4\n(133.3%)", "", NA))
+
+    # Single feature: clone_id only, no overlap between s1 (1,2) and s2 (3,4,5,6)
+    overlap <- plotDbOverlap(db, group="sample_id",
+                             features=c("clone_id"),
+                             identity=c("exact"),
+                             similarity=c("jaccard"),
+                             threshold=0, silent=TRUE)
+
+    expect_s3_class(overlap$p, "ggplot")
+
+    expect_equal(as.character(overlap$perc$clone_id.1), c("s1","s2","s1","s2"))
+    expect_equal(as.character(overlap$perc$clone_id.2), c("s1","s1","s2","s2"))
+    expect_equal(overlap$perc$value, c(NA, 0, 0, NA))
+    expect_equal(as.character(overlap$note$value), c(NA, "", "", NA))
+
+})
+
+test_that("clonal assignment example", {
+    # Uses the report's own bundled example data and default params
+    # (cloneby="subject_id", outputby="sample_id"), which splits the
+    # output into one file per sample_id.
+    skip_on_cran()
+    tmp_dir <- file.path(tempdir(),"clonal_assignment_example")
+    enchantr_report('clonal_assignment',
+                    report_params=list('outdir'=tmp_dir,
+                                       'nproc'=1,
+                                       'log'='test_clone_command_log'))
+    report_dir <- file.path(tmp_dir,"enchantr")
+    repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
+
+    for (fn in repertoires) {
+        # Load just the first 2 rows to check that the column exists
+        db <- read_rearrangement(fn, n_max=2)
+        expect_true("clone_id" %in% colnames(db))
+    }
+})
 
 test_that("clonal assignment 1:1", {
     # Input in one file, output in 1 file.
@@ -39,10 +82,17 @@ test_that("clonal assignment 1:1", {
     report_dir <- file.path(tmp_dir,"enchantr")
     repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
     expect_equal(length(repertoires), 1)
-    expect_equal(basename(repertoires), "FNA_clonal-assignment_clone-pass.tsv.gz")
-    expect_warning(
-        db <- read_rearrangement(repertoires),
-        "rev_comp is not logical"
+    expect_equal(basename(repertoires), "FNA_clonal-assignment_clone-pass.tsv")
+    # Older airr versions warn that rev_comp is not logical; newer versions
+    # don't. Muffle the warning if it happens, but let any other (unexpected)
+    # warning propagate and fail the test.
+    db <- withCallingHandlers(
+        read_rearrangement(repertoires),
+        warning = function(w) {
+            if (grepl("rev_comp is not logical", conditionMessage(w))) {
+                invokeRestart("muffleWarning")
+            }
+        }
     )
     expect_equal(nrow(db), 1142)
 
@@ -188,3 +238,23 @@ test_that("clonal assignment 1:1", {
 #                                        "Subject_0_60_clonal-assignment_clone-pass.tsv"))
 #     expect_equal(nrow(db), 1427)  
 # })
+
+
+test_that("convergence example", {
+    # Uses the report's own bundled example data and default params
+    skip_on_cran()
+    tmp_dir <- file.path(tempdir(),"convergence_example")
+    enchantr_report('convergence',
+                    report_params=list('outdir'=tmp_dir,
+                                       'nproc'=1,
+                                       'log'='test_convergence_command_log'))
+    report_dir <- file.path(tmp_dir,"enchantr")
+    repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
+    expect_true(length(repertoires) > 0)
+
+    for (fn in repertoires) {
+        # Load just the first 2 rows to check that the column exists
+        db <- read_rearrangement(fn, n_max=2)
+        expect_true("convergent_cluster_id" %in% colnames(db))
+    }
+})

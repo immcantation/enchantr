@@ -21,9 +21,9 @@ readInput <- function(input, pattern="pass.tsv", col_select=NULL) {
     # denoted by one of "c" (character), "l" (logical), "i" (integer),
     # "d" (double), or "n" (numeric).
     aux_types <- c(
-        "v_germline_length"="i",
-        "d_germline_length"="i",
-        "j_germline_length"="i"
+        "v_germline_length"="integer",
+        "d_germline_length"="integer",
+        "j_germline_length"="integer"
     )
     # input is now one or more files
     # could be repertoires or file of files (fof)
