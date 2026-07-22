@@ -15,7 +15,7 @@ params:
    input: 
       label: "`input`: Path to repertoire file"
       input: file
-      value: "ExampleDb.tsv"
+      value: "ExampleDb.tsv.gz"
    outname:
       label: "`outname`"
       input: text
@@ -116,15 +116,15 @@ is_chimeric <- slideWindowDb(
 )
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_chimera-pass.tsv")
+    output_fn <- paste0(params$outname,"_chimera-pass.tsv.gz")
 } else {
-    output_fn <- sub(".tsv$", "_chimera-pass.tsv", basename(params$input))
+    output_fn <- sub("\\.tsv(\\.gz)?$", "_chimera-pass.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("_chimera-pass.tsv$", "_command_log.txt", basename(output_fn))
+    log_fn <- sub("_chimera-pass.tsv.gz$", "_command_log.txt", basename(output_fn))
 }
 
 write_rearrangement(db[!is_chimeric,] %>% select(-germline_alignment_d_mask), file=output_fn)

@@ -82,7 +82,7 @@ test_that("clonal assignment 1:1", {
     report_dir <- file.path(tmp_dir,"enchantr")
     repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
     expect_equal(length(repertoires), 1)
-    expect_equal(basename(repertoires), "FNA_clonal-assignment_clone-pass.tsv")
+    expect_equal(basename(repertoires), "FNA_clonal-assignment_clone-pass.tsv.gz")
     # Older airr versions warn that rev_comp is not logical; newer versions
     # don't. Muffle the warning if it happens, but let any other (unexpected)
     # warning propagate and fail the test.

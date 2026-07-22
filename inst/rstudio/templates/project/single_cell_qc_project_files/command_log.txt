@@ -1,0 +1,5 @@
+START> SingleCellQC
+FILE1> scExampleDb.tsv.gz
+OUTPUT1> input_id_2_scqc_scqc-pass.tsv.gz
+PASS1> 1514
+FAIL1> 127

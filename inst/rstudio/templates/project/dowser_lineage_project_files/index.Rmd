@@ -248,7 +248,7 @@ if (length(trees)>0) {
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("_clone-pass.tsv$", "_command_log.txt", basename(output_fn))
+    log_fn <- sub("_clone-pass\\.tsv(\\.gz)?$", "_command_log.txt", basename(output_fn))
 }
 
 

@@ -136,15 +136,15 @@ db_ovl
 pass <- rep(T, nrow(db))
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_cont-flag.tsv")
+    output_fn <- paste0(params$outname,"_cont-flag.tsv.gz")
 } else {
-    output_fn <- sub(".tsv$", "_cont-flag.tsv", basename(params$input))
+    output_fn <- sub("\\.tsv(\\.gz)?$", "_cont-flag.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
 } else {
-    log_fn <- sub("_cont-flag.tsv$", "_command_log.txt", basename(output_fn))
+    log_fn <- sub("_cont-flag.tsv.gz$", "_command_log.txt", basename(output_fn))
 }
 
 write_rearrangement(db[pass,], file=output_fn)

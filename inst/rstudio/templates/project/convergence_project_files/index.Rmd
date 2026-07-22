@@ -295,15 +295,15 @@ Find your final repertoires here:
 # pass <- db[['collapse_pass']]
 
 if (!is.null(params$outname)) {
-    output_fn <- paste0(params$outname,"_convergence-pass.tsv")
+    output_fn <- paste0(params$outname,"_convergence-pass.tsv.gz")
 } else {
-    output_fn <- sub(".tsv$", "_convergence-pass.tsv", basename(params$input))
+    output_fn <- sub("\\.tsv(\\.gz)?$", "_convergence-pass.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
     log_fn <- file.path(params$outdir,paste0(params$log,".txt"))
 } else {
-    log_fn <- file.path(params$outdir,sub("_convergence-pass.tsv$", "_command_log.txt", basename(output_fn)))
+    log_fn <- file.path(params$outdir,sub("_convergence-pass.tsv.gz$", "_command_log.txt", basename(output_fn)))
 }
 ```
 
