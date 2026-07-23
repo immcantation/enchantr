@@ -212,7 +212,7 @@ Expected columns include `sequence_id`, `productive`, `v_call`, `j_call`, `seque
 
 cols_to_read <- unique(c("sequence_id", "productive",
                          params$seq, params$v_call, params$j_call,
-                         params$junction, params$junction_length, 
+                         params$junction, params$junction_length, "v_germline_end",
                          params$outputby, "subject_id", "sample_id", "species"))
 
 db <- readInput(params[['input']], col_select = cols_to_read)
