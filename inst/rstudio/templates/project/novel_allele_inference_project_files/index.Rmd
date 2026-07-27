@@ -328,7 +328,7 @@ if (!can_run_inference) {
 
 `findNovelAlleles` evaluates each germline allele represented in the dataset to detect potential polymorphic positions.
 Mutation frequency at every IMGT-numbered site is modeled as a function of the overall mutation load per sequence.
-Positions with a disproportionately high baseline mutation frequency (high y-intercept) are flagged as possible germline differences.
+Positions with a disproportionately high baseline mutation frequency (high y-intercept) are flagged as possible novel alleles (polymorphisms).
 
 *Key parameters*:
 
