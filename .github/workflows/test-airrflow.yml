@@ -52,7 +52,7 @@ jobs:
             ./docker/Dockerfile-enchantr
       - name: Build new docker image
         #if: env.GIT_DIFF
-        run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile .
+        run: docker build --no-cache -t immcantation/enchantr:dev -f ./docker/Dockerfile ./docker
 
       - name: Login to DockerHub
         #if: env.GIT_DIFF
