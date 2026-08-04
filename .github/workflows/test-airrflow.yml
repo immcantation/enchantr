@@ -65,6 +65,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
       
       - name: Push new docker image
+        if: >
+          github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository
         #if: env.GIT_DIFF Do it always for now until I can fix the syntax.
         uses: docker/build-push-action@v6
         with:
