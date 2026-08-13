@@ -30,7 +30,6 @@ jobs:
     strategy:
       matrix:
         NXF_VER:
-          - 24.10.5
           - latest-everything
         profile:
           [
