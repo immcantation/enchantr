@@ -1,9 +1,10 @@
-Version 0.1.26 dev
+Version 0.1.26.999 (unreleased)
 -----------------------------------
 General:
 
 + Add option to output gzipped repertoires.
-+ Single-cell QC: save the identified sequence contaminants across samples in a file for easy inspecting.
++ Single-cell QC report: save the identified sequence contaminants across samples in a file for easy inspecting.
++ Repertoire analysis report: change default region definition for mutation frequency (SHM) analysis to IMGT_V. Also added a `mu_freq_region` parameter that allows passing any region for computing mutation frequency supported by shazam::observedMutations. If mutation frequency values are previously present in the dataset, these are overwritten.
 
 
 Version 0.1.25: May 11, 2026
