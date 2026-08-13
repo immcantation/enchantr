@@ -1,3 +1,11 @@
+Version 0.1.26 dev
+-----------------------------------
+General:
+
++ Add option to output gzipped repertoires.
++ Single-cell QC: save the identified sequence contaminants across samples in a file for easy inspecting.
+
+
 Version 0.1.25: May 11, 2026
 -----------------------------------
 General:
