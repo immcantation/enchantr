@@ -65,9 +65,9 @@ params:
       input: checkbox
       value: FALSE
    single_assignments:
-      label: "`single_assignments`: Filter to single gene assignments only"
+      label: "`single_assignments`: Filter to single gene assignments only. Keep FALSE for IMGT references with duplicate alleles (e.g. IGHV1-69D*01), which only appear in ambiguous multi-allele calls and would otherwise never be genotyped."
       input: checkbox
-      value: TRUE
+      value: FALSE
    v_priors:
       label: "`v_priors`: V gene priors (comma-separated)"
       input: text
@@ -272,7 +272,7 @@ if (!is.null(params$outname)) {
   outname <- basename(params$outname)
   report_output_fn <- paste0(outname, "_genotype_report.tsv")
 } else {
-  base <- sub(".tsv$", "", basename(params$input))
+  base <- sub("\\.tsv(\\.gz)?$", "", basename(params$input))
   report_output_fn <- paste0(base, "_genotype_report.tsv")
 }
 
@@ -420,32 +420,37 @@ The genotype plot provides a visual summary of the inferred alleles for each gen
 </div>
 
 ```{r plot-genotype-inference, results='asis', echo=FALSE}
-genotype_plots <- genotypes %>%
-  mutate(gene_type = substr(gene, 4, 4)) %>%
-  group_split(gene_type) %>%
-  set_names(map_chr(., ~ unique(.x$gene_type))) %>%
-  map(~ plot_genotype(
+# For mixed-locus data, group the plots by locus (e.g. IGH/IGK/IGL); for a
+# single locus, group by segment (V/D/J). Use a local copy so the genotype
+# table written to disk is not altered.
+plot_data <- genotypes %>%
+  mutate(plot_group = if (length(loci) > 1) substr(gene, 1, 3) else substr(gene, 4, 4))
+
+genotype_plots <- plot_data %>%
+  group_split(plot_group) %>%
+  set_names(map_chr(., ~ unique(.x$plot_group))) %>%
+  map(~ tigger::plotGenotypeConfidence(
     .x,
-    allele_column = "genotyped_alleles",
+    confidence_col="k_diff",
+    allele_col = "genotyped_alleles",
     silent = TRUE
   ))
 
-fig_heights <- genotypes %>%
-  mutate(gene_type = substr(gene, 4, 4)) %>%
-  group_by(gene_type) %>%
+fig_heights <- plot_data %>%
+  group_by(plot_group) %>%
   summarise(n = n()) %>%
-  mutate(fig_height = n * 0.5)
+  mutate(fig_height = pmax(n * 0.5 + 1.5, 3))
 
 for (i in seq_along(genotype_plots)) {
    plot_env <- new.env()
-   plot_env$gene_type <- names(genotype_plots)[i]
+   plot_env$group_label <- names(genotype_plots)[i]
    plot_env$p_obj <- genotype_plots[[i]]
    plot_env$ix <- i
    plot_env$params <- params
-   plot_env$caption <- paste0("Genotype inference summary: ", plot_env$gene_type, ". Each row represents a specific gene, where the colored bars indicate the inferred alleles.")
+   plot_env$caption <- paste0("Genotype inference summary: ", plot_env$group_label, ". Each row represents a specific gene, where the colored bars indicate the inferred alleles.")
    plot_env$fig_height <- fig_heights$fig_height[[i]]
    child <- paste0(
-     "\n## ", plot_env$gene_type, " \n\n",
+     "\n## ", plot_env$group_label, " \n\n",
      "```{r genotype-inference-", i, ", echo=FALSE, message=FALSE, warning=FALSE, fig.height=", plot_env$fig_height, ", fig.width=8, fig.cap=caption}\n",
      "genotype_plot <- eeplot(p_obj, outdir=params$outdir, ",
      "file=paste0('genotype-inference-', ix), caption=caption)\n",
