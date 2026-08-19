@@ -142,3 +142,40 @@ test_that("consoleLogsAsGraphs assigns sample_id correctly when one sample_id is
     expect_equal(hc1_t1_sample_id, "HC1_T1")
     expect_equal(sort(names(result$by_sample)), c("HC1", "HC1_T1"))
 })
+
+test_that("consoleLogsAsGraphs assigns sample_id for a bare '<sample_id>.fasta' node", {
+    # nf-core/airrflow's RENAME_FILE process renames a user-provided fasta
+    # to "<sample_id>.fasta" (no "_" before the extension). Simulate
+    # components whose root is a bare fasta node, landing in the
+    # prefix-matching fallback with no "_" boundary to match on. Include
+    # both HC1 and HC1_T1 to also guard the prefix-collision case in this
+    # bare-filename form.
+    logs <- data.frame(
+        log_id      = c("log_1", "log_2", "log_3", "log_4"),
+        input       = c("HC1.fasta", "HC1_igblast.fmt7",
+                         "HC1_T1.fasta", "HC1_T1_igblast.fmt7"),
+        output      = c("HC1_igblast.fmt7", "HC1_db-pass.tsv",
+                         "HC1_T1_igblast.fmt7", "HC1_T1_db-pass.tsv"),
+        task        = c("AssignGenes-igblast", "MakeDB-igblast",
+                         "AssignGenes-igblast", "MakeDB-igblast"),
+        input_size  = c(100, 100, 100, 100),
+        output_size = c(100, 100, 100, 100),
+        stringsAsFactors = FALSE
+    )
+
+    metadata <- data.frame(
+        sample_id = c("HC1", "HC1_T1"),
+        filename  = c("raw/original_HC1.fasta", "raw/original_HC1_T1.fasta"),
+        stringsAsFactors = FALSE
+    )
+
+    result <- consoleLogsAsGraphs(logs, metadata = metadata)
+
+    g <- result$workflow
+    expect_true("sample_id" %in% igraph::vertex_attr_names(g))
+    hc1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1.fasta_100"]
+    hc1_t1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1_T1.fasta_100"]
+    expect_equal(hc1_sample_id, "HC1")
+    expect_equal(hc1_t1_sample_id, "HC1_T1")
+    expect_equal(sort(names(result$by_sample)), c("HC1", "HC1_T1"))
+})
