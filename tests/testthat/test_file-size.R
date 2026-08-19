@@ -135,8 +135,8 @@ test_that("consoleLogsAsGraphs assigns sample_id correctly when one sample_id is
     result <- consoleLogsAsGraphs(logs, metadata = metadata)
 
     g <- result$workflow
-    hc1_sample_id <- igraph::vertex_attr(g, "sample_id")[V(g)$name == "HC1_sequences.fasta_3978"]
-    hc1_t1_sample_id <- igraph::vertex_attr(g, "sample_id")[V(g)$name == "HC1_T1_sequences.fasta_2266"]
+    hc1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1_sequences.fasta_3978"]
+    hc1_t1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1_T1_sequences.fasta_2266"]
 
     expect_equal(hc1_sample_id, "HC1")
     expect_equal(hc1_t1_sample_id, "HC1_T1")
