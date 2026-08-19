@@ -114,3 +114,31 @@ test_that("consoleLogsAsGraphs handles same filename+size at different pipeline 
     root_count <- sum(igraph::degree(result$workflow, mode = "in") == 0)
     expect_gte(root_count, 1)
 })
+
+test_that("consoleLogsAsGraphs assigns sample_id correctly when one sample_id is a prefix of another", {
+    logs <- data.frame(
+        log_id      = c("log_1", "log_2"),
+        input       = c("HC1_sequences.fasta", "HC1_T1_sequences.fasta"),
+        output      = c("HC1_igblast.fmt7", "HC1_T1_igblast.fmt7"),
+        task        = c("AssignGenes-igblast", "AssignGenes-igblast"),
+        input_size  = c(3978, 2266),
+        output_size = c(3978, 2266),
+        stringsAsFactors = FALSE
+    )
+
+    metadata <- data.frame(
+        sample_id = c("HC1", "HC1_T1"),
+        filename  = c("HC1_S1_L001_R1_001.fastq.gz", "HC1_T1_S1_L001_R1_001.fastq.gz"),
+        stringsAsFactors = FALSE
+    )
+
+    result <- consoleLogsAsGraphs(logs, metadata = metadata)
+
+    g <- result$workflow
+    hc1_sample_id <- igraph::vertex_attr(g, "sample_id")[V(g)$name == "HC1_sequences.fasta_3978"]
+    hc1_t1_sample_id <- igraph::vertex_attr(g, "sample_id")[V(g)$name == "HC1_T1_sequences.fasta_2266"]
+
+    expect_equal(hc1_sample_id, "HC1")
+    expect_equal(hc1_t1_sample_id, "HC1_T1")
+    expect_equal(sort(names(result$by_sample)), c("HC1", "HC1_T1"))
+})

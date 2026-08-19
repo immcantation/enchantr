@@ -419,7 +419,17 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
             if (nrow(this_meta)==0) {
                 fasta_idx <- grepl("\\.fasta_[0-9]+$|\\.fasta$", V(g)$name[c_idx])
                 if (any(fasta_idx)) {
-                    v_sample_id <- sub("([^_]+)_.+","\\1", V(g)$name[c_idx][fasta_idx])
+                    fasta_names <- V(g)$name[c_idx][fasta_idx]
+                    known_ids <- unique(metadata$sample_id)
+                    # Match against known sample_ids and keep the longest
+                    # (most specific) match, so that a sample_id that is
+                    # itself a prefix of another (e.g. "HC1" vs "HC1_T1")
+                    # doesn't incorrectly shadow the correct, longer one.
+                    v_sample_id <- vapply(fasta_names, function(nm) {
+                        matches <- known_ids[startsWith(nm, paste0(known_ids, "_"))]
+                        if (length(matches) == 0) return(NA_character_)
+                        matches[which.max(nchar(matches))]
+                    }, character(1))
                     this_meta <- metadata[metadata$sample_id %in% v_sample_id,,drop=FALSE] %>%
                         select(-filename, -name) %>%
                         distinct()
