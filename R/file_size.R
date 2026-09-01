@@ -419,7 +419,27 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
             if (nrow(this_meta)==0) {
                 fasta_idx <- grepl("\\.fasta_[0-9]+$|\\.fasta$", V(g)$name[c_idx])
                 if (any(fasta_idx)) {
-                    v_sample_id <- sub("([^_]+)_.+","\\1", V(g)$name[c_idx][fasta_idx])
+                    fasta_names <- V(g)$name[c_idx][fasta_idx]
+                    known_ids <- unique(metadata$sample_id)
+                    # Match against known sample_ids and keep the longest
+                    # (most specific) match, so that a sample_id that is
+                    # itself a prefix of another (e.g. "HC1" vs "HC1_T1")
+                    # doesn't incorrectly shadow the correct, longer one.
+                    # A sample_id can appear in a fasta node name in two
+                    # ways: followed by "_" and additional filename parts (e.g.
+                    # "HC1_sequences.fasta_3978", produced by ConvertDb.py),
+                    # or as the entire stem (no "_", e.g.
+                    # "HC1.fasta_100", produced when nf-core/airrflow's
+                    # RENAME_FILE process renames a user-supplied fasta
+                    # to "<sample_id>.fasta"). Strip the trailing
+                    # ".fasta"/".fasta_<n>" to get that stem for the exact-
+                    # match check.
+                    v_sample_id <- vapply(fasta_names, function(nm) {
+                        stem <- sub("\\.fasta(_[0-9]+)?$", "", nm)
+                        matches <- known_ids[known_ids == stem | startsWith(nm, paste0(known_ids, "_"))]
+                        if (length(matches) == 0) return(NA_character_)
+                        matches[which.max(nchar(matches))]
+                    }, character(1))
                     this_meta <- metadata[metadata$sample_id %in% v_sample_id,,drop=FALSE] %>%
                         select(-filename, -name) %>%
                         distinct()
