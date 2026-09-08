@@ -264,32 +264,32 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
         }
     }
     
-    # .makeVertexName is a helper function to manage duplicated inputs in the logs. 
-    # This is to allow for duplicated input files.
-    # We found situations where the basename is duplicated i.e. multiple folders,
-    # one per sample, and each folder has an airr_rearrangement.tsv file.
-    # The log from the rename step in nf-core/airrflow only records the file name
-    # (basename), because that is how Nextflow's path() works.
-    # .makeUnique will add the sample id to the "duplicated" input files in 
-    # the RenameFile tasks. graph_from_data_frame won't work with duplicated node
-    # names.
-    # .makeVertexName <- function(.data) {
-    #     if (.data[["task"]] == "RenameFile") {
-    #         sample_id <- sub("\\.[^\\.]*$","",.data[["output"]])
-    #         paste0(sample_id,": ", .data[["input_id"]], collapse="")
-    #     } else {
-    #         # We should expect duplicated names only in the initial RenameFile tasks
-    #         # as downstream processes add modifiers that will make file names unique (sample_id)
-    #         stop("Unexpected duplicated input names.")
-    #     }
-    # }
-    
+    # .makeVertexName manages duplicated original inputs in the logs.
+    # We found situations where the same file is used as the
+    # original input for more than one sample -- e.g. a samplesheet where
+    # several sample_ids point at the same source file, 
+    # or multiple folders/samples that each
+    # have an identically-named file (e.g. airr_rearrangement.tsv).
+    # In both cases input+input_size alone collide across samples, which
+    # would incorrectly merge those samples' entire lineages into a single
+    # graph component downstream.
+    # The RenameFile task is the entry point where every input first
+    # acquires a sample-specific identity: nf-core/airrflow's RENAME_FILE
+    # process always names its output "<sample_id>.<ext>". We use that to
+    # recover the sample_id and disambiguate the input side of RenameFile
+    # rows only.
+    .makeVertexName <- function(.data) {
+        sample_id <- sub("\\.[^\\.]*$", "", .data[["output"]])
+        paste0(sample_id, ": ", .data[["input_id"]])
+    }
+
     # Concatenate input and output with their sizes to create the graph nodes.
     # This should help to avoid issues with duplicated file names
-    logs <-  logs %>% 
+    logs <-  logs %>%
         rowwise() %>%
         mutate(input_id=paste(input,input_size, sep="_"),
-               output_id=paste(output,output_size, sep="_")
+               output_id=paste(output,output_size, sep="_"),
+               input_id=ifelse(task == "RenameFile", .makeVertexName(pick(everything())), input_id)
                )
     # %>%
     #     group_by(input_id) %>%
