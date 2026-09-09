@@ -179,3 +179,37 @@ test_that("consoleLogsAsGraphs assigns sample_id for a bare '<sample_id>.fasta' 
     expect_equal(hc1_t1_sample_id, "HC1_T1")
     expect_equal(sort(names(result$by_sample)), c("HC1", "HC1_T1"))
 })
+
+test_that("consoleLogsAsGraphs keeps samples separate when they share equivalent original input file", {
+    # nf-core/airrflow's test_genotyping uses several sample_ids with
+    # the same source file (same filename and same record count).
+    logs <- data.frame(
+        log_id      = c("log_1", "log_2", "log_3", "log_4", "log_5", "log_6"),
+        input       = c("shared_input.tsv", "shared_input.tsv", "shared_input.tsv",
+                         "sample_A.tsv", "sample_B.tsv", "sample_C.tsv"),
+        output      = c("sample_A.tsv", "sample_B.tsv", "sample_C.tsv",
+                         "sample_A_sequences.fasta", "sample_B_sequences.fasta", "sample_C_sequences.fasta"),
+        task        = c("RenameFile", "RenameFile", "RenameFile",
+                         "ConvertDb-fasta", "ConvertDb-fasta", "ConvertDb-fasta"),
+        input_size  = c(17559, 17559, 17559, 17559, 17559, 17559),
+        output_size = c(17559, 17559, 17559, 17559, 17559, 17559),
+        stringsAsFactors = FALSE
+    )
+
+    metadata <- data.frame(
+        sample_id = c("sample_A", "sample_B", "sample_C"),
+        filename  = c("shared_input.tsv", "shared_input.tsv", "shared_input.tsv"),
+        stringsAsFactors = FALSE
+    )
+
+    result <- expect_no_error(consoleLogsAsGraphs(logs, metadata = metadata))
+
+    g <- result$workflow
+    # Each sample keeps its own component instead of being merged into one.
+    expect_equal(igraph::components(g)$no, 3)
+    expect_equal(sort(names(result$by_sample)), c("sample_A", "sample_B", "sample_C"))
+    for (id in c("sample_A", "sample_B", "sample_C")) {
+        fasta_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == paste0(id, "_sequences.fasta_17559")]
+        expect_equal(fasta_sample_id, id)
+    }
+})
