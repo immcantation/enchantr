@@ -15,7 +15,7 @@ immcantation_packages <- c("alakazam", "shazam", "tigger", "scoper", "dowser", "
 
 # Function to install dependencies
 installDep <- function(pkg, devel_mode, immcantation=immcantation_packages,
-                       repos="http://lib.stat.cmu.edu/R/CRAN/") {
+                       repos="https://mirror.its.umich.edu/cran/") {
     
     # Required version 
     pkg_name <- strsplit(pkg," ")[[1]][1]
@@ -56,7 +56,7 @@ installDep <- function(pkg, devel_mode, immcantation=immcantation_packages,
             } else {
                 # Install from CRAN
                 version_spec <- if (is.null(pkg_version)) NULL else paste(pkg_logic, pkg_version)
-                tryCatch({ devtools::install_version(pkg_name, version_spec, repos="http://lib.stat.cmu.edu/R/CRAN/", upgrade = "never") },
+                tryCatch({ devtools::install_version(pkg_name, version_spec, repos="https://mirror.its.umich.edu/cran/", upgrade = "never") },
                          error=function(e) {
                              cat(as.character(e), "\n")
                              if (is_immcantation) {

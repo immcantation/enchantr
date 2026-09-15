@@ -114,3 +114,102 @@ test_that("consoleLogsAsGraphs handles same filename+size at different pipeline 
     root_count <- sum(igraph::degree(result$workflow, mode = "in") == 0)
     expect_gte(root_count, 1)
 })
+
+test_that("consoleLogsAsGraphs assigns sample_id correctly when one sample_id is a prefix of another", {
+    logs <- data.frame(
+        log_id      = c("log_1", "log_2"),
+        input       = c("HC1_sequences.fasta", "HC1_T1_sequences.fasta"),
+        output      = c("HC1_igblast.fmt7", "HC1_T1_igblast.fmt7"),
+        task        = c("AssignGenes-igblast", "AssignGenes-igblast"),
+        input_size  = c(3978, 2266),
+        output_size = c(3978, 2266),
+        stringsAsFactors = FALSE
+    )
+
+    metadata <- data.frame(
+        sample_id = c("HC1", "HC1_T1"),
+        filename  = c("HC1_S1_L001_R1_001.fastq.gz", "HC1_T1_S1_L001_R1_001.fastq.gz"),
+        stringsAsFactors = FALSE
+    )
+
+    result <- consoleLogsAsGraphs(logs, metadata = metadata)
+
+    g <- result$workflow
+    hc1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1_sequences.fasta_3978"]
+    hc1_t1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1_T1_sequences.fasta_2266"]
+
+    expect_equal(hc1_sample_id, "HC1")
+    expect_equal(hc1_t1_sample_id, "HC1_T1")
+    expect_equal(sort(names(result$by_sample)), c("HC1", "HC1_T1"))
+})
+
+test_that("consoleLogsAsGraphs assigns sample_id for a bare '<sample_id>.fasta' node", {
+    # nf-core/airrflow's RENAME_FILE process renames a user-provided fasta
+    # to "<sample_id>.fasta" (no "_" before the extension). Simulate
+    # components whose root is a bare fasta node, landing in the
+    # prefix-matching fallback with no "_" boundary to match on. Include
+    # both HC1 and HC1_T1 to also guard the prefix-collision case in this
+    # bare-filename form.
+    logs <- data.frame(
+        log_id      = c("log_1", "log_2", "log_3", "log_4"),
+        input       = c("HC1.fasta", "HC1_igblast.fmt7",
+                         "HC1_T1.fasta", "HC1_T1_igblast.fmt7"),
+        output      = c("HC1_igblast.fmt7", "HC1_db-pass.tsv",
+                         "HC1_T1_igblast.fmt7", "HC1_T1_db-pass.tsv"),
+        task        = c("AssignGenes-igblast", "MakeDB-igblast",
+                         "AssignGenes-igblast", "MakeDB-igblast"),
+        input_size  = c(100, 100, 100, 100),
+        output_size = c(100, 100, 100, 100),
+        stringsAsFactors = FALSE
+    )
+
+    metadata <- data.frame(
+        sample_id = c("HC1", "HC1_T1"),
+        filename  = c("raw/original_HC1.fasta", "raw/original_HC1_T1.fasta"),
+        stringsAsFactors = FALSE
+    )
+
+    result <- consoleLogsAsGraphs(logs, metadata = metadata)
+
+    g <- result$workflow
+    expect_true("sample_id" %in% igraph::vertex_attr_names(g))
+    hc1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1.fasta_100"]
+    hc1_t1_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == "HC1_T1.fasta_100"]
+    expect_equal(hc1_sample_id, "HC1")
+    expect_equal(hc1_t1_sample_id, "HC1_T1")
+    expect_equal(sort(names(result$by_sample)), c("HC1", "HC1_T1"))
+})
+
+test_that("consoleLogsAsGraphs keeps samples separate when they share equivalent original input file", {
+    # nf-core/airrflow's test_genotyping uses several sample_ids with
+    # the same source file (same filename and same record count).
+    logs <- data.frame(
+        log_id      = c("log_1", "log_2", "log_3", "log_4", "log_5", "log_6"),
+        input       = c("shared_input.tsv", "shared_input.tsv", "shared_input.tsv",
+                         "sample_A.tsv", "sample_B.tsv", "sample_C.tsv"),
+        output      = c("sample_A.tsv", "sample_B.tsv", "sample_C.tsv",
+                         "sample_A_sequences.fasta", "sample_B_sequences.fasta", "sample_C_sequences.fasta"),
+        task        = c("RenameFile", "RenameFile", "RenameFile",
+                         "ConvertDb-fasta", "ConvertDb-fasta", "ConvertDb-fasta"),
+        input_size  = c(17559, 17559, 17559, 17559, 17559, 17559),
+        output_size = c(17559, 17559, 17559, 17559, 17559, 17559),
+        stringsAsFactors = FALSE
+    )
+
+    metadata <- data.frame(
+        sample_id = c("sample_A", "sample_B", "sample_C"),
+        filename  = c("shared_input.tsv", "shared_input.tsv", "shared_input.tsv"),
+        stringsAsFactors = FALSE
+    )
+
+    result <- expect_no_error(consoleLogsAsGraphs(logs, metadata = metadata))
+
+    g <- result$workflow
+    # Each sample keeps its own component instead of being merged into one.
+    expect_equal(igraph::components(g)$no, 3)
+    expect_equal(sort(names(result$by_sample)), c("sample_A", "sample_B", "sample_C"))
+    for (id in c("sample_A", "sample_B", "sample_C")) {
+        fasta_sample_id <- igraph::vertex_attr(g, "sample_id")[igraph::V(g)$name == paste0(id, "_sequences.fasta_17559")]
+        expect_equal(fasta_sample_id, id)
+    }
+})
