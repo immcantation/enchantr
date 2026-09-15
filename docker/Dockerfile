@@ -5,7 +5,7 @@ LABEL maintainer="Jason Anthony Vander Heiden [jason.vanderheiden@yale.edu], \
       description="Immcantation framework tools needed for airrflow."
 ARG BASE_TAG
 # Version
-COPY Version.yaml /Version.yaml
+COPY Version.yaml ./Version.yaml
 RUN builds write -n date -v "$(date +'%Y-%m-%d %T %Z')"
 
 # Install procotol data, utility scripts and pipelines

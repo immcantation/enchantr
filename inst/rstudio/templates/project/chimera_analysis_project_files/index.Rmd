@@ -130,7 +130,13 @@ if (!is.null(params$log)) {
 write_rearrangement(db[!is_chimeric,] %>% select(-germline_alignment_d_mask), file=output_fn)
 
 db$is_chimeric <- is_chimeric
-write_rearrangement(db %>% select(sequence_id, is_chimeric, sequence_alignment, germline_alignment_d_mask), file=sub(".tsv$",".log.txt",output_fn))
+write.table(
+    db %>% select(sequence_id, is_chimeric, sequence_alignment, germline_alignment_d_mask),
+    file = gzfile(sub("\\.tsv\\.gz$", ".log.txt.gz", output_fn)),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
 ```
 
 Total number of chimeric sequences detected: `r sum(db$is_chimeric)`.

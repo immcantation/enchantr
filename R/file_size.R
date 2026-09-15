@@ -264,32 +264,32 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
         }
     }
     
-    # .makeVertexName is a helper function to manage duplicated inputs in the logs. 
-    # This is to allow for duplicated input files.
-    # We found situations where the basename is duplicated i.e. multiple folders,
-    # one per sample, and each folder has an airr_rearrangement.tsv file.
-    # The log from the rename step in nf-core/airrflow only records the file name
-    # (basename), because that is how Nextflow's path() works.
-    # .makeUnique will add the sample id to the "duplicated" input files in 
-    # the RenameFile tasks. graph_from_data_frame won't work with duplicated node
-    # names.
-    # .makeVertexName <- function(.data) {
-    #     if (.data[["task"]] == "RenameFile") {
-    #         sample_id <- sub("\\.[^\\.]*$","",.data[["output"]])
-    #         paste0(sample_id,": ", .data[["input_id"]], collapse="")
-    #     } else {
-    #         # We should expect duplicated names only in the initial RenameFile tasks
-    #         # as downstream processes add modifiers that will make file names unique (sample_id)
-    #         stop("Unexpected duplicated input names.")
-    #     }
-    # }
-    
+    # .makeVertexName manages duplicated original inputs in the logs.
+    # We found situations where the same file is used as the
+    # original input for more than one sample -- e.g. a samplesheet where
+    # several sample_ids point at the same source file, 
+    # or multiple folders/samples that each
+    # have an identically-named file (e.g. airr_rearrangement.tsv).
+    # In both cases input+input_size alone collide across samples, which
+    # would incorrectly merge those samples' entire lineages into a single
+    # graph component downstream.
+    # The RenameFile task is the entry point where every input first
+    # acquires a sample-specific identity: nf-core/airrflow's RENAME_FILE
+    # process always names its output "<sample_id>.<ext>". We use that to
+    # recover the sample_id and disambiguate the input side of RenameFile
+    # rows only.
+    .makeVertexName <- function(.data) {
+        sample_id <- sub("\\.[^\\.]*$", "", .data[["output"]])
+        paste0(sample_id, ": ", .data[["input_id"]])
+    }
+
     # Concatenate input and output with their sizes to create the graph nodes.
     # This should help to avoid issues with duplicated file names
-    logs <-  logs %>% 
+    logs <-  logs %>%
         rowwise() %>%
         mutate(input_id=paste(input,input_size, sep="_"),
-               output_id=paste(output,output_size, sep="_")
+               output_id=paste(output,output_size, sep="_"),
+               input_id=ifelse(task == "RenameFile", .makeVertexName(pick(everything())), input_id)
                )
     # %>%
     #     group_by(input_id) %>%
@@ -419,7 +419,27 @@ consoleLogsAsGraphs <- function(logs, metadata=NULL) {
             if (nrow(this_meta)==0) {
                 fasta_idx <- grepl("\\.fasta_[0-9]+$|\\.fasta$", V(g)$name[c_idx])
                 if (any(fasta_idx)) {
-                    v_sample_id <- sub("([^_]+)_.+","\\1", V(g)$name[c_idx][fasta_idx])
+                    fasta_names <- V(g)$name[c_idx][fasta_idx]
+                    known_ids <- unique(metadata$sample_id)
+                    # Match against known sample_ids and keep the longest
+                    # (most specific) match, so that a sample_id that is
+                    # itself a prefix of another (e.g. "HC1" vs "HC1_T1")
+                    # doesn't incorrectly shadow the correct, longer one.
+                    # A sample_id can appear in a fasta node name in two
+                    # ways: followed by "_" and additional filename parts (e.g.
+                    # "HC1_sequences.fasta_3978", produced by ConvertDb.py),
+                    # or as the entire stem (no "_", e.g.
+                    # "HC1.fasta_100", produced when nf-core/airrflow's
+                    # RENAME_FILE process renames a user-supplied fasta
+                    # to "<sample_id>.fasta"). Strip the trailing
+                    # ".fasta"/".fasta_<n>" to get that stem for the exact-
+                    # match check.
+                    v_sample_id <- vapply(fasta_names, function(nm) {
+                        stem <- sub("\\.fasta(_[0-9]+)?$", "", nm)
+                        matches <- known_ids[known_ids == stem | startsWith(nm, paste0(known_ids, "_"))]
+                        if (length(matches) == 0) return(NA_character_)
+                        matches[which.max(nchar(matches))]
+                    }, character(1))
                     this_meta <- metadata[metadata$sample_id %in% v_sample_id,,drop=FALSE] %>%
                         select(-filename, -name) %>%
                         distinct()
