@@ -387,7 +387,6 @@ samples) to `sequence_id` and `cell_id`.
 # pass <- qc_results$log$scqc_pass
 if (dups_found) {
   pass <- dups[["dups"]][["sc_duplicate_cell"]] == FALSE
-  fail <- dups[["dups"]][["sc_duplicate_cell"]] == TRUE
 } else {
   pass <- rep(TRUE, nrow(db))
 }
