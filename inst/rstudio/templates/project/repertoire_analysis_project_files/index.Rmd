@@ -24,14 +24,18 @@ params:
       label: "`min_n` minimum number of observations to sample to run alakazam::estimateAbundance."
       input: numeric
       value: 30
-   outputby:
-      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
-      input: text
-      value: "sample_id"
    nboot:
        label: "`nboot`: number of bootstrap realizations to generate in `estimateAbundance`"
        input: numeric
-       value: 200               
+       value: 200
+   mu_freq_region:
+      label: "`mu_freq_region`: Region definition to compute SHM frequency, which will be passed to `shazam::observedMutations`. Default: `IMGT_V`. Options: `NULL` (over the entire sequence alignment with masked D region), `IMGT_V_BY_CODONS`, `IMGT_V_BY_REGIONS`, `IMGT_V`, `IMGT_V_BY_SEGMENTS`, `IMGT_VDJ`, `IMGT_VDJ_BY_REGIONS`. Please check this function documentation in SHazaM for more details."
+      input: text
+      value: "IMGT_V"
+   outputby:
+      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      input: text
+      value: "sample_id"          
    outname:
       label: "`outname`"
       input: text
@@ -631,10 +635,20 @@ Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence 
 </div>')
 ```
 
-```{r mutation_frequency, eval=BCRs & !("mu_freq" %in% colnames(db)), results='asis'}
+```{r mutation_frequency, eval=BCRs, results='asis'}
+
+if ("mu_freq" %in% colnames(db)) {
+    warning("The dataframe contained mutation frequency values which have been overwritten.\n")
+    db$mu_freq <- NULL
+}
+if (params$mu_freq_region == "NULL") {
+    params$mu_freq_region <- NULL
+}
+
 db <- shazam::observedMutations(db,
                                 sequenceColumn = "sequence_alignment",
                                 germlineColumn = "germline_alignment_d_mask",
+                                regionDefinition = params$mu_freq_region,
                                 frequency = T,
                                 combine = T,
                                 nproc = params$nproc)
