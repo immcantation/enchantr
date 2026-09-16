@@ -642,13 +642,28 @@ if ("mu_freq" %in% colnames(db)) {
     db$mu_freq <- NULL
 }
 if (params$mu_freq_region == "NULL") {
-    params$mu_freq_region <- NULL
+    region_object <- NULL
+} else {
+    if (!params$mu_freq_region %in% c("IMGT_V_BY_CODONS", "IMGT_V_BY_REGIONS", "IMGT_V", "IMGT_V_BY_SEGMENTS", "IMGT_VDJ", "IMGT_VDJ_BY_REGIONS")) {
+        stop("Invalid value for `mu_freq_region`. Valid options are: c('IMGT_V_BY_CODONS', 'IMGT_V_BY_REGIONS', 'IMGT_V', 
+        'IMGT_V_BY_SEGMENTS', 'IMGT_VDJ', 'IMGT_VDJ_BY_REGIONS'). Please check the SHazaM documentation for more information.")
+    }
+    # Assign objects from a named list
+    region_definition_objects = c(
+        "IMGT_V_BY_CODONS" = shazam::IMGT_V_BY_CODONS,
+        "IMGT_V_BY_REGIONS" = shazam::IMGT_V_BY_REGIONS,
+        "IMGT_V" = shazam::IMGT_V,
+        "IMGT_V_BY_SEGMENTS" = shazam::IMGT_V_BY_SEGMENTS,
+        "IMGT_VDJ" = shazam::IMGT_VDJ,
+        "IMGT_VDJ_BY_REGIONS" = shazam::IMGT_VDJ_BY_REGIONS
+    )
+    region_object <- region_definition_objects[[params$mu_freq_region]]
 }
 
 db <- shazam::observedMutations(db,
                                 sequenceColumn = "sequence_alignment",
                                 germlineColumn = "germline_alignment_d_mask",
-                                regionDefinition = params$mu_freq_region,
+                                regionDefinition = region_object,
                                 frequency = T,
                                 combine = T,
                                 nproc = params$nproc)
