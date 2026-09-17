@@ -23,7 +23,7 @@ params:
       input: text
       value: "scqc"
    outputby:
-      label: "`outputby` name of the column in `input` that contains identifiers that will be used to split the output db."      
+      label: "`outputby` name of the column in `input` that contains identifiers that will be used to split the output db."
       input: text
       value: "sample_id"      
    checkcontamination:
@@ -393,10 +393,10 @@ if (dups_found) {
 
 if (!is.null(params$outname)) {
   output_fn <- paste0(params$outname, "_scqc-pass.tsv.gz")
-  failed_fn <- paste0(params$outname, "_scqc-fail.tsv.gz")
+  failed_fn <- paste0(params$outname, "_scqc-contamination-fail.tsv.gz")
 } else {
   output_fn <- sub("\\.tsv(\\.gz)?$", "_scqc-pass.tsv.gz", basename(params$input))
-  failed_fn <- sub("\\.tsv(\\.gz)?$", "_scqc-fail.tsv.gz", basename(params$input))
+  failed_fn <- sub("\\.tsv(\\.gz)?$", "_scqc-contamination-fail.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
@@ -473,7 +473,7 @@ for (i in 1:nrow(output_groups)) {
     output_files <- c(output_files, group_fn)
     output_sizes <- c(output_sizes, nrow(group_db))
 }
-````
+```
 
 ```{r dbfailed-save, evaluate=dups_found, results="asis", echo=FALSE}
 # Save the failed sequences into a separate file if duplicates found

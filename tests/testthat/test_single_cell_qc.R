@@ -101,3 +101,15 @@ test_that("removeDoublets", {
     expect_equal(removeDoublets(toy_db_dup_cellid)[["sequence_id"]], expected)
 })
 
+
+test_that("single cell qc example", {
+  # Uses the report's own bundled example data and default params
+  skip_on_cran()
+  tmp_dir <- file.path(tempdir(),"scqc_report_example")
+  enchantr_report('single_cell_qc',
+                  report_params=list('outdir'=tmp_dir,
+                                     'log'='test_scqc_command_log'))
+  report_scqc_dir <- file.path(tmp_dir,"enchantr")
+  repertoire_analyzed <- list.files(file.path(report_scqc_dir, "repertoires"), full.names = TRUE)
+  expect_equal(length(repertoire_analyzed),2)
+})
