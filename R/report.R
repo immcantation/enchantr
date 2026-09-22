@@ -1,12 +1,20 @@
+# Report names kept for backwards compatibility. Each resolves to the unified
+# "genotype" report with its `method` parameter preset, so existing callers
+# (e.g. nf-core/airrflow) keep working unchanged.
+.GENOTYPE_REPORT_ALIASES <- c(
+    tigger_bayesian_genotype = "bayesian",
+    piglet_genotype = "allele_based"
+)
+
 #' Render an Immcantation project
-#' 
+#'
 #' @param  name report name
 #' @param  report_params params list, needed by report. must include outdir
 #' @export
-enchantr_report <- function(name=c("validate_input", 
-                                   "file_size", 
-                                   "chimera_analysis", 
-                                   "single_cell_qc", 
+enchantr_report <- function(name=c("validate_input",
+                                   "file_size",
+                                   "chimera_analysis",
+                                   "single_cell_qc",
                                    "annotation_qc",
                                    "contamination",
                                    "collapse_duplicates",
@@ -16,11 +24,25 @@ enchantr_report <- function(name=c("validate_input",
                                    "convergence",
                                    "dowser_lineage",
                                    "novel_allele_inference",
+                                   "genotype",
+                                   "rabhit_haplotype",
                                    "tigger_bayesian_genotype",
+                                   "piglet_genotype",
                                    "reassign_alleles"), report_params=list()) {
-    
+
     name <- match.arg(name)
-    
+
+    # Resolve a deprecated genotype report name to the unified report.
+    if (name %in% names(.GENOTYPE_REPORT_ALIASES)) {
+        method <- .GENOTYPE_REPORT_ALIASES[[name]]
+        message("Report '", name, "' is deprecated; use enchantr_report('genotype', ",
+                "list(method = '", method, "', ...)) instead.")
+        if (is.null(report_params[['method']])) {
+            report_params[['method']] <- method
+        }
+        name <- "genotype"
+    }
+
     if (is.null(report_params[['outdir']])) {
         report_params[['outdir']] <- getwd()
     }
@@ -48,7 +70,8 @@ enchantr_report <- function(name=c("validate_input",
             "convergence" = invisible(convergence_project(outdir)),            
             "dowser_lineage" = invisible(dowser_lineage_project(outdir)),
             "novel_allele_inference" = invisible(novel_allele_inference_project(outdir)),
-            "tigger_bayesian_genotype" = invisible(tigger_bayesian_genotype_project(outdir)),
+            "genotype" = invisible(genotype_project(outdir)),
+            "rabhit_haplotype" = invisible(rabhit_haplotype_project(outdir)),
             "reassign_alleles" = invisible(reassign_alleles_project(outdir))
     )
     

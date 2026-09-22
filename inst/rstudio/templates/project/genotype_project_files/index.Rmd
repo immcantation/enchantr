@@ -1,6 +1,6 @@
 ---
 title: "Immcantation - enchantR"
-subtitle: "TIgGER Bayesian genotype inference"
+subtitle: "Genotype inference"
 author: ""
 date: "Updated: `r date()`"
 knit: enchantr::render_book
@@ -9,7 +9,7 @@ documentclass: book
 bibliography: "references.bib"
 biblio-style: apalike
 link-citations: yes
-description: "enchantr TIgGER Bayesian genotype inference"
+description: "enchantr genotype inference"
 output: enchantr::immcantation
 params:
    input:
@@ -68,18 +68,55 @@ params:
       label: "`single_assignments`: Filter to single gene assignments only. Keep FALSE for IMGT references with duplicate alleles (e.g. IGHV1-69D*01), which only appear in ambiguous multi-allele calls and would otherwise never be genotyped."
       input: checkbox
       value: FALSE
+   method:
+      label: "`method`: Genotype inference method. One of 'bayesian' (TIgGER Bayesian), 'fraction' (TIgGER cumulative fraction), or 'allele_based' (PIgLET allele-specific thresholds)."
+      input: select
+      choices: ["bayesian", "fraction", "allele_based"]
+      value: "bayesian"
    v_priors:
-      label: "`v_priors`: V gene priors (comma-separated)"
+      label: "`v_priors`: [method='bayesian'] V gene priors (comma-separated)"
       input: text
       value: "0.6,0.4,0.4,0.35,0.25,0.25,0.25,0.25,0.25"
    d_priors:
-      label: "`d_priors`: D gene priors (comma-separated)"
+      label: "`d_priors`: [method='bayesian'] D gene priors (comma-separated)"
       input: text
       value: "0.5,0.5,0,0,0,0,0,0,0"
    j_priors:
-      label: "`j_priors`: J gene priors (comma-separated)"
+      label: "`j_priors`: [method='bayesian'] J gene priors (comma-separated)"
       input: text
       value: "0.5,0.5,0,0,0,0,0,0,0"
+   fraction_to_explain:
+      label: "`fraction_to_explain`: [method='fraction'] Cumulative fraction of a gene's sequences that the genotyped alleles must explain."
+      input: numeric
+      value: 0.875
+   gene_cutoff:
+      label: "`gene_cutoff`: [method='fraction'] Alleles below this frequency are discarded as noise."
+      input: numeric
+      value: 0.0001
+   allele_thresholds_db:
+      label: "`allele_thresholds_db`: [method='allele_based'] Path to a TSV of alleles and their population-derived presence thresholds. If NULL, PIgLET's bundled thresholds are used."
+      input: file
+      value: NULL
+   default_threshold:
+      label: "`default_threshold`: [method='allele_based'] Threshold used for alleles absent from the threshold table."
+      input: numeric
+      value: 0.0001
+   asc_annotation:
+      label: "`asc_annotation`: [method='allele_based'] Are the allele calls annotated with allele similarity clusters?"
+      input: checkbox
+      value: FALSE
+   translate_to_asc:
+      label: "`translate_to_asc`: [method='allele_based'] Collapse identical alleles into allele similarity clusters for inference."
+      input: checkbox
+      value: FALSE
+   depth_adjusted_threshold:
+      label: "`depth_adjusted_threshold`: [method='allele_based'] Adjust allele thresholds based on the depth of the repertoire."
+      input: checkbox
+      value: TRUE
+   z_score_threshold:
+      label: "`z_score_threshold`: [method='allele_based'] Z-score threshold filtering for allele-based inference."
+      input: numeric
+      value: 0
    genotypeby:
       label: "`genotypeby` name of the column in `input` that contains sample identifiers that will be used to genotype the input db." 
       input: text
@@ -87,7 +124,7 @@ params:
    outname:
       label: "`outname`"
       input: text
-      value: "tigger"
+      value: "sample"
    log:
       label: "`log`"
       input: text
@@ -147,21 +184,43 @@ suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("airr"))
 suppressPackageStartupMessages(library("enchantr"))
 suppressPackageStartupMessages(library("tigger"))
-suppressPackageStartupMessages(library("purrr"))
 
 if (!dir.exists(params$outdir)) {
   dir.create(params$outdir, recursive = TRUE)
 }
 
+# One child chunk per plot, for per-figure height and caption.
+emit_plot_sections <- function(plots, prefix, caption_for, fig_height) {
+  fig_height <- rep_len(fig_height, length(plots))
+  for (i in seq_along(plots)) {
+    plot_env <- new.env()
+    plot_env$p_obj <- plots[[i]]
+    plot_env$ix <- i
+    plot_env$params <- params
+    plot_env$caption <- caption_for(names(plots)[i])
+    child <- paste0(
+      "\n## ", names(plots)[i], " \n\n",
+      "```{r ", prefix, "-", i, ", echo=FALSE, message=FALSE, warning=FALSE, fig.height=",
+      fig_height[i], ", fig.width=8, fig.cap=caption}\n",
+      "p <- eeplot(p_obj, outdir=params$outdir, file=paste0('", prefix, "-', ix), caption=caption)\n",
+      "plot(p)\n",
+      "caption <- p$enchantr$html_caption\n",
+      "```\n"
+    )
+    cat(knitr::knit_child(text = child, envir = plot_env, quiet = TRUE))
+  }
+}
+
+# Keep only the parameters the selected method uses.
+method <- params$method
+report_params <- check_genotype_params(params, method)
+method_label <- genotype_method_label(method)
+
 # Convert boolean parameters
 find_unmutated <- as.logical(params$find_unmutated)
 single_assignments <- as.logical(params$single_assignments)
 genotypeby <- params$genotypeby
-has_novel <- !is.null(params$novel_allele_evidence) &&
-  length(params$novel_allele_evidence) == 1 &&
-  !is.na(params$novel_allele_evidence) &&
-  nzchar(params$novel_allele_evidence) &&
-  params$novel_allele_evidence != "NULL"
+has_novel <- has_path(params$novel_allele_evidence)
 has_novel_table <- FALSE
 has_novel_figures <- FALSE
 
@@ -174,7 +233,7 @@ file.copy(params$logo,
 # Input parameters
 
 ```{r input-parameters, results='asis'}
-printParams(params)
+printParams(report_params)
 ```
 ```{r echo=FALSE, results='asis'}
 print_table_caption(tag = "input", text = "Input parameters.")
@@ -190,13 +249,11 @@ Expected columns include `sequence_id`, `productive`, `v_call` / `d_call` / `j_c
 ```{r read-input}
 # Read repertoire data
 cols_to_read <- unique(c(
-  "sequence_id", "productive", "sequence_alignment",
+  "sequence_id", "productive", "junction_length", "sequence_alignment",
   params$v_call, params$d_call, params$j_call,
   params$germline_column, params$clone_id_column,
   params$genotypeby, "subject_id", "sample_id", "species"
 ))
-
-cols_to_read <- cols_to_read[!is.null(cols_to_read)]
 
 db <- readInput(params[["input"]], col_select = cols_to_read)
 
@@ -259,28 +316,17 @@ if (all(c("subject_id", "sample_id") %in% colnames(db))) {
     mutate(
       subject_id = "subject",
       sample_id  = "sample"
-    ) %>%
-    arrange(subject_id, sample_id)
+    )
 }
 
-# Filter to productive sequences
-db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
+# Filter to productive sequences & mod3 junction length
+db <- db %>% dplyr::filter(.data[["productive"]] == TRUE & .data[["junction_length"]] %% 3 == 0)
 db_raw_productive <- db
 
 # Set up output filenames
-if (!is.null(params$outname)) {
-  outname <- basename(params$outname)
-  report_output_fn <- paste0(outname, "_genotype_report.tsv")
-} else {
-  base <- sub("\\.tsv(\\.gz)?$", "", basename(params$input))
-  report_output_fn <- paste0(base, "_genotype_report.tsv")
-}
-
-if (!is.null(params$log)) {
-  log_fn <- file.path(params$outdir, paste0(params$log, ".txt"))
-} else {
-  log_fn <- file.path(params$outdir, sub("_genotype_report.tsv$", "_command_log.txt", basename(output_fn)))
-}
+outname <- if (!is.null(params$outname)) basename(params$outname) else sub("\\.tsv(\\.gz)?$", "", basename(params$input))
+report_output_fn <- paste0(outname, "_genotype_report.tsv")
+log_fn <- file.path(params$outdir, paste0(if (!is.null(params$log)) params$log else "command_log", ".txt"))
 ```
 
 
@@ -312,6 +358,11 @@ if (params$single_clone_representative) {
   if (is.null(params$clone_id_column) || params$clone_id_column == "") {
     stop("Error: 'clone_id_column' parameter must be provided when 'single_clone_representative' is TRUE.")
   }
+  if (!params$clone_id_column %in% colnames(db)) {
+    stop("'single_clone_representative' is TRUE but column '", params$clone_id_column,
+         "' is not in the input. Run clonal assignment before genotyping, or set ",
+         "'single_clone_representative' to FALSE.")
+  }
   # Select clonal representatives
   db <- select_clonal_representatives(db,
     sequence_col = params$seq_column,
@@ -325,45 +376,69 @@ if (params$single_clone_representative) {
 
 ### **This analysis is produced for subject `r paste(unique(db$subject_id), collapse=", ")` using the samples `r paste(unique(db$sample_id), collapse=", ")`.**
 
-# TIgGER Bayesian genotype inference
+```{r genotype-method-heading, results='asis', echo=FALSE}
+cat("# ", method_label, " genotype inference\n\n", sep = "")
+cat(genotype_method_text(method, "description"), "\n")
+```
 
-The `inferGenotypeBayesian` function applies a Bayesian framework to infer subject-specific germline genotypes from observed V(D)J gene assignments.
-Allele usage is modeled as a multinomial distribution with a Dirichlet prior, empirically parameterized from high-coverage reference genotypes.
+```{r unmutated-note, eval=!find_unmutated, results='asis', echo=FALSE}
+cat(
+  "<div class=\"introduction_paragraph\">\n",
+  "<strong>Recommendation:</strong> `find_unmutated` was not enabled, so the genotype below was inferred from all productive sequences, mutated ones included. ",
+  "Inferring from unmutated sequences is generally preferable, because somatic hypermutation can make a sequence resemble an allele other than the one it rearranged from, which inflates support for alleles the subject may not carry.\n\n",
+  "</div>\n",
+  sep = ""
+)
+```
 
-For each gene, the method evaluates zygosity models with up to four alleles and calculates posterior support for homozygous, heterozygous, trizygous, and quadrozygous configurations. The output columns `kh`, `kd`, `kt`, and `kq` report the log10 likelihoods for these four model classes.
-
-Model certainty is summarized by `k_diff`, the log10 ratio between the highest- and second-highest-likelihood zygosity models. Larger `k_diff` values indicate clearer separation between competing models and therefore stronger support for the inferred genotype. Lower `k_diff` values, especially values closer to zero, indicate that the leading models are poorly separated. In practice, low `k_diff` often reflects a low number of informative sequences for that gene, so confidence in the call is lower.
-
-This probabilistic approach incorporates prior expectations of allele frequencies within each gene family and accounts for sequencing depth variation, ambiguous V assignments, and low-frequency alleles. Together, these features yield quantitative, confidence-weighted genotype calls that form the basis for building a personalized germline reference.
-
-```{r tigger-genotype-inference}
-# Parse priors from parameters
+```{r genotype-inference}
+# Method-specific arguments; only those of `method` are used.
 priors <- list(
   v = as.numeric(strsplit(params$v_priors, ",")[[1]]),
   d = as.numeric(strsplit(params$d_priors, ",")[[1]]),
   j = as.numeric(strsplit(params$j_priors, ",")[[1]])
 )
 
-# Run TIgGER Bayesian genotype inference
+allele_thresholds <- read_allele_thresholds(params$allele_thresholds_db)
+
+# Genotype each segment; output shares one schema across methods.
 genotypes <- lapply(segments_to_genotype, function(seg) {
   infer_genotype(
     db = db,
     seg = seg,
     loci = loci,
+    method = method,
     genotypeby = genotypeby,
     references = references,
     single_assignments = single_assignments,
     find_unmutated = find_unmutated,
     seq = params$seq_column,
-    priors = priors[[seg]]
+    priors = priors[[seg]],
+    fraction_to_explain = as.numeric(params$fraction_to_explain),
+    gene_cutoff = as.numeric(params$gene_cutoff),
+    allele_threshold_table = allele_thresholds,
+    default_threshold = as.numeric(params$default_threshold),
+    asc_annotation = as.logical(params$asc_annotation),
+    translate_to_asc = as.logical(params$translate_to_asc),
+    depth_adjusted_threshold = as.logical(params$depth_adjusted_threshold),
+    z_score_threshold = as.numeric(params$z_score_threshold)
   )
 })
 genotypes <- do.call(rbind, genotypes)
-genotypes <- .augment_genotype_table(
+if (is.null(genotypes) || nrow(genotypes) == 0) {
+  stop(
+    "Genotype inference with method '", method, "' produced no results for any of the ",
+    "segments (", paste(segments_to_genotype, collapse = ", "), "). ",
+    "See the warnings above for the underlying cause."
+  )
+}
+genotypes <- augment_genotype_table(
   genotypes = genotypes,
   db_support = db_raw_productive,
   genotypeby = genotypeby,
-  clone_id_column = params$clone_id_column
+  clone_id_column = params$clone_id_column,
+  single_assignments = single_assignments,
+  method = method
 )
 ```
 
@@ -371,34 +446,29 @@ genotypes <- .augment_genotype_table(
 
 ## Genotype inference table
 <div class="introduction_paragraph">
-The genotype table summarizes the inferred alleles for each gene together with explicit support counts and Bayesian model scores.
+The genotype table summarizes the inferred alleles for each gene together with explicit support counts and the method's own confidence scores.
 </div>
 
 Interpret the columns as follows:
 
 - `gene`: germline gene being genotyped.
-- `genotyped_alleles`: allele set selected from the best-supported zygosity model.
-- `sequence_count`: comma-separated raw counts for each genotyped allele, in the same order as `genotyped_alleles`, using productive single-assignment sequences only.
-- `clone_count`: comma-separated clone counts for each genotyped allele, in the same order as `genotyped_alleles`; `NA` when clone IDs are not available.
-- `k_diff`: log10 ratio between the best- and second-best-supported zygosity models.
-- `note`: TIgGER note or warning attached to the gene, when present.
-- `candidate_alleles`: candidate allele set evaluated by TIgGER for that gene.
-- `counts`: TIgGER ambiguity-weighted allele counts.
-- `total`: total ambiguity-weighted count used by TIgGER for the gene.
-- `kh`, `kd`, `kt`, `kq`: log10 likelihoods for the homozygous, heterozygous, trizygous, and quadrozygous genotype models.
+- `genotyped_alleles`: allele set called into the genotype for that gene.
+- `sequence_count`: number of productive sequences supporting each genotyped allele, comma-separated and in the same order as `genotyped_alleles`.
+- `clone_count`: number of distinct clones among those same sequences, in the same order as `genotyped_alleles`. It is at most `sequence_count`, and equals it only where every supporting sequence belongs to a different clone. `NA` when the input carries no clone ID column.
+- `note`: note or warning attached to the gene, when present.
+- `candidate_alleles`: candidate allele set evaluated for that gene.
+- `counts`: the allele counts the inference method itself computed, aligned with `candidate_alleles`. Both TIgGER and PIgLET *split* a sequence whose call names several alleles proportionally between those alleles, rather than giving each a full count. TIgGER rounds the result, so its values look like whole numbers; PIgLET does not, so its values are fractional.
+- `total`: sum of `counts` across the gene's candidate alleles, on the same scale.
 
-Reliability notes:
+Columns specific to this method:
 
-- Larger `k_diff` values indicate stronger separation between competing genotype models.
-- `k_diff` values closer to zero indicate weaker support for the selected genotype.
-- Lower `sequence_count` and lower `clone_count` for the genotyped alleles reduce confidence, because the genotype is being supported by fewer independent observations.
-- `sequence_count` and `clone_count` only use single-assignment calls.
-- Ambiguous calls are incorporated proportionally by TIgGER and therefore appear in `counts` and `total`, which may not match the explicit single-assignment support counts.
-- When single-clone representatives are used for genotype inference, `sequence_count` still reports raw productive single-assignment support before collapsing to one representative per clone.
+```{r genotype-columns-text, results='asis', echo=FALSE}
+cat(genotype_method_text(method, "columns"), "\n")
+```
 
 ```{r genotype-inference-table, results='asis'}
 # Display results summary
-caption <- "TIgGER Bayesian genotype inference results showing inferred genotypes"
+caption <- paste0(method_label, " genotype inference results showing inferred genotypes")
 
 tab_genotype <- eetable(genotypes,
   caption = caption,
@@ -415,50 +485,26 @@ print_table_caption(tag="tab_genotype", text=tab_genotype$caption)
 ## Genotype inference plot
 
 <div class="introduction_paragraph">
-The genotype plot provides a visual summary of the inferred alleles for each gene. Each row corresponds to a gene, and the colored bars indicate which alleles are included in the inferred genotype. The plot is intended as a compact presence/absence view of the inferred genotype and should be interpreted together with the table counts and `k_diff` values rather than as a direct abundance plot.
+The genotype plot provides a visual summary of the inferred alleles for each gene. Each row corresponds to a gene, and the colored bars indicate which alleles are included in the inferred genotype. The plot is intended as a compact presence/absence view of the inferred genotype and should be interpreted together with the support counts in the table, and with the method's own confidence measure where it has one, rather than as a direct abundance plot.
 </div>
 
 ```{r plot-genotype-inference, results='asis', echo=FALSE}
-# For mixed-locus data, group the plots by locus (e.g. IGH/IGK/IGL); for a
-# single locus, group by segment (V/D/J). Use a local copy so the genotype
-# table written to disk is not altered.
-plot_data <- genotypes %>%
-  mutate(plot_group = if (length(loci) > 1) substr(gene, 1, 3) else substr(gene, 4, 4))
+# Group plots by locus for mixed-locus data, otherwise by segment.
+plot_groups <- split(
+  genotypes,
+  if (length(loci) > 1) substr(genotypes$gene, 1, 3) else substr(genotypes$gene, 4, 4)
+)
+genotype_plots <- lapply(plot_groups, plot_genotype, method = method)
 
-genotype_plots <- plot_data %>%
-  group_split(plot_group) %>%
-  set_names(map_chr(., ~ unique(.x$plot_group))) %>%
-  map(~ tigger::plotGenotypeConfidence(
-    .x,
-    confidence_col="k_diff",
-    allele_col = "genotyped_alleles",
-    silent = TRUE
-  ))
-
-fig_heights <- plot_data %>%
-  group_by(plot_group) %>%
-  summarise(n = n()) %>%
-  mutate(fig_height = pmax(n * 0.5 + 1.5, 3))
-
-for (i in seq_along(genotype_plots)) {
-   plot_env <- new.env()
-   plot_env$group_label <- names(genotype_plots)[i]
-   plot_env$p_obj <- genotype_plots[[i]]
-   plot_env$ix <- i
-   plot_env$params <- params
-   plot_env$caption <- paste0("Genotype inference summary: ", plot_env$group_label, ". Each row represents a specific gene, where the colored bars indicate the inferred alleles.")
-   plot_env$fig_height <- fig_heights$fig_height[[i]]
-   child <- paste0(
-     "\n## ", plot_env$group_label, " \n\n",
-     "```{r genotype-inference-", i, ", echo=FALSE, message=FALSE, warning=FALSE, fig.height=", plot_env$fig_height, ", fig.width=8, fig.cap=caption}\n",
-     "genotype_plot <- eeplot(p_obj, outdir=params$outdir, ",
-     "file=paste0('genotype-inference-', ix), caption=caption)\n",
-     "plot(genotype_plot)\n",
-     "caption <- genotype_plot$enchantr$html_caption\n",
-     "```\n"
-   )
-   cat(knitr::knit_child(text = child, envir = plot_env, quiet = TRUE))
-}
+emit_plot_sections(
+  genotype_plots,
+  prefix = "genotype-inference",
+  caption_for = function(group) paste0(
+    "Genotype inference summary: ", group,
+    ". Each row represents a specific gene, where the colored bars indicate the inferred alleles."
+  ),
+  fig_height = pmax(vapply(plot_groups, nrow, integer(1)) * 0.5 + 1.5, 3)
+)
 ```
 
 
@@ -539,25 +585,12 @@ cat("The third panel summarizes J gene and junction-length diversity among suppo
 ```
 
 ```{r novel-allele-figures, eval=has_novel_figures, results='asis', echo=FALSE}
-for (i in seq_along(novel_allele_figures)) {
-   plot_env <- new.env()
-   plot_env$allele <- names(novel_allele_figures)[i]
-   plot_env$p_obj <- novel_allele_figures[[i]]
-   plot_env$ix <- i
-   plot_env$params <- params
-   plot_env$caption <- paste0("Novel allele evidence: ", plot_env$allele, ".")
-   
-   child <- paste0(
-     "\n## ", plot_env$allele, " \n\n",
-     "```{r novel-allele-", i, ", echo=FALSE, message=FALSE, warning=FALSE, fig.height=10, fig.width=8, fig.cap=caption}\n",
-     "novel_allele_plot <- eeplot(p_obj, outdir=params$outdir, ",
-     "file=paste0('novel-allele-', ix), caption=caption)\n",
-     "plot(novel_allele_plot)\n",
-     "caption <- novel_allele_plot$enchantr$html_caption\n",
-     "```\n"
-   )
-   cat(knitr::knit_child(text = child, envir = plot_env, quiet = TRUE))
-}
+emit_plot_sections(
+  novel_allele_figures,
+  prefix = "novel-allele",
+  caption_for = function(allele) paste0("Novel allele evidence: ", allele, "."),
+  fig_height = 10
+)
 ```
 
 # Save genotype report
@@ -601,10 +634,10 @@ generate_genotyped_reference(
 ```
 
 ```{r log-end}
-cat("START> TIgGER Bayesian Genotype Inference", file = log_fn, append = FALSE)
+cat("START> Genotype Inference", file = log_fn, append = FALSE)
 cat(paste0("\nSUBJECT> ", paste(unique(db$subject_id), collapse = ", ")), file = log_fn, append = TRUE)
 cat(paste0("\nSAMPLE> ", paste(unique(db$sample_id), collapse = ", ")), file = log_fn, append = TRUE)
-cat(paste0("\nMETHOD> TIgGER Bayesian"), file = log_fn, append = TRUE)
+cat(paste0("\nMETHOD> ", method_label), file = log_fn, append = TRUE)
 cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
 cat(paste0("\nGENOTYPE_LOCI> ", paste0(loci, collapse = ",")), file = log_fn, append = TRUE)
 cat(paste0("\nGENOTYPE_SEGMENTS> ", paste0(segments_to_genotype, collapse = ",")), file = log_fn, append = TRUE)
