@@ -1,0 +1,523 @@
+---
+title: "Immcantation - enchantR"
+subtitle: "RAbHIT haplotype inference"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr RAbHIT haplotype inference"
+output: enchantr::immcantation
+params:
+   input:
+      label: "`input`: Path to AIRR TSV file"
+      input: file
+      value: "input.tsv"
+   imgt_db:
+      label: "`imgt_db`: Path to germline database"
+      input: file
+      value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
+   species:
+      label: "`species`"
+      input: text
+      value: "human"
+   chain:
+      label: "`chain`: IG/TR chain to haplotype"
+      input: text
+      value: "IGH"
+   toHap_col:
+      label: "`toHap_col`: comma-separated call columns to haplotype"
+      input: text
+      value: "v_call,d_call"
+   hapBy_col:
+      label: "`hapBy_col`: anchor gene call column"
+      input: text
+      value: "j_call"
+   hapBy:
+      label: "`hapBy`: anchor gene"
+      input: text
+      value: "IGHJ6"
+   subject_column:
+      label: "`subject_column`: Column name containing subject identifiers"
+      input: text
+      value: "subject_id"
+   asc_annotation:
+      label: "`asc_annotation`: Convert V calls to PIgLET allele similarity clusters"
+      input: checkbox
+      value: FALSE
+   allele_cluster_table:
+      label: "`allele_cluster_table`: Optional ASC table"
+      input: file
+      value: ""
+   min_minor_fraction:
+      label: "`min_minor_fraction`: minimum minor anchor allele fraction"
+      input: number
+      value: 0.3
+   kThreshDel:
+      label: "`kThreshDel`: lK threshold for deletion calls"
+      input: number
+      value: 3
+   rmPseudo:
+      label: "`rmPseudo`: remove pseudo genes"
+      input: checkbox
+      value: TRUE
+   single_gene:
+      label: "`single_gene`: restrict haplotyped genes to single-gene calls"
+      input: checkbox
+      value: TRUE
+   run_deletions:
+      label: "`run_deletions`: Run double-chromosome deletion support before haplotyping"
+      input: checkbox
+      value: FALSE
+   outname:
+      label: "`outname`"
+      input: text
+      value: "rabhit"
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: "`outdir`: Output directory"
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date:
+      label: "`date`: Run date"
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo:
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: TRUE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options:
+  chunk_output_type: console
+---
+
+<div class="introduction_paragraph">
+RAbHIT infers immunoglobulin and T-cell receptor haplotypes by using a heterozygous anchor gene to phase other V, D or J genes onto the two chromosomes. For each haplotyped gene, the method compares allele usage across the two anchor-gene alleles and assigns the observed alleles to one or both chromosomes.
+</div>
+
+<div class="introduction_paragraph">
+The anchor gene must have exactly two well-supported alleles. The `min_minor_fraction` parameter controls the minimum fraction required for the less frequent anchor allele. Genes with weak support can remain unknown, and high Bayes-factor values provide stronger support for chromosome-specific assignments.
+</div>
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(
+  fig.width = 7, fig.height = 4, fig.path = "figures/",
+  echo = params$echo, cache = params$cache,
+  warning = FALSE, message = FALSE,
+  eval.after = "fig.cap",
+  out_dir = params$outdir,
+  eval.opts = c("eval", "echo", "fig.height", "fig.width")
+)
+
+if (!requireNamespace("rabhit", quietly = TRUE)) {
+  stop("The RAbHIT haplotype report requires the 'rabhit' package.")
+}
+
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("rabhit"))
+
+if (!dir.exists(params$outdir)) {
+  dir.create(params$outdir, recursive = TRUE)
+}
+
+file.copy(params$logo,
+  file.path(params$outdir, "assets", "logo.png"),
+  recursive = TRUE, overwrite = TRUE
+)
+
+parse_columns <- function(x) {
+  cols <- trimws(unlist(strsplit(x, ",", fixed = TRUE)))
+  cols[nzchar(cols)]
+}
+
+segment_from_call_col <- function(call_col) {
+  first <- tolower(substr(call_col, 1, 1))
+  seg <- c(v = "V", d = "D", j = "J")[[first]]
+  if (is.null(seg)) {
+    stop("Cannot infer segment from call column '", call_col, "'. ",
+         "Use column names beginning with v, d or j.")
+  }
+  seg
+}
+
+collect_germline <- function(references, chain, call_cols) {
+  if (is.null(references[[chain]])) {
+    stop("No germline references found for chain '", chain, "'.")
+  }
+  germline <- unlist(lapply(call_cols, function(call_col) {
+    seg <- segment_from_call_col(call_col)
+    refs <- references[[chain]][[seg]]
+    if (is.null(refs)) {
+      stop("No ", seg, " germline references found for chain '", chain, "'.")
+    }
+    refs
+  }))
+  germline[!is.na(germline) & nzchar(germline)]
+}
+
+toHap_cols <- parse_columns(params$toHap_col)
+hapBy_col <- params$hapBy_col
+chain <- params$chain
+asc_annotation <- as.logical(params$asc_annotation)
+run_deletions <- as.logical(params$run_deletions)
+rmPseudo <- as.logical(params$rmPseudo)
+single_gene <- as.logical(params$single_gene)
+genes_order <- NULL
+deleted_genes <- c()
+nonReliable_Vgenes <- c()
+has_haplotype <- FALSE
+has_deletions <- FALSE
+```
+
+# Input parameters
+
+```{r input-parameters, results='asis'}
+printParams(params)
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag = "input", text = "Input parameters.")
+save(params, file = file.path(params$outdir, "params.RData"))
+```
+
+# Read repertoire data
+
+Load repertoire annotation tables in AIRR format. The report requires the anchor call column (`hapBy_col`), the call columns to be haplotyped (`toHap_col`), and a subject identifier column. Only productive sequences are retained before haplotype inference.
+
+```{r read-input}
+cols_to_read <- unique(c(
+  "sequence_id", "productive", params$subject_column,
+  toHap_cols, hapBy_col, "locus", "species"
+))
+cols_to_read <- cols_to_read[!is.null(cols_to_read) & nzchar(cols_to_read)]
+
+db <- readInput(params[["input"]], col_select = cols_to_read)
+
+missing_cols <- setdiff(c(params$subject_column, toHap_cols, hapBy_col), colnames(db))
+if (length(missing_cols) > 0) {
+  stop("Input is missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+if (params$species == "auto") {
+  if ("species" %in% colnames(db)) {
+    species <- unique(db[["species"]])
+    if (length(species) > 1) {
+      stop("Multiple species detected. Only one allowed.")
+    }
+  } else {
+    stop("Can't detect species. The column `species` does not exist in `db`.")
+  }
+} else {
+  species <- params$species
+}
+
+if ("productive" %in% colnames(db)) {
+  db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
+}
+
+db <- db %>%
+  mutate(subject = as.character(.data[[params$subject_column]])) %>%
+  filter(!is.na(.data[[hapBy_col]]), .data[[hapBy_col]] != "")
+
+for (call_col in toHap_cols) {
+  db <- db %>% filter(!is.na(.data[[call_col]]), .data[[call_col]] != "")
+}
+
+if (nrow(db) == 0) {
+  stop("No productive records remained after filtering required call columns.")
+}
+
+subject_levels <- str_sort(unique(db$subject), numeric = TRUE)
+db <- db %>%
+  mutate(subject = factor(subject, levels = subject_levels)) %>%
+  arrange(subject)
+
+if (!is.null(params$outname) && nzchar(params$outname)) {
+  outname <- basename(params$outname)
+} else {
+  outname <- sub(".tsv(\\.gz)?$", "", basename(params$input))
+}
+
+haplotype_output_fn <- paste0(outname, "_haplotype.tsv")
+deletion_output_fn <- paste0(outname, "_deletions.tsv")
+
+if (!is.null(params$log)) {
+  log_fn <- file.path(params$outdir, paste0(params$log, ".txt"))
+} else {
+  log_fn <- file.path(params$outdir, paste0(outname, "_command_log.txt"))
+}
+```
+
+### **This analysis is produced for subject `r paste(unique(db$subject), collapse=", ")` using anchor gene `r params$hapBy`.**
+
+# Read germline database
+
+RAbHIT needs named germline sequences for the genes being haplotyped. The report reads an IMGT-style database and extracts the V, D or J references corresponding to the selected `toHap_col` columns. In ASC mode, V calls and V germlines are converted to PIgLET allele similarity cluster names before haplotyping.
+
+```{r read-germline}
+if (is.null(params$imgt_db) || !nzchar(params$imgt_db)) {
+  stop("`imgt_db` is required for this report.")
+}
+
+imgt_db <- prepareIMGT(params$imgt_db)
+references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
+toHap_GERM <- collect_germline(references, chain, toHap_cols)
+
+if (length(toHap_GERM) == 0) {
+  stop("No germline sequences were found for the requested haplotype columns.")
+}
+```
+
+# Allele similarity clusters (optional)
+
+When enabled, ASC conversion maps V allele calls and V germlines to PIgLET allele similarity cluster names before haplotype inference. This can reduce ambiguity among highly similar or duplicated IGHV alleles while preserving the RAbHIT anchor-based haplotyping model.
+
+```{r asc-conversion, eval=asc_annotation}
+if (asc_annotation) {
+  v_cols <- toHap_cols[tolower(substr(toHap_cols, 1, 1)) == "v"]
+  if (length(v_cols) != 1) {
+    stop("ASC conversion currently requires exactly one V call column in `toHap_col`.")
+  }
+
+  allele_cluster_table <- NULL
+  if (!is.null(params$allele_cluster_table) &&
+      nzchar(params$allele_cluster_table) &&
+      params$allele_cluster_table != "NULL") {
+    allele_cluster_table <- read.delim(params$allele_cluster_table, stringsAsFactors = FALSE)
+  }
+
+  v_germline <- references[[chain]][["V"]]
+  asc <- rabhit::convertToASC(
+    clip_db = db,
+    germline = v_germline,
+    chain = chain,
+    allele_cluster_table = allele_cluster_table,
+    v_call = v_cols[[1]]
+  )
+
+  db <- asc$clip_db
+  genes_order <- asc$genes_order
+  non_v_cols <- setdiff(toHap_cols, v_cols)
+  non_v_germline <- if (length(non_v_cols) > 0) collect_germline(references, chain, non_v_cols) else NULL
+  toHap_GERM <- c(asc$germline, non_v_germline)
+}
+```
+
+# Deletion support (optional)
+
+RAbHIT can use prior evidence for double-chromosome deletions and non-reliable V genes. If enabled, the report estimates these annotations before haplotyping and passes them to `createFullHaplotype()`.
+
+```{r deletion-support, eval=run_deletions}
+if (run_deletions) {
+  nonReliable_Vgenes <- rabhit::nonReliableVGenes(db, chain = chain)
+  deleted_genes <- rabhit::deletionsByBinom(
+    db,
+    chain = chain,
+    nonReliable_Vgenes = nonReliable_Vgenes
+  )
+  has_deletions <- is.data.frame(deleted_genes) && nrow(deleted_genes) > 0
+}
+```
+
+# RAbHIT haplotype inference
+
+`createFullHaplotype()` phases the requested genes by comparing their allele counts across the two alleles of the anchor gene. The output contains one row per haplotyped gene and subject, with chromosome-specific assignments named by the two anchor alleles.
+
+The `kThreshDel` parameter controls the Bayes-factor threshold used to call single-chromosome deletions. The `single_gene` option restricts haplotyping to single-gene assignments, reducing ambiguity from multi-gene calls.
+
+```{r rabhit-haplotype-inference}
+haplo_db <- rabhit::createFullHaplotype(
+  clip_db = db,
+  toHap_col = toHap_cols,
+  hapBy_col = hapBy_col,
+  hapBy = params$hapBy,
+  toHap_GERM = toHap_GERM,
+  relative_freq_priors = TRUE,
+  kThreshDel = as.numeric(params$kThreshDel),
+  rmPseudo = rmPseudo,
+  deleted_genes = deleted_genes,
+  nonReliable_Vgenes = nonReliable_Vgenes,
+  min_minor_fraction = as.numeric(params$min_minor_fraction),
+  single_gene = single_gene,
+  chain = chain
+)
+
+if (is.null(haplo_db) || nrow(haplo_db) == 0) {
+  stop("RAbHIT did not return haplotype rows. Check anchor gene heterozygosity and min_minor_fraction.")
+}
+
+has_haplotype <- TRUE
+```
+
+# Haplotype inference results
+
+## Haplotype inference table
+
+<div class="introduction_paragraph">
+The haplotype table summarizes chromosome-specific allele assignments for each gene. The two columns immediately after `gene` correspond to the two anchor-gene alleles and represent the inferred alleles on each chromosome.
+</div>
+
+Interpret the columns as follows:
+
+- `subject`: subject identifier used by RAbHIT.
+- `gene`: haplotyped gene.
+- anchor allele columns: inferred chromosome-specific assignments.
+- `alleles`: candidate alleles observed for the gene.
+- `counts1`-`counts4`: allele counts split across anchor chromosomes.
+- `k1`-`k4`: Bayes-factor support for the corresponding allele assignment.
+- `Del`, `NR` or `Unk` values indicate deletion, non-reliable annotation, or unknown assignment when present.
+
+Reliability notes:
+
+- The anchor gene must have exactly two alleles after filtering.
+- Lower minor-anchor fractions reduce haplotyping reliability and may prevent inference.
+- Larger `k` values indicate stronger support for chromosome-specific assignment.
+- Multi-gene assignments can inflate ambiguity; `single_gene = TRUE` restricts inference to single-gene calls.
+
+```{r haplotype-table, results='asis'}
+caption <- "RAbHIT haplotype inference results showing chromosome-specific allele assignments."
+
+tab_haplotype <- eetable(haplo_db,
+  caption = caption,
+  outdir = params$outdir,
+  file = "tab_haplotype"
+)
+tab_haplotype$table
+```
+
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag = "tab_haplotype", text = tab_haplotype$caption)
+```
+
+## Haplotype map
+
+<div class="introduction_paragraph">
+The haplotype map displays each gene along the chromosome, its allele assignment on each anchor-defined chromosome, and the assignment confidence. Unknown, deleted, or non-reliable calls should be interpreted together with the count and Bayes-factor columns in the table.
+</div>
+
+```{r haplotype-map, results='asis', echo=FALSE}
+subjects <- unique(as.character(haplo_db$subject))
+
+for (i in seq_along(subjects)) {
+  plot_env <- new.env()
+  plot_env$subject_id <- subjects[[i]]
+  plot_env$haplo_subject <- haplo_db[as.character(haplo_db$subject) == plot_env$subject_id, , drop = FALSE]
+  plot_env$params <- params
+  plot_env$chain <- chain
+  plot_env$genes_order <- genes_order
+  plot_env$caption <- paste0("RAbHIT haplotype map for subject ", plot_env$subject_id, ".")
+  plot_env$fig_height <- max(6, min(18, nrow(plot_env$haplo_subject) * 0.28))
+
+  child <- paste0(
+    "\n### ", plot_env$subject_id, " \n\n",
+    "```{r haplotype-map-", i, ", echo=FALSE, message=FALSE, warning=FALSE, fig.height=", plot_env$fig_height, ", fig.width=12, fig.cap=caption}\n",
+    "rabhit::plotHaplotype(haplo_subject, genes_order=genes_order, chain=chain)\n",
+    "```\n"
+  )
+  cat(knitr::knit_child(text = child, envir = plot_env, quiet = TRUE))
+}
+```
+
+```{r haplotype-heatmap-intro, eval=length(unique(as.character(haplo_db$subject))) > 1, results='asis', echo=FALSE}
+cat("## Multi-subject haplotype heatmap\n\n")
+cat("The heatmap compares chromosome-specific allele assignments across subjects. RAbHIT returns suggested plot dimensions based on the number of samples and genes shown.\n\n")
+```
+
+```{r haplotype-heatmap, eval=length(unique(as.character(haplo_db$subject))) > 1, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=12}
+hap_heatmap <- rabhit::hapHeatmap(haplo_db, chain = chain, genes_order = genes_order)
+replayPlot(hap_heatmap$p)
+```
+
+```{r haplotype-dendrogram-intro, eval=length(unique(as.character(haplo_db$subject))) > 1 && requireNamespace("ggdendro", quietly = TRUE), results='asis', echo=FALSE}
+cat("## Haplotype dendrogram\n\n")
+cat("The dendrogram clusters subjects by haplotype similarity using RAbHIT's Jaccard-distance comparison of chromosome-specific assignments.\n\n")
+```
+
+```{r haplotype-dendrogram, eval=length(unique(as.character(haplo_db$subject))) > 1 && requireNamespace("ggdendro", quietly = TRUE), echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
+rabhit::hapDendo(haplo_db, chain = chain, genes_order = genes_order)
+```
+
+```{r deletion-table, eval=has_deletions, results='asis'}
+caption <- "RAbHIT deletion support table generated before haplotype inference."
+
+tab_deletions <- eetable(deleted_genes,
+  caption = caption,
+  outdir = params$outdir,
+  file = "tab_deletions"
+)
+tab_deletions$table
+```
+
+```{r echo=FALSE, results='asis', eval=has_deletions}
+print_table_caption(tag = "tab_deletions", text = tab_deletions$caption)
+```
+
+```{r deletion-plot, eval=has_deletions, echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=8}
+rabhit::plotDeletionsByBinom(deleted_genes)
+```
+
+# Save haplotype report
+
+```{r save-haplotype}
+haplotype_output_dir <- file.path(params$outdir, "haplotypes")
+dir.create(haplotype_output_dir, recursive = TRUE, showWarnings = FALSE)
+
+write.table(
+  haplo_db,
+  file = file.path(haplotype_output_dir, haplotype_output_fn),
+  sep = "\t",
+  quote = FALSE,
+  row.names = FALSE
+)
+
+if (has_deletions) {
+  write.table(
+    deleted_genes,
+    file = file.path(haplotype_output_dir, deletion_output_fn),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+  )
+}
+```
+
+```{r log-end}
+cat("START> RAbHIT Haplotype Inference", file = log_fn, append = FALSE)
+cat(paste0("\nSUBJECT> ", paste(unique(db$subject), collapse = ", ")), file = log_fn, append = TRUE)
+cat(paste0("\nMETHOD> RAbHIT anchor haplotype"), file = log_fn, append = TRUE)
+cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = TRUE)
+cat(paste0("\nCHAIN> ", chain), file = log_fn, append = TRUE)
+cat(paste0("\nANCHOR_COLUMN> ", hapBy_col), file = log_fn, append = TRUE)
+cat(paste0("\nANCHOR_GENE> ", params$hapBy), file = log_fn, append = TRUE)
+cat(paste0("\nTO_HAP_COLUMNS> ", paste(toHap_cols, collapse = ",")), file = log_fn, append = TRUE)
+cat(paste0("\nASC_ANNOTATION> ", asc_annotation), file = log_fn, append = TRUE)
+cat(paste0("\nRUN_DELETIONS> ", run_deletions), file = log_fn, append = TRUE)
+cat(paste0("\nOUTPUT> ", file.path(haplotype_output_dir, haplotype_output_fn)), file = log_fn, append = TRUE)
+if (has_deletions) {
+  cat(paste0("\nOUTPUT_DELETIONS> ", file.path(haplotype_output_dir, deletion_output_fn)), file = log_fn, append = TRUE)
+}
+cat(paste0("\nHAPLOTYPE_ROWS> ", nrow(haplo_db)), file = log_fn, append = TRUE)
+```
+
+```{r, child=c('versions.Rmd')}
+```
