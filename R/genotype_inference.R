@@ -557,6 +557,147 @@ infer_genotype <- function(
   if (length(parts) > 0) do.call(rbind, parts) else NULL
 }
 
+#' Record one filtering step
+#'
+#' Every filter reports rows in and rows out, so a step that removes sequences is
+#' visible in the report rather than only in the final count.
+#'
+#' @param steps A data.frame of previous steps, or NULL.
+#' @param label What the step did.
+#' @param rows_in,rows_out Row counts before and after.
+#' @return The steps table with one row appended.
+#' @export
+count_rows_step <- function(steps, label, rows_in, rows_out) {
+  rbind(steps, data.frame(
+    step = label, rows_in = rows_in, rows_out = rows_out,
+    dropped = rows_in - rows_out, stringsAsFactors = FALSE
+  ))
+}
+
+#' The column a threshold table is looked up by
+#'
+#' PIgLET matches thresholds on `asc_allele` when the calls are ASC names and on
+#' `allele` otherwise. The table carries both, so it is also the crosswalk
+#' between the two naming schemes -- which is why the naming is never guessed
+#' from the data.
+#'
+#' @param thresholds A threshold table.
+#' @param asc_annotation Logical. TRUE when the calls in the repertoire are ASC names.
+#' @return The name of the column to match allele calls against.
+#' @keywords internal
+.threshold_key_column <- function(thresholds, asc_annotation = FALSE) {
+  key <- if (isTRUE(asc_annotation)) "asc_allele" else "allele"
+  if (!key %in% colnames(thresholds)) {
+    stop(
+      "The allele threshold table has no '", key, "' column, so allele calls cannot be ",
+      "looked up in it. Columns present: ", paste(colnames(thresholds), collapse = ", "), ". ",
+      if (identical(key, "asc_allele")) {
+        "With asc_annotation = TRUE the table must carry the ASC names."
+      } else {
+        "With asc_annotation = FALSE the table must carry the IMGT-style allele names."
+      }
+    )
+  }
+  key
+}
+
+#' How much of the repertoire the threshold table actually covers
+#'
+#' Reports, per allele observed in the repertoire, whether a threshold was found
+#' for it. An allele with no entry silently inherits `default_threshold`, which
+#' discards the population-derived value the method is supposed to use -- so the
+#' coverage is reported, and zero coverage is an error rather than a fallback.
+#'
+#' @param db A data.frame of repertoire records.
+#' @param call_col The allele call column, e.g. `v_call`.
+#' @param thresholds A threshold table, or NULL.
+#' @param asc_annotation Logical, see [.threshold_key_column()].
+#' @param single_assignments Logical. The rule the inference applied; when FALSE an
+#'   ambiguous call contributes every allele it lists.
+#' @return A data.frame with one row per observed allele: `allele`,
+#'   `sequence_count`, `matched`, and the `threshold` when one was found.
+#' @export
+allele_threshold_coverage <- function(db, call_col, thresholds,
+                                      asc_annotation = FALSE, single_assignments = FALSE) {
+  if (is.null(thresholds) || nrow(thresholds) == 0 || is.null(db) || nrow(db) == 0 ||
+    !call_col %in% colnames(db)) {
+    return(data.frame())
+  }
+  key <- .threshold_key_column(thresholds, asc_annotation)
+
+  calls <- db[[call_col]]
+  calls <- calls[!is.na(calls) & nzchar(calls)]
+  if (single_assignments) {
+    calls <- calls[!grepl(",", calls)]
+  } else {
+    calls <- trimws(unlist(strsplit(calls, ",")))
+  }
+  if (length(calls) == 0) {
+    return(data.frame())
+  }
+
+  observed <- as.data.frame(table(allele = calls), stringsAsFactors = FALSE)
+  colnames(observed) <- c("allele", "sequence_count")
+  lookup <- thresholds[match(observed$allele, thresholds[[key]]), , drop = FALSE]
+  observed$matched <- !is.na(lookup[[key]])
+  observed$threshold <- if ("threshold" %in% colnames(thresholds)) lookup$threshold else NA
+  observed[order(-observed$sequence_count), , drop = FALSE]
+}
+
+#' Summarize threshold coverage into one row
+#'
+#' @param coverage Output of [allele_threshold_coverage()].
+#' @return A one-row data.frame: alleles observed, matched, defaulted, and the
+#'   matched fraction.
+#' @export
+summarize_threshold_coverage <- function(coverage) {
+  if (is.null(coverage) || nrow(coverage) == 0) {
+    return(data.frame(
+      alleles_observed = 0L, alleles_matched = 0L, alleles_defaulted = 0L,
+      sequences_matched = 0L, sequences_defaulted = 0L, coverage = NA_real_
+    ))
+  }
+  data.frame(
+    alleles_observed = nrow(coverage),
+    alleles_matched = sum(coverage$matched),
+    alleles_defaulted = sum(!coverage$matched),
+    sequences_matched = sum(coverage$sequence_count[coverage$matched]),
+    sequences_defaulted = sum(coverage$sequence_count[!coverage$matched]),
+    coverage = sum(coverage$matched) / nrow(coverage)
+  )
+}
+
+#' Provenance of the allele threshold table in use
+#'
+#' A genotype is only reproducible if the thresholds behind it can be identified.
+#' PIgLET's bundled table carries no release attribute, so the checksum of the
+#' table actually used is what pins the run.
+#'
+#' @param thresholds The threshold table in use.
+#' @param path Path it was read from, or NULL when PIgLET's bundled table is used.
+#' @param release Release label supplied by the caller, or NULL when unspecified.
+#' @return A one-row data.frame of provenance fields.
+#' @export
+allele_threshold_provenance <- function(thresholds, path = NULL, release = NULL) {
+  checksum <- NA_character_
+  if (!is.null(thresholds) && nrow(thresholds) > 0) {
+    tmp <- tempfile(fileext = ".tsv")
+    on.exit(unlink(tmp), add = TRUE)
+    utils::write.table(thresholds, tmp, sep = "\t", row.names = FALSE, quote = FALSE)
+    checksum <- unname(tools::md5sum(tmp))
+  }
+  data.frame(
+    source = if (has_path(path)) path else "piglet bundled allele_threshold_table",
+    release = if (!is.null(release) && nzchar(release)) release else "unspecified",
+    n_alleles = if (is.null(thresholds)) 0L else nrow(thresholds),
+    columns = if (is.null(thresholds)) "" else paste(colnames(thresholds), collapse = ","),
+    md5 = checksum,
+    piglet_version = tryCatch(as.character(utils::packageVersion("piglet")), error = function(e) NA_character_),
+    recorded = as.character(Sys.Date()),
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Summarize support for genotype genes
 #'
 #' Internal helper that counts productive sequences and unique clones supporting

@@ -97,6 +97,10 @@ params:
       label: "`allele_thresholds_db`: [method='allele_based'] Path to a TSV of alleles and their population-derived presence thresholds. If NULL, PIgLET's bundled thresholds are used."
       input: file
       value: NULL
+   allele_thresholds_release:
+      label: "`allele_thresholds_release`: [method='allele_based'] Release or version label for the threshold table, recorded with the genotype. The checksum is recorded either way."
+      input: text
+      value: ""
    default_threshold:
       label: "`default_threshold`: [method='allele_based'] Threshold used for alleles absent from the threshold table."
       input: numeric
@@ -319,9 +323,24 @@ if (all(c("subject_id", "sample_id") %in% colnames(db))) {
     )
 }
 
-# Filter to productive sequences & mod3 junction length
-db <- db %>% dplyr::filter(.data[["productive"]] == TRUE & .data[["junction_length"]] %% 3 == 0)
-db_raw_productive <- db
+# Each filter records rows in and out in `filter_steps`.
+filter_steps <- NULL
+rows_in <- nrow(db)
+db <- db %>% dplyr::filter(.data[["productive"]] == TRUE)
+filter_steps <- count_rows_step(filter_steps, "productive == TRUE", rows_in, nrow(db))
+
+rows_in <- nrow(db)
+db <- db %>% dplyr::filter(.data[["junction_length"]] %% 3 == 0)
+filter_steps <- count_rows_step(filter_steps, "junction_length %% 3 == 0", rows_in, nrow(db))
+
+if (nrow(db) == 0) {
+  stop("No sequences are left after filtering. See the row counts above: ",
+       paste(sprintf("%s %d->%d", filter_steps$step, filter_steps$rows_in, filter_steps$rows_out),
+             collapse = "; "))
+}
+
+db_before_clone_collapse <- db
+db_raw_productive <- db_before_clone_collapse
 
 # Set up output filenames
 outname <- if (!is.null(params$outname)) basename(params$outname) else sub("\\.tsv(\\.gz)?$", "", basename(params$input))
@@ -401,6 +420,48 @@ priors <- list(
 
 allele_thresholds <- read_allele_thresholds(params$allele_thresholds_db)
 
+# allele_based: report threshold table coverage; stop if nothing matches.
+threshold_coverage <- NULL
+threshold_provenance <- NULL
+if (identical(method, "allele_based")) {
+  if (is.null(allele_thresholds)) {
+    allele_thresholds_used <- .piglet_default_thresholds()
+  } else {
+    allele_thresholds_used <- allele_thresholds
+  }
+  threshold_provenance <- allele_threshold_provenance(
+    thresholds = allele_thresholds_used,
+    path = params$allele_thresholds_db,
+    release = params$allele_thresholds_release
+  )
+  threshold_coverage <- allele_threshold_coverage(
+    db = db,
+    call_col = params[[paste0(segments_to_genotype[1], "_call")]],
+    thresholds = allele_thresholds_used,
+    asc_annotation = as.logical(params$asc_annotation),
+    single_assignments = single_assignments
+  )
+  coverage_summary <- summarize_threshold_coverage(threshold_coverage)
+  if (nrow(threshold_coverage) > 0 && coverage_summary$alleles_matched == 0) {
+    stop(
+      "None of the ", coverage_summary$alleles_observed, " alleles in the repertoire were ",
+      "found in the allele threshold table, so every allele would fall back to ",
+      "default_threshold = ", params$default_threshold, " and the population-derived ",
+      "thresholds would be discarded. The table is matched on '",
+      .threshold_key_column(allele_thresholds_used, as.logical(params$asc_annotation)),
+      "'; check that asc_annotation matches the naming of the calls, or supply a ",
+      "threshold table that carries the names used here."
+    )
+  }
+  message("THRESHOLD_COVERAGE> ", coverage_summary$alleles_matched, "/",
+          coverage_summary$alleles_observed, " alleles matched (",
+          round(100 * coverage_summary$coverage), "%), ",
+          coverage_summary$alleles_defaulted, " defaulted")
+  message("THRESHOLD_SOURCE> ", threshold_provenance$source,
+          " | release: ", threshold_provenance$release,
+          " | md5: ", threshold_provenance$md5)
+}
+
 # Genotype each segment; output shares one schema across methods.
 genotypes <- lapply(segments_to_genotype, function(seg) {
   infer_genotype(
@@ -440,6 +501,47 @@ genotypes <- augment_genotype_table(
   single_assignments = single_assignments,
   method = method
 )
+```
+
+## Sequences in and out
+
+<div class="introduction_paragraph">
+Every filter applied before inference, with the rows it received and the rows it
+passed on. A step that drops sequences is visible here; the clonal representative
+selection below, when enabled, is counted the same way.
+</div>
+
+```{r filter-counts, results='asis', echo=FALSE}
+tab_filters <- eetable(filter_steps,
+  caption = "Sequences in and out of each filter applied before genotype inference",
+  outdir = params$outdir,
+  file = "tab_filters"
+)
+tab_filters$table
+```
+
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag = "tab_filters", text = tab_filters$caption)
+```
+
+```{r threshold-coverage-table, results='asis', echo=FALSE, eval=!is.null(threshold_coverage) && nrow(threshold_coverage) > 0}
+tab_thresholds <- eetable(threshold_coverage,
+  caption = paste0(
+    "Allele threshold coverage: ", coverage_summary$alleles_matched, " of ",
+    coverage_summary$alleles_observed, " alleles observed in the repertoire were found in the ",
+    "threshold table (", round(100 * coverage_summary$coverage), "%). Alleles not found fall back to ",
+    "default_threshold = ", params$default_threshold, ". Table in use: ",
+    threshold_provenance$source, " (release ", threshold_provenance$release,
+    ", md5 ", substr(threshold_provenance$md5, 1, 12), ")."
+  ),
+  outdir = params$outdir,
+  file = "tab_threshold_coverage"
+)
+tab_thresholds$table
+```
+
+```{r echo=FALSE, results='asis', eval=!is.null(threshold_coverage) && nrow(threshold_coverage) > 0}
+print_table_caption(tag = "tab_threshold_coverage", text = tab_thresholds$caption)
 ```
 
 # Genotype inference results
@@ -606,6 +708,20 @@ write_genotypes(
   out_fn = report_output_fn,
   genotypeby = genotypeby
 )
+
+# Save the thresholds used and their provenance.
+if (!is.null(threshold_provenance)) {
+  utils::write.table(threshold_provenance,
+    file.path(genotypes_output_dir, sub("\\.tsv$", "_threshold_provenance.tsv", report_output_fn)),
+    sep = "\t", row.names = FALSE, quote = FALSE
+  )
+}
+if (!is.null(threshold_coverage) && nrow(threshold_coverage) > 0) {
+  utils::write.table(threshold_coverage,
+    file.path(genotypes_output_dir, sub("\\.tsv$", "_threshold_coverage.tsv", report_output_fn)),
+    sep = "\t", row.names = FALSE, quote = FALSE
+  )
+}
 ```
 
 # Build personal reference
