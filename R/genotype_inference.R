@@ -264,7 +264,7 @@ genotype_project <- function(path, ...) {
   allele_based = list(
     label = "PIgLET allele based",
     package = "piglet",
-    params = c("allele_thresholds_db", "default_threshold", "asc_annotation", "translate_to_asc", "depth_adjusted_threshold", "z_score_threshold"),
+    params = c("allele_thresholds_db", "default_threshold", "asc_annotation", "translate_to_asc", "z_score_threshold"),
     extra_cols = "depth",
     infer = .infer_allele_based,
     normalize = .normalize_piglet,
@@ -277,14 +277,14 @@ genotype_project <- function(path, ...) {
       "",
       "Because thresholds are set per allele, this method handles alleles that are systematically hard to detect -- for example those that are frequently mis-assigned or that sit in low-coverage regions -- more even-handedly than a single global cutoff. Alleles absent from the threshold table fall back to `default_threshold`.",
       "",
-      "When `depth_adjusted_threshold` is TRUE, each allele's threshold is first raised to at least `max(default_threshold, 1 / depth)`, so no allele is expected at a frequency below a single observed sequence. This matters most in shallow repertoires, where a population-derived threshold can otherwise sit below the resolution the data actually supports; in deep repertoires `1 / depth` is small and the adjustment rarely changes the call.",
+      "Each allele's threshold is first raised to at least `max(default_threshold, 1 / depth)`, so no allele is expected at a frequency below a single observed sequence. This matters most in shallow repertoires, where a population-derived threshold can otherwise sit below the resolution the data actually supports; in deep repertoires `1 / depth` is small and the adjustment rarely changes the call. The report always applies it, so it is not a parameter.",
       sep = "\n"
     ),
     columns = paste(
       "- `confidence`: the `z_score` of each genotyped allele, comma-separated and in the same order as `genotyped_alleles`. PIgLET scores alleles individually, so there is one value per allele rather than one per gene.",
       "- `depth`: the repertoire depth PIgLET used as the denominator of every `z_score`. It is the sum of the ambiguity-weighted allele `counts` across the whole locus, not a count of sequences: an ambiguous call is split across the alleles it names and down-weighted, and alleles with no observation at all receive a small pseudo-count. `depth` is therefore fractional, is usually smaller than the number of sequences analysed, and is identical on every row of a locus.",
       "",
-      "Alleles were called into the genotype when their individual `z_score` reached `z_score_threshold`. See the input parameter table above for the value used, and whether `depth_adjusted_threshold` raised the per-allele thresholds first.",
+      "Alleles were called into the genotype when their individual `z_score` reached `z_score_threshold`. See the input parameter table above for the value used.",
       sep = "\n"
     )
   )

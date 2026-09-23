@@ -113,10 +113,6 @@ params:
       label: "`translate_to_asc`: [method='allele_based'] Collapse identical alleles into allele similarity clusters for inference."
       input: checkbox
       value: FALSE
-   depth_adjusted_threshold:
-      label: "`depth_adjusted_threshold`: [method='allele_based'] Adjust allele thresholds based on the depth of the repertoire."
-      input: checkbox
-      value: TRUE
    z_score_threshold:
       label: "`z_score_threshold`: [method='allele_based'] Z-score threshold filtering for allele-based inference."
       input: numeric
@@ -481,7 +477,7 @@ genotypes <- lapply(segments_to_genotype, function(seg) {
     default_threshold = as.numeric(params$default_threshold),
     asc_annotation = as.logical(params$asc_annotation),
     translate_to_asc = as.logical(params$translate_to_asc),
-    depth_adjusted_threshold = as.logical(params$depth_adjusted_threshold),
+    depth_adjusted_threshold = TRUE,
     z_score_threshold = as.numeric(params$z_score_threshold)
   )
 })

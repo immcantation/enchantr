@@ -229,3 +229,27 @@ test_that("genotype report with novel alleles", {
     fixed = TRUE
   ))
 })
+
+test_that("the allele-based report always applies the depth-adjusted threshold", {
+  skip_on_cran()
+  skip_if_not_installed("piglet")
+  input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "data_to_test_novel_alleles.tsv"))
+  tmp_dir <- tempfile("genotype_allele_based_")
+  enchantr_report("genotype",
+    report_params = list(
+      "input" = input,
+      "imgt_db" = IMGT_URL,
+      "species" = "human",
+      "method" = "allele_based",
+      "outdir" = tmp_dir,
+      "log" = "test_allele_based_command_log"
+    )
+  )
+
+  out <- list.files(file.path(tmp_dir, "enchantr", "genotypes"), full.names = TRUE)
+  genotype <- read.delim(grep("_genotype_report\\.tsv$", out, value = TRUE), sep = "\t")
+  expect_equal(names(genotype)[seq_along(REPORT_COLUMNS)], REPORT_COLUMNS)
+  expect_true("depth" %in% names(genotype))
+  expect_length(grep("_threshold_provenance\\.tsv$", out), 1)
+  expect_length(grep("_threshold_coverage\\.tsv$", out), 1)
+})
