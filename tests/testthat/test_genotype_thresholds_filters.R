@@ -60,3 +60,21 @@ test_that("row counting reports in and out", {
   expect_equal(steps$dropped, c(10, 2))
   expect_equal(steps$rows_in[2], steps$rows_out[1])
 })
+
+test_that("a threshold table is read whether it is comma or tab separated", {
+  rows <- data.frame(
+    allele = c("IGHV1-2*01", "IGHV1-2*02"),
+    threshold = c(1e-04, 2e-03),
+    stringsAsFactors = FALSE
+  )
+  csv <- tempfile(fileext = ".csv")
+  tsv <- tempfile(fileext = ".tsv")
+  utils::write.csv(rows, csv, row.names = FALSE, quote = FALSE)
+  utils::write.table(rows, tsv, sep = "\t", row.names = FALSE, quote = FALSE)
+
+  from_csv <- read_allele_thresholds(csv)
+  from_tsv <- read_allele_thresholds(tsv)
+  expect_equal(from_csv, rows)
+  expect_equal(from_tsv, rows)
+  expect_equal(.threshold_key_column(from_csv, asc_annotation = FALSE), "allele")
+})

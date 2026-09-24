@@ -374,7 +374,10 @@ read_allele_thresholds <- function(path) {
   if (!has_path(path)) {
     return(NULL)
   }
-  utils::read.delim(path, stringsAsFactors = FALSE)
+  # accept CSV or TSV
+  first <- readLines(path, n = 1, warn = FALSE)
+  sep <- if (nchar(gsub("[^,]", "", first)) > nchar(gsub("[^\t]", "", first))) "," else "\t"
+  utils::read.delim(path, sep = sep, stringsAsFactors = FALSE)
 }
 
 #' Explanatory text for a genotype method
