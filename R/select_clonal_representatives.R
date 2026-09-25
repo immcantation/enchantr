@@ -6,6 +6,7 @@
 #' @param sequence_col Name of the column with the sequence alignment (default: 'sequence_alignment').
 #' @param germline_col Name of the column with the germline alignment (default: 'germline_alignment_d_mask').
 #' @param clone_id_col Name of the column with the clone ID (default: 'clone_id').
+#' @details A sequence with no clone ID is its own representative.
 #' @return The input data.frame with a new column 'mut' (mutation count) and a logical 'clone_representative' flag.
 #' @examples
 #' \dontrun{
@@ -27,14 +28,18 @@ select_clonal_representatives <- function(
       mut = alakazam::seqMismatchCount(
         .data[[sequence_col]],
         .data[[germline_col]]
-      )
+      ),
+      unclonal = is.na(.data[[clone_id_col]]) |
+        !nzchar(as.character(.data[[clone_id_col]]))
     ) %>%
     group_by(.data[[clone_id_col]]) %>%
     mutate(
-      clone_size = n(),
-      clone_representative = (.data$mut == min(.data$mut, na.rm = TRUE))
+      clone_size = if (any(.data$unclonal)) 1L else n(),
+      clone_representative = if (any(.data$unclonal)) TRUE
+                             else .data$mut == min(.data$mut, na.rm = TRUE)
     ) %>%
-    ungroup()
+    ungroup() %>%
+    select(-"unclonal")
 
   data
 }
