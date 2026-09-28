@@ -17,7 +17,7 @@ params:
       input: file
       value: "https://raw.githubusercontent.com/nf-core/test-datasets/refs/heads/airrflow/testdata-genotyping/airr_data_to_test_novel_alleles.tsv"
    imgt_db:
-      label: "`imgt_db`: Path to IMGT reference  database."
+      label: "`imgt_db`: Path to IMGT reference  database, or a novel allele table (.tsv) to reassign only reads carrying a novel allele's parent."
       input: file
       value: "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/database-cache/imgtdb_base.zip"
    species:
@@ -213,9 +213,20 @@ Using the same reference ensures positional numbering and mutation counts remain
 
 ```{r read-germline}
 loci <- unique(db[["locus"]])
-# download and unzip if needed
-imgt_db <- prepareIMGT(params$imgt_db)
-references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
+# a novel allele table instead of a germline database
+novel_table <- grepl("\\.tsv$", params$imgt_db)
+if (novel_table) {
+  novel <- read.delim(params$imgt_db, colClasses = "character")
+  novel_cols <- c("germline_call", "germline_imgt", "polymorphism_call", "novel_imgt")
+  if (!all(novel_cols %in% colnames(novel))) {
+    stop("`imgt_db` is a .tsv file but not a novel allele table. Missing columns: ",
+         paste(setdiff(novel_cols, colnames(novel)), collapse = ", "))
+  }
+} else {
+  # download and unzip if needed
+  imgt_db <- prepareIMGT(params$imgt_db)
+  references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
+}
 ```
 
 # Reassign sequences to germline database
@@ -226,8 +237,25 @@ For re-alignment the `reassignAlleles` function from TIgGER is used. The functio
 
 in order to save time, initial gene assignments are preserved and the allele calls are chosen from among those provided in `germline_db`, based on a simple alignment to the sample sequence.
 
+When a novel allele table is provided instead of a germline database, only sequences assigned to the allele a novel allele was inferred from are reassigned, choosing between that allele and its novel alleles. All other assignments are kept.
+
 ```{r reassign, message = TRUE, warning = TRUE}
-if (!all(is.na(references))) {
+if (novel_table) {
+  # novel alleles and the alleles they were inferred from
+  novel_db <- c(setNames(novel[["germline_imgt"]], novel[["germline_call"]]),
+                setNames(gsub("-", ".", novel[["novel_imgt"]], fixed = TRUE), novel[["polymorphism_call"]]))
+  novel_db <- novel_db[!duplicated(names(novel_db))]
+  # only sequences assigned to a parent of a novel allele are reassigned
+  has_parent <- vapply(strsplit(db[["v_call"]], ","),
+                       function(x) any(x %in% novel[["germline_call"]]), logical(1))
+  message("Reassigning ", sum(has_parent), " sequences assigned to a parent of a novel allele.")
+  if (any(has_parent)) {
+    # compare over the V alignment when its germline coordinates are available
+    trim_seq <- all(c("v_germline_start", "v_germline_end") %in% colnames(db))
+    db[has_parent, ] <- tigger::reassignAlleles(db[has_parent, ], novel_db,
+                                                trim_seq = trim_seq, overwrite = TRUE)
+  }
+} else if (!all(is.na(references))) {
   # Reassign per locus so each repertoire is only compared against its own
   # locus' alleles, then recombine in the original row order.
   db <- reassign_loci(db, loci, segments_to_reassign, references)

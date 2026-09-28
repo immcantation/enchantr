@@ -424,9 +424,13 @@ for (i in seq_len(nrow(novel))) {
 
 # Output files
 
-```{r save-inference, eval=has_novel, results='asis'}
-# Save novel report
-dir.create(file.path(params$outdir, "tables"))
+```{r save-inference, results='asis'}
+# Save novel report (header only if no novel alleles were found)
+if (!has_novel) {
+  novel <- data.frame(germline_call = character(), germline_imgt = character(),
+                      polymorphism_call = character(), novel_imgt = character())
+}
+dir.create(file.path(params$outdir, "tables"), showWarnings = FALSE)
 write.table(novel, file = file.path(params$outdir, "tables", report_output_fn),
             row.names = FALSE, quote = FALSE, sep = "\t")
 cat("Novel alleles report: [", report_output_fn, "](", report_output_fn, ") - Detailed results table\n")
