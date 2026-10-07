@@ -41,6 +41,30 @@ test_that("reassign_alleles_after_novel", {
   repertoires <- list.files(file.path(report_dir, "repertoires"), full.names = T)
   db <- read_rearrangement(repertoires)
   expect_equal(length(grep("_", db$v_call)), 1259)
+
+  # With the novel allele table instead of the reference, only reads carrying a
+  # novel allele's parent may change
+  novel_table <- list.files(file.path(novel_report_dir, "tables"), "_novel_report\\.tsv$", full.names = TRUE)
+  tmp_dir <- file.path(tempdir(), "genotype_novel_reassign_table")
+  enchantr_report("reassign_alleles",
+    report_params = list(
+      "input" = input,
+      "imgt_db" = novel_table,
+      "species" = "human",
+      "outputby" = "subject_id",
+      "outdir" = tmp_dir,
+      "segments" = "v",
+      "log" = "test_reassign_alleles_table_command_log"
+    )
+  )
+  db_in <- read_rearrangement(input)
+  db_out <- read_rearrangement(list.files(file.path(tmp_dir, "enchantr", "repertoires"), full.names = TRUE))
+  expect_equal(nrow(db_out), nrow(db_in))
+  before <- db_in$v_call[match(db_out$sequence_id, db_in$sequence_id)]
+  changed <- before != db_out$v_call
+  parents <- read.delim(novel_table)$germline_call
+  expect_true(any(grepl("_", db_out$v_call)))
+  expect_true(all(vapply(strsplit(before[changed], ","), function(x) any(x %in% parents), logical(1))))
 })
 
 

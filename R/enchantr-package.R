@@ -1,5 +1,4 @@
 #' @keywords internal
-#' @useDynLib enchantr, .registration = TRUE
 "_PACKAGE"
 
 ## usethis namespace: start

@@ -241,8 +241,7 @@ if (params$single_clone_representative) {
    db <- select_clonal_representatives(db,
                                                  sequence_col = params$seq_column,
                                                  germline_col = params$germline_column,
-                                                 clone_id_col = params$clone_id_column,
-                                                 return_count = FALSE)
+                                                 clone_id_col = params$clone_id_column)
    db <- db %>% filter(clone_representative)
 }
 ```   
