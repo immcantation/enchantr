@@ -65,7 +65,7 @@ Imports:
     stringi,
     stringr,
     tidyr,
-    tigger,
+    tigger (>= 1.2.0),
     xfun
 Suggests:
     optparse,
