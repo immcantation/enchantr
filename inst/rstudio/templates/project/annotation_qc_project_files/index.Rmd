@@ -1,0 +1,318 @@
+---
+title: "Immcantation - enchantR"
+subtitle: "Annotation QC"
+author: ""
+date: "Updated: `r date()`"
+knit: enchantr::render_book
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: "references.bib"
+biblio-style: apalike
+link-citations: yes
+description: "enchantr annotation QC report"
+output: enchantr::immcantation
+params:
+   input:
+      label: "`input`: Path to the annotated repertoire (AIRR tsv)"
+      input: file
+      value: "input.tsv"
+   outname:
+      label: "`outname`: Output file prefix"
+      input: text
+      value: "sample"
+   locus:
+      label: "`locus`: the receptor class (`IG`, `TR`) or the loci (e.g. `IGH`, or `IGH,IGK`) the samples target. Comma-separated."
+      input: text
+      value: "IG"
+   restrict_to_locus:
+      label: "`restrict_to_locus`: Drop sequences whose locus is not one of `locus`."
+      input: checkbox
+      value: FALSE
+   skip_alignment_filter:
+      label: "`skip_alignment_filter`: Skip the V/D/J call, locus, N and length filters."
+      input: checkbox
+      value: FALSE
+   max_n_fraction:
+      label: "`max_n_fraction`: Maximum fraction of N among aligned positions."
+      input: numeric
+      value: 0.1
+   min_informative_length:
+      label: "`min_informative_length`: Minimum number of aligned positions that are not N or gaps."
+      input: numeric
+      value: 200
+   productive_only:
+      label: "`productive_only`: Keep productive sequences with a junction length that is a multiple of 3."
+      input: checkbox
+      value: TRUE
+   log:
+      label: "`log`"
+      input: text
+      value: "command_log"
+   outdir:
+      label: '`outdir`: Output directory'
+      input: text
+      value: !r file.path(getwd(),'enchantr')
+   date:
+      label: '`date`: Run date'
+      input: date
+      value: !r format(Sys.time(), "%Y-%m-%d")
+   logo:
+      label: "`logo`: Path to report logo"
+      input: file
+      value: !r file.path("assets", "logo.png")
+   logolink:
+      label: "`logolink`: URL to be added to the logo"
+      input: text
+      value: "immcantation.org"
+   echo:
+      label: '`echo`: Show code in the report.'
+      input: checkbox
+      value: TRUE
+   cache:
+      label: '`cache`: Use cached results'
+      input: checkbox
+      value: FALSE
+editor_options:
+   chunk_output_type: console
+---
+
+```{r global-options, include=FALSE, cache=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
+                     echo=params$echo,cache=params$cache,
+                     warning=FALSE, message=FALSE,
+                     eval.after="fig.cap",
+                     out_dir=params$outdir,
+                     eval.opts = c('eval', 'echo', 'fig.height', 'fig.width'))
+
+# Libraries
+suppressPackageStartupMessages(library("enchantr"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("airr"))
+suppressPackageStartupMessages(library("alakazam"))
+
+if (!dir.exists(params[['outdir']])) {
+   dir.create(params[['outdir']], recursive = T)
+}
+
+file.copy(params$logo,
+         file.path(params$outdir,"assets", "logo.png"),
+         recursive = T, overwrite=T)
+```
+
+# Input parameters
+
+```{r input-parameters, results='asis'}
+printParams(params)
+```
+```{r echo=FALSE, results='asis'}
+print_table_caption(tag="input", text="Input parameters.")
+save(params, file=file.path(params$outdir,"params.RData"))
+```
+
+# Read repertoire
+
+```{r read, results="asis"}
+db <- read_rearrangement(params$input)
+input_size <- nrow(db)
+locus_in <- if ("locus" %in% colnames(db)) db[["locus"]] else getLocus(db[["v_call"]])
+productive_fail <- NULL
+
+cat(paste("The repertoire has", input_size, "sequences."))
+```
+
+# Filtration
+
+The filters below are applied in order, to the sequences left by the previous one.
+Checked filters were applied; the parameter that turns each one on or off is in brackets.
+
+```{r filter-list, results="asis", echo=FALSE}
+alignment <- !as.logical(params$skip_alignment_filter)
+productive <- as.logical(params$productive_only)
+filters <- data.frame(
+    filter = c("Remove sequences with no gene call: no V, no D and no J (`skip_alignment_filter`)",
+               "Remove sequences whose V call disagrees with the locus (`skip_alignment_filter`, needs a `locus` column)",
+               paste0("Remove sequences with more than ", params$max_n_fraction * 100, "% N (`skip_alignment_filter`)"),
+               paste0("Remove sequences shorter than ", params$min_informative_length,
+                      " informative positions (`skip_alignment_filter`)"),
+               paste0("Keep the targeted loci, ", params$locus, " (`restrict_to_locus`)"),
+               "Keep productive sequences (`productive_only`)",
+               "Remove sequences with a junction length not a multiple of 3 (`productive_only`)"),
+    applied = c(alignment, alignment && "locus" %in% colnames(db), alignment, alignment,
+                as.logical(params$restrict_to_locus), productive, productive))
+cat(paste0("- [", ifelse(filters$applied, "x", " "), "] ", filters$filter, "\n"), sep = "")
+```
+
+```{r eval=!as.logical(params$skip_alignment_filter), results="asis", echo=FALSE}
+cat("
+## Remove sequences with no gene call
+
+The aligner reports a row for every sequence it was given, including those it could not
+assign to any gene. Sequences with no V, no D and no J call are removed. A sequence
+with any of the three is kept, so light chains, which have no D, are kept.
+")
+```
+
+```{r has-call, eval=!as.logical(params$skip_alignment_filter), results="asis"}
+before_filter_nrow <- nrow(db)
+db <- db %>% filter(!is.na(v_call) | !is.na(d_call) | !is.na(j_call))
+cat(paste(before_filter_nrow - nrow(db), "sequences with no V, D or J call were removed."))
+```
+
+```{r eval=!as.logical(params$skip_alignment_filter) && "locus" %in% colnames(db), results="asis", echo=FALSE}
+cat("
+## Remove sequences whose V call disagrees with the locus
+
+The `locus` field reported by the aligner should be the locus of the V gene called.
+A sequence where the two disagree has an unreliable assignment and is removed.
+")
+```
+
+```{r same-locus, eval=!as.logical(params$skip_alignment_filter) && "locus" %in% colnames(db), results="asis"}
+before_filter_nrow <- nrow(db)
+db <- db %>% filter(getLocus(v_call) == locus)
+cat(paste(before_filter_nrow - nrow(db), "sequences whose V call is from another locus were removed."))
+```
+
+```{r eval=!as.logical(params$skip_alignment_filter), results="asis", echo=FALSE}
+cat(paste0("
+## Remove sequences with too many N
+
+Sequences in which more than ", params$max_n_fraction * 100, "% of the aligned
+positions (`sequence_alignment` without gaps) are N are removed.
+"))
+```
+
+```{r low-n, eval=!as.logical(params$skip_alignment_filter), results="asis"}
+before_filter_nrow <- nrow(db)
+db <- db %>% filter(nchar(gsub("[^Nn]", "", sequence_alignment)) <=
+                        params$max_n_fraction * nchar(gsub("[-.]", "", sequence_alignment)))
+cat(paste0(before_filter_nrow - nrow(db), " sequences with more than ",
+           params$max_n_fraction * 100, "% N were removed."))
+```
+
+```{r eval=!as.logical(params$skip_alignment_filter), results="asis", echo=FALSE}
+cat(paste0("
+## Remove short sequences
+
+Sequences with fewer than ", params$min_informative_length, " informative positions in
+`sequence_alignment` (not N, `-` or `.`) are removed.
+"))
+```
+
+```{r long-seq, eval=!as.logical(params$skip_alignment_filter), results="asis"}
+before_filter_nrow <- nrow(db)
+db <- db %>% filter(nchar(gsub("[-.Nn]", "", sequence_alignment)) >= params$min_informative_length)
+cat(paste(before_filter_nrow - nrow(db), "sequences shorter than",
+          params$min_informative_length, "informative positions were removed."))
+```
+
+```{r fill-locus, echo=FALSE}
+if (!"locus" %in% colnames(db)) {
+    db[["locus"]] <- getLocus(db[["v_call"]])
+}
+```
+
+```{r eval=as.logical(params$restrict_to_locus), results="asis", echo=FALSE}
+cat(paste0("
+## Keep the targeted loci
+
+A library that targets one locus can still contain sequences assigned to another: the
+aligner reports the best match in the reference it was given. The targeted loci are
+**", params$locus, "**; sequences of any other locus are removed. The table shows the
+sequences of each locus found in the data, and how many are retained.
+"))
+```
+
+```{r restrict-locus, eval=as.logical(params$restrict_to_locus), results="asis"}
+before_filter_nrow <- nrow(db)
+locus_filter <- count(db, locus, name = "sequences")
+db <- db %>% filter(locus_matches(locus, params$locus))
+locus_filter <- locus_filter %>%
+    left_join(count(db, locus, name = "retained"), by = "locus") %>%
+    mutate(retained = coalesce(retained, 0L),
+           targeted = locus_matches(locus, params$locus))
+
+caption_text <- paste0("Sequences per locus before and after keeping the targeted loci (",
+                       params$locus, "). ", before_filter_nrow - nrow(db),
+                       " sequences outside the targeted loci were removed.")
+tab <- eetable(locus_filter, caption = caption_text,
+               outdir = params$outdir, file = "locus_filter")
+tab$table
+```
+
+```{r eval=as.logical(params$restrict_to_locus), echo=FALSE, results="asis"}
+print_table_caption(tag = "locus_filter", text = caption_text)
+```
+
+```{r eval=as.logical(params$productive_only), results="asis", echo=FALSE}
+cat("
+## Keep productive sequences
+
+Sequences the aligner calls non-productive (a stop codon, or V and J out of frame) are
+removed.
+
+## Remove sequences with a junction length not a multiple of 3
+
+A productive sequence can still have a junction whose length is not a multiple of 3.
+These are removed.
+
+The sequences removed by both filters, and those with no `productive` or
+`junction_length` value, are saved together in a separate file, listed under Output.
+")
+```
+
+```{r productive, eval=as.logical(params$productive_only), results="asis"}
+before_filter_nrow <- nrow(db)
+productive_fail <- db %>% filter(!(as.logical(productive) %in% TRUE))
+db <- db %>% filter(as.logical(productive))
+cat(paste(before_filter_nrow - nrow(db), "non-productive sequences were removed. "))
+
+before_filter_nrow <- nrow(db)
+productive_fail <- bind_rows(productive_fail, db %>% filter(!((junction_length %% 3 == 0) %in% TRUE)))
+db <- db %>% filter(junction_length %% 3 == 0)
+cat(paste(before_filter_nrow - nrow(db), "sequences with a junction length not a multiple of 3 were removed."))
+```
+
+# Summary
+
+```{r locus-counts, results="asis"}
+locus_summary <- full_join(
+    count(data.frame(locus = locus_in), locus, name = "input"),
+    count(data.frame(locus = db[["locus"]]), locus, name = "output"),
+    by = "locus") %>%
+    mutate(across(c(input, output), ~ coalesce(.x, 0L)))
+
+caption_text <- paste("Number of sequences per locus before and after filtration.",
+                      nrow(db), "of", input_size, "sequences passed. Targeted:", params$locus)
+tab <- eetable(locus_summary, caption = caption_text,
+               outdir = params$outdir, file = "locus_summary")
+tab$table
+```
+
+```{r echo=FALSE, results="asis"}
+print_table_caption(tag = "locus_summary", text = caption_text)
+```
+
+# Output
+
+```{r output, results="asis"}
+dir.create(file.path(params$outdir, "repertoires"), showWarnings = FALSE)
+output_fn <- file.path(params$outdir, "repertoires", paste0(params$outname, "_qc-pass.tsv"))
+write_rearrangement(db, file = output_fn)
+cat("- [", basename(output_fn), "](", file.path("repertoires", basename(output_fn)), ")\n", sep = "")
+if (!is.null(productive_fail)) {
+    productive_fail_fn <- file.path(params$outdir, "repertoires", paste0(params$outname, "_productive-fail.tsv"))
+    write_rearrangement(productive_fail, file = productive_fail_fn)
+    cat("- [", basename(productive_fail_fn), "](", file.path("repertoires", basename(productive_fail_fn)), ")\n", sep = "")
+}
+
+log_fn <- paste0(params$log, ".txt")
+cat("START> AnnotationQC", file = log_fn, append = F)
+cat(paste0("\nFILE> ", basename(params$input)), file = log_fn, append = T)
+cat(paste0("\nOUTPUT> ", basename(output_fn)), file = log_fn, append = T)
+cat(paste0("\nPASS> ", nrow(db)), file = log_fn, append = T)
+cat(paste0("\nFAIL> ", input_size - nrow(db)), file = log_fn, append = T)
+```
+
+```{r, child=c("versions.Rmd")}
+```
