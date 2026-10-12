@@ -125,10 +125,12 @@ validate_input <- function(input, miairr, collapseby, cloneby, reassign=TRUE) {
         input[['single_cell']][!is_single_cell] <- "false"
     }
 
-    # Validate pcr_target_locus
-    input[['valid_pcr_target_locus']] <-
-        tolower(input[['pcr_target_locus']]) %in%
-        tolower(c("IGH", "IGI", "IGK", "IGL", "TRA", "TRB", "TRD", "TRG", "IG", "TR"))
+    # Validate pcr_target_locus: a class (IG, TR) or loci of one class (IGK,IGL)
+    loci <- strsplit(toupper(gsub(" ", "", input[['pcr_target_locus']])), ",")
+    input[['valid_pcr_target_locus']] <- sapply(loci, function(x) {
+        all(x %in% c("IGH", "IGK", "IGL", "TRA", "TRB", "TRD", "TRG", "IG", "TR")) &&
+            length(unique(substr(x, 1, 2))) == 1
+    })
     input[['locus']] <- tolower(substr(input[['pcr_target_locus']],1,2))
 
     # If reassign is false, check that tsv files have
