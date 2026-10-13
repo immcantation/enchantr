@@ -225,3 +225,31 @@ test_that("the allele-based report always applies the depth-adjusted threshold",
   expect_length(grep("_threshold_provenance\\.tsv$", out), 1)
   expect_length(grep("_threshold_coverage\\.tsv$", out), 1)
 })
+
+test_that("single_clone_representative needs a clone id only when there are heavy chains", {
+  skip_on_cran()
+  heavy <- normalizePath(file.path("..", "data-tests", "novel_genotype", "data_to_test_novel_alleles.tsv"))
+  expect_error(
+    enchantr_report("genotype", report_params = list(
+      "input" = heavy, "imgt_db" = IMGT_URL, "species" = "human",
+      "single_clone_representative" = TRUE, "outdir" = tempfile("genotype_no_clone_"),
+      "log" = "test_no_clone_command_log"
+    )),
+    "has heavy chains"
+  )
+
+  # a light chain only repertoire has no clones to represent: it is genotyped as is
+  db <- suppressWarnings(airr::read_rearrangement(paste0(
+    "https://raw.githubusercontent.com/nf-core/test-datasets/airrflow/",
+    "testdata-reveal/sc5p_v2_hs_PBMC_1k_5fb_assigned.tsv")))
+  light <- tempfile(fileext = ".tsv")
+  suppressWarnings(airr::write_rearrangement(db[db$locus != "IGH", ], light))
+  tmp_dir <- tempfile("genotype_light_only_")
+  suppressWarnings(enchantr_report("genotype", report_params = list(
+    "input" = light, "imgt_db" = IMGT_URL, "species" = "human",
+    "single_clone_representative" = TRUE, "outdir" = tmp_dir,
+    "log" = "test_light_only_command_log"
+  )))
+  genotype <- read.delim(list.files(file.path(tmp_dir, "enchantr", "genotypes"), full.names = TRUE)[1])
+  expect_true(all(grepl("^IG[KL]", genotype$gene)))
+})

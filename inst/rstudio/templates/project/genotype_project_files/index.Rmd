@@ -373,18 +373,31 @@ if (params$single_clone_representative) {
   if (is.null(params$clone_id_column) || params$clone_id_column == "") {
     stop("Error: 'clone_id_column' parameter must be provided when 'single_clone_representative' is TRUE.")
   }
-  if (!params$clone_id_column %in% colnames(db)) {
-    stop("'single_clone_representative' is TRUE but column '", params$clone_id_column,
-         "' is not in the input. Run clonal assignment before genotyping, or set ",
-         "'single_clone_representative' to FALSE.")
+  # Clones are defined from the heavy or beta chain, so a light chain only
+  # repertoire has no clone id to represent.
+  has_clone_id <- params$clone_id_column %in% colnames(db)
+  has_heavy <- any(isHeavyChain(db[["locus"]]))
+
+  if (!has_clone_id && has_heavy) {
+    stop("'single_clone_representative' is TRUE and the input has heavy chains, but column '",
+         params$clone_id_column, "' is not there. Run clonal assignment before genotyping, ",
+         "or set 'single_clone_representative' to FALSE.")
   }
-  # Select clonal representatives
-  db <- select_clonal_representatives(db,
-    sequence_col = params$seq_column,
-    germline_col = params$germline_column,
-    clone_id_col = params$clone_id_column
-  )
-  db <- db %>% filter(clone_representative)
+
+  if (!has_clone_id) {
+    warning("'single_clone_representative' is TRUE but the input has no '",
+            params$clone_id_column, "' and no heavy chain, so there are no clones to ",
+            "represent. All ", nrow(db), " sequences are kept.", call. = FALSE)
+  } else {
+    rows_in <- nrow(db)
+    db <- select_clonal_representatives(db,
+      sequence_col = params$seq_column,
+      germline_col = params$germline_column,
+      clone_id_col = params$clone_id_column
+    )
+    db <- db %>% filter(clone_representative)
+    filter_steps <- count_rows_step(filter_steps, "one representative per clone", rows_in, nrow(db))
+  }
 }
 ```   
 
