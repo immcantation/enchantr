@@ -293,13 +293,11 @@ Using the same reference ensures positional numbering and mutation counts remain
 ```{r read-germline}
 loci <- unique(db[["locus"]])
 
-# Handle germline database input
-if (params$imgt_db != "") {
-  imgt_db <- prepareIMGT(params$imgt_db)
-  references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
-} else {
-  references <- NA
+if (!has_path(params$imgt_db)) {
+  stop("imgt_db is required: the personal reference is built from it")
 }
+imgt_db <- prepareIMGT(params$imgt_db)
+references <- dowser::readIMGT(file.path(imgt_db, species, "vdj"), quiet = TRUE)
 ```
 
 # Clonal representative selection (optional)
