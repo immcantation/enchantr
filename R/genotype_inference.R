@@ -604,7 +604,7 @@ count_rows_step <- function(steps, label, rows_in, rows_out) {
 #' Reports, per allele observed in the repertoire, whether a threshold was found
 #' for it. An allele with no entry silently inherits `default_threshold`, which
 #' discards the population-derived value the method is supposed to use -- so the
-#' coverage is reported, and zero coverage is an error rather than a fallback.
+#' coverage is reported, and the report warns about a segment with zero coverage.
 #'
 #' @param db A data.frame of repertoire records.
 #' @param call_col The allele call column, e.g. `v_call`.

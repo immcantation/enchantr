@@ -423,10 +423,15 @@ priors <- list(
 
 allele_thresholds <- read_allele_thresholds(params$allele_thresholds_db)
 
-# allele_based: report threshold table coverage; stop if nothing matches.
+# allele_based: report threshold table coverage per segment; warn where nothing matches.
 threshold_coverage <- NULL
 threshold_provenance <- NULL
 if (identical(method, "allele_based")) {
+  tr_loci <- grep("^TR", loci, value = TRUE)
+  if (length(tr_loci) > 0) {
+    warning("PIgLET allele-based genotyping is not optimized for TR loci (",
+            paste(tr_loci, collapse = ", "), ").", call. = FALSE)
+  }
   if (is.null(allele_thresholds)) {
     allele_thresholds_used <- .piglet_default_thresholds()
   } else {
@@ -437,23 +442,30 @@ if (identical(method, "allele_based")) {
     path = params$allele_thresholds_db,
     release = params$allele_thresholds_release
   )
-  threshold_coverage <- allele_threshold_coverage(
-    db = db,
-    call_col = params[[paste0(segments_to_genotype[1], "_call")]],
-    thresholds = allele_thresholds_used,
-    asc_annotation = as.logical(params$asc_annotation),
-    single_assignments = single_assignments
-  )
-  coverage_summary <- summarize_threshold_coverage(threshold_coverage)
-  if (nrow(threshold_coverage) > 0 && coverage_summary$alleles_matched == 0) {
-    stop(
-      "None of the ", coverage_summary$alleles_observed, " alleles in the repertoire were ",
-      "found in the allele threshold table, so every allele would fall back to ",
-      "default_threshold = ", params$default_threshold, " and the population-derived ",
-      "thresholds would be discarded. The table is matched on '",
+  threshold_coverage <- do.call(rbind, lapply(segments_to_genotype, function(seg) {
+    seg_coverage <- allele_threshold_coverage(
+      db = db,
+      call_col = paste0(seg, "_call"),
+      thresholds = allele_thresholds_used,
+      asc_annotation = as.logical(params$asc_annotation),
+      single_assignments = single_assignments
+    )
+    if (nrow(seg_coverage) > 0) data.frame(segment = toupper(seg), seg_coverage) else NULL
+  }))
+  coverage_summary <- do.call(rbind, lapply(segments_to_genotype, function(seg) {
+    data.frame(segment = toupper(seg), summarize_threshold_coverage(
+      threshold_coverage[threshold_coverage$segment == toupper(seg), , drop = FALSE]
+    ))
+  }))
+  for (i in which(coverage_summary$alleles_observed > 0 & coverage_summary$alleles_matched == 0)) {
+    warning(
+      "None of the ", coverage_summary$alleles_observed[i], " ", coverage_summary$segment[i],
+      " alleles in the repertoire were found in the allele threshold table, so PIgLET will use ",
+      "default_threshold = ", params$default_threshold, " for all of them. The table is matched on '",
       .threshold_key_column(allele_thresholds_used, as.logical(params$asc_annotation)),
       "'; check that asc_annotation matches the naming of the calls, or supply a ",
-      "threshold table that carries the names used here."
+      "threshold table that carries the names used here.",
+      call. = FALSE
     )
   }
 }
@@ -522,9 +534,10 @@ print_table_caption(tag = "tab_filters", text = tab_filters$caption)
 ```{r threshold-coverage-table, results='asis', echo=FALSE, eval=!is.null(threshold_coverage) && nrow(threshold_coverage) > 0}
 tab_thresholds <- eetable(threshold_coverage,
   caption = paste0(
-    "Allele threshold coverage: ", coverage_summary$alleles_matched, " of ",
-    coverage_summary$alleles_observed, " alleles observed in the repertoire were found in the ",
-    "threshold table (", round(100 * coverage_summary$coverage), "%). Alleles not found fall back to ",
+    "Allele threshold coverage: ",
+    paste0(coverage_summary$segment, " ", coverage_summary$alleles_matched, " of ",
+           coverage_summary$alleles_observed, collapse = ", "),
+    " alleles observed in the repertoire were found in the threshold table. Alleles not found fall back to ",
     "default_threshold = ", params$default_threshold, ". Table in use: ",
     threshold_provenance$source, " (release ", threshold_provenance$release,
     ", md5 ", substr(threshold_provenance$md5, 1, 12), ")."
@@ -755,10 +768,10 @@ cat(paste0("\nGENOTYPE_SEGMENTS> ", paste0(segments_to_genotype, collapse = ",")
 cat(paste0("\nOUTPUT> ", basename(genotypes_output_dir)), file = log_fn, append = TRUE)
 cat(paste0("\nOUTPUT_REFERENCE> ", basename(file.path(params$outdir, "references"))), file = log_fn, append = TRUE)
 if (!is.null(threshold_provenance)) {
-  cat(paste0("\nTHRESHOLD_COVERAGE> ", coverage_summary$alleles_matched, "/",
-             coverage_summary$alleles_observed, " alleles matched (",
-             round(100 * coverage_summary$coverage), "%), ",
-             coverage_summary$alleles_defaulted, " defaulted"), file = log_fn, append = TRUE)
+  cat(paste0("\nTHRESHOLD_COVERAGE> ", coverage_summary$segment, ": ",
+             coverage_summary$alleles_matched, "/", coverage_summary$alleles_observed,
+             " alleles matched (", round(100 * coverage_summary$coverage), "%), ",
+             coverage_summary$alleles_defaulted, " defaulted", collapse = ""), file = log_fn, append = TRUE)
   cat(paste0("\nTHRESHOLD_SOURCE> ", threshold_provenance$source,
              " | release: ", threshold_provenance$release,
              " | md5: ", threshold_provenance$md5), file = log_fn, append = TRUE)
