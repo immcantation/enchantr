@@ -190,7 +190,7 @@ tr_isotype_regex <- "TR[ABDG]C[1234]?"
 
 if (any(is.na(db[['c_call']]))) {
    if (params$c_region_column %in% colnames(db)) {
-      if (params$locus == "IG") {
+      if (grepl("IG", params$locus)) {
          db <- db %>%
             mutate(
                c_region_translated = if_else(locus == "IGH", 
@@ -198,7 +198,7 @@ if (any(is.na(db[['c_call']]))) {
                                              sapply(get(!!params$c_region_column), match_isotype, ig_isotype_light_regex)),
                )
          cat(db$c_region_translated)
-      } else if (params$locus == "TR") {
+      } else if (grepl("TR", params$locus)) {
          db <- db %>%
             mutate(
                c_region_translated = sapply(get(!!params$c_region_column), match_isotype, tr_isotype_regex)
@@ -210,14 +210,14 @@ if (any(is.na(db[['c_call']]))) {
             ) %>%
          select(-c_region_translated)
    } else if (params$c_primer_column %in% colnames(db)) {
-      if (params$locus == "IG") {
+      if (grepl("IG", params$locus)) {
          db <- db %>%
             mutate(
                c_primer_translated = if_else(locus == "IGH", 
                                              sapply(get(!!params$c_primer_column), match_isotype, ig_isotype_heavy_regex),
                                              sapply(get(!!params$c_primer_column), match_isotype, ig_isotype_light_regex))
                )
-      } else if (params$locus == "TR") {
+      } else if (grepl("TR", params$locus)) {
          db <- db %>%
             mutate(
                c_primer_translated = sapply(get(!!params$c_primer_column), match_isotype, tr_isotype_regex)
