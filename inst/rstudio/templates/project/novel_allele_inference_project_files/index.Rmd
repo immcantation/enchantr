@@ -403,7 +403,9 @@ novel_allele_figures <- list()
 for (i in seq_len(nrow(novel))) {
    plot_env <- new.env()
    plot_env$allele <- novel$polymorphism_call[i]
-   plot_env$p_obj <- plotNovel(db, novel[i,])
+   plot_env$p_obj <- plotNovel(db, novel[i,], v_call = params$v_call, j_call = params$j_call,
+                               seq = params$seq, junction = params$junction,
+                               junction_length = params$junction_length)
    plot_env$ix <- i
    plot_env$params <- params
    plot_env$caption <- paste0("Novel allele evidence: ", plot_env$allele, ".")
