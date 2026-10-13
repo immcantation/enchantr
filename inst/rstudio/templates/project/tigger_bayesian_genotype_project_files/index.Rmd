@@ -190,10 +190,10 @@ Expected columns include `sequence_id`, `productive`, `v_call` / `d_call` / `j_c
 ```{r read-input}
 # Read repertoire data
 cols_to_read <- unique(c(
-  "sequence_id", "productive", "sequence_alignment",
+  "sequence_id", "productive", params$seq_column,
   params$v_call, params$d_call, params$j_call,
   params$germline_column, params$clone_id_column,
-  params$genotypeby, "subject_id", "sample_id", "species"
+  params$genotypeby, "locus", "subject_id", "sample_id", "species"
 ))
 
 cols_to_read <- cols_to_read[!is.null(cols_to_read)]
