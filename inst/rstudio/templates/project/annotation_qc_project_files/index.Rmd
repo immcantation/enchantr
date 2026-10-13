@@ -258,7 +258,8 @@ A productive sequence can still have a junction whose length is not a multiple o
 These are removed.
 
 The sequences removed by both filters, and those with no `productive` or
-`junction_length` value, are saved together in a separate file, listed under Output.
+`junction_length` value, are saved together in a separate file, listed under Output,
+when there are any.
 ")
 ```
 
@@ -298,11 +299,11 @@ print_table_caption(tag = "locus_summary", text = caption_text)
 
 ```{r output, results="asis"}
 dir.create(file.path(params$outdir, "repertoires"), showWarnings = FALSE)
-output_fn <- file.path(params$outdir, "repertoires", paste0(params$outname, "_qc-pass.tsv"))
+output_fn <- file.path(params$outdir, "repertoires", paste0(params$outname, "_qc-pass.tsv.gz"))
 write_rearrangement(db, file = output_fn)
 cat("- [", basename(output_fn), "](", file.path("repertoires", basename(output_fn)), ")\n", sep = "")
-if (!is.null(productive_fail)) {
-    productive_fail_fn <- file.path(params$outdir, "repertoires", paste0(params$outname, "_productive-fail.tsv"))
+if (!is.null(productive_fail) && nrow(productive_fail) > 0) {
+    productive_fail_fn <- file.path(params$outdir, "repertoires", paste0(params$outname, "_productive-fail.tsv.gz"))
     write_rearrangement(productive_fail, file = productive_fail_fn)
     cat("- [", basename(productive_fail_fn), "](", file.path("repertoires", basename(productive_fail_fn)), ")\n", sep = "")
 }

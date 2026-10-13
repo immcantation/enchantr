@@ -21,8 +21,8 @@ run_annotation_qc <- function(db, ...) {
         input = input, outname = "S1", outdir = tmp, log = "S1_qc_command_log", ...)))
     repertoires <- file.path(tmp, "enchantr", "repertoires")
     list(
-        pass = suppressWarnings(airr::read_rearrangement(file.path(repertoires, "S1_qc-pass.tsv"))),
-        productive_fail = file.path(repertoires, "S1_productive-fail.tsv"),
+        pass = suppressWarnings(airr::read_rearrangement(file.path(repertoires, "S1_qc-pass.tsv.gz"))),
+        productive_fail = file.path(repertoires, "S1_productive-fail.tsv.gz"),
         locus = read.delim(file.path(tmp, "enchantr", "tables", "locus_summary.tsv")),
         tables = file.path(tmp, "enchantr", "tables"),
         html = paste(readLines(file.path(tmp, "enchantr", "index.html"), warn = FALSE), collapse = "\n"),
@@ -62,7 +62,7 @@ test_that("annotation_qc report applies each filter and counts it", {
     expect_equal(locus_filter$targeted, c(TRUE, FALSE))
     # non-productive and out-of-frame sequences are both kept aside
     expect_equal(suppressWarnings(airr::read_rearrangement(out$productive_fail))$sequence_id, c("s2", "s8"))
-    expect_equal(out$log, c("START> AnnotationQC", "FILE> S1.tsv", "OUTPUT> S1_qc-pass.tsv",
+    expect_equal(out$log, c("START> AnnotationQC", "FILE> S1.tsv", "OUTPUT> S1_qc-pass.tsv.gz",
                             "PASS> 1", "FAIL> 8"))
 })
 
@@ -74,4 +74,17 @@ test_that("annotation_qc report keeps every row when its filters are off", {
     expect_equal(nrow(out$pass), 1)
     expect_equal(out$pass$locus, "IGK")
     expect_false(file.exists(out$productive_fail))
+})
+
+test_that("annotation_qc report writes no fail file when nothing fails", {
+    skip_on_cran()
+    db <- data.frame(sequence_id = "s1", v_call = "IGHV1-2*02", d_call = NA, j_call = "IGHJ4*02",
+                     locus = "IGH", sequence_alignment = strrep("A", 250), productive = TRUE,
+                     junction_length = 45)
+    out <- run_annotation_qc(db)
+    expect_equal(nrow(out$pass), 1)
+    expect_false(file.exists(out$productive_fail))
+    # the repertoire is written gzip-compressed
+    expect_identical(readBin(file.path(dirname(out$tables), "repertoires", "S1_qc-pass.tsv.gz"), "raw", 2),
+                     as.raw(c(0x1f, 0x8b)))
 })
