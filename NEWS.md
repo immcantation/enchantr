@@ -11,7 +11,10 @@ General:
   the genotype plot is shaded by the method's confidence measure where one exists.
   The `piglet_genotype` report name resolves to the unified report with
   `method = "allele_based"`. The `tigger_bayesian_genotype` report is kept as a
-  separate report with its previous output.
+  separate report and its column names are unchanged, but it now runs the same
+  inference as `genotype` with `method = "bayesian"`; its `sequence_count` and
+  `clone_count` follow `single_assignments` instead of counting single-assignment
+  calls only.
 + Add RAbHIT haplotype inference project.
 + Add `piglet` and `rabhit` as suggested dependencies.
 + Fix genotype plots being cropped when a segment contained only a few genes.

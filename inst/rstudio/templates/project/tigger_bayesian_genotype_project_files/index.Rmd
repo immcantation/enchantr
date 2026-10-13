@@ -344,10 +344,11 @@ priors <- list(
 
 # Run TIgGER Bayesian genotype inference
 genotypes <- lapply(segments_to_genotype, function(seg) {
-  .infer_genotype_bayesian(
+  infer_genotype(
     db = db,
     seg = seg,
     loci = loci,
+    method = "bayesian",
     genotypeby = genotypeby,
     references = references,
     single_assignments = single_assignments,
@@ -357,12 +358,16 @@ genotypes <- lapply(segments_to_genotype, function(seg) {
   )
 })
 genotypes <- do.call(rbind, genotypes)
-genotypes <- .augment_genotype_table(
+genotypes <- augment_genotype_table(
   genotypes = genotypes,
   db_support = db_raw_productive,
   genotypeby = genotypeby,
-  clone_id_column = params$clone_id_column
+  clone_id_column = params$clone_id_column,
+  single_assignments = single_assignments,
+  method = "bayesian"
 )
+# this report has always named the Bayesian score k_diff
+genotypes <- dplyr::rename(genotypes, k_diff = confidence)
 ```
 
 # Genotype inference results
@@ -376,7 +381,7 @@ Interpret the columns as follows:
 
 - `gene`: germline gene being genotyped.
 - `genotyped_alleles`: allele set selected from the best-supported zygosity model.
-- `sequence_count`: comma-separated raw counts for each genotyped allele, in the same order as `genotyped_alleles`, using productive single-assignment sequences only.
+- `sequence_count`: comma-separated raw counts for each genotyped allele, in the same order as `genotyped_alleles`, using productive sequences. Unless `single_assignments` is set, a sequence whose call lists several alleles supports each of them.
 - `clone_count`: comma-separated clone counts for each genotyped allele, in the same order as `genotyped_alleles`; `NA` when clone IDs are not available.
 - `k_diff`: log10 ratio between the best- and second-best-supported zygosity models.
 - `note`: TIgGER note or warning attached to the gene, when present.
@@ -390,9 +395,8 @@ Reliability notes:
 - Larger `k_diff` values indicate stronger separation between competing genotype models.
 - `k_diff` values closer to zero indicate weaker support for the selected genotype.
 - Lower `sequence_count` and lower `clone_count` for the genotyped alleles reduce confidence, because the genotype is being supported by fewer independent observations.
-- `sequence_count` and `clone_count` only use single-assignment calls.
-- Ambiguous calls are incorporated proportionally by TIgGER and therefore appear in `counts` and `total`, which may not match the explicit single-assignment support counts.
-- When single-clone representatives are used for genotype inference, `sequence_count` still reports raw productive single-assignment support before collapsing to one representative per clone.
+- Ambiguous calls are split proportionally by TIgGER in `counts` and `total`, so these may not match `sequence_count`.
+- When single-clone representatives are used for genotype inference, `sequence_count` still reports raw productive support before collapsing to one representative per clone.
 
 ```{r genotype-inference-table, results='asis'}
 # Display results summary
