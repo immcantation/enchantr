@@ -417,9 +417,9 @@ plot_genotype <- function(genotypes, method = "bayesian", ...) {
 #'
 #' Regardless of method, the returned data.frame has one row per gene and
 #' contains at least `gene`, `genotyped_alleles`, `candidate_alleles`, `counts`,
-#' `total`, `confidence`, and `note`. `confidence` carries whatever the method
-#' uses to score its call (`k_diff` for `"bayesian"`, `z_score` for
-#' `"allele_based"`, `NA` for `"fraction"`, which has no confidence measure).
+#' `total`, and `note`. `confidence` carries whatever the method uses to score
+#' its call (`k_diff` for `"bayesian"`, `z_score` for `"allele_based"`);
+#' `"fraction"` has no confidence measure and emits no `confidence` column.
 #'
 #' Optionally the inference can be run per-group by providing `genotypeby`, in
 #' which case results are tagged with the group value and row-bound.
