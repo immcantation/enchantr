@@ -153,7 +153,7 @@ parse_columns <- function(x) {
 
 segment_from_call_col <- function(call_col) {
   first <- tolower(substr(call_col, 1, 1))
-  seg <- c(v = "V", d = "D", j = "J")[[first]]
+  seg <- list(v = "V", d = "D", j = "J")[[first]]
   if (is.null(seg)) {
     stop("Cannot infer segment from call column '", call_col, "'. ",
          "Use column names beginning with v, d or j.")
