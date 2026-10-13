@@ -91,7 +91,8 @@ genotype_project <- function(path, ...) {
     germline_db = ctx$seg_references,
     default_allele_threshold = ctx$default_threshold,
     asc_annotation = ctx$asc_annotation,
-    translate_to_asc = ctx$translate_to_asc,
+    # ASC translation returns slash-joined allele names that the rest of the report cannot use
+    translate_to_asc = FALSE,
     depth_adjusted_threshold = ctx$depth_adjusted_threshold,
     z_score_threshold = ctx$z_score_threshold,
     single_assignment = FALSE
@@ -268,7 +269,7 @@ genotype_project <- function(path, ...) {
   allele_based = list(
     label = "PIgLET allele based",
     package = "piglet",
-    params = c("allele_thresholds_db", "allele_thresholds_release", "default_threshold", "asc_annotation", "translate_to_asc", "z_score_threshold"),
+    params = c("allele_thresholds_db", "allele_thresholds_release", "default_threshold", "asc_annotation", "z_score_threshold"),
     extra_cols = "depth",
     infer = .infer_allele_based,
     normalize = .normalize_piglet,
@@ -452,7 +453,6 @@ plot_genotype <- function(genotypes, method = "bayesian", ...) {
 #'   from `allele_threshold_table`.
 #' @param asc_annotation `"allele_based"` only. Are the allele calls annotated with
 #'   allele similarity clusters?
-#' @param translate_to_asc `"allele_based"` only. Collapse identical alleles for inference.
 #' @param depth_adjusted_threshold `"allele_based"` only. Scale allele thresholds by
 #'   the repertoire depth.
 #' @param z_score_threshold `"allele_based"` only. Minimum `z_score` for an allele to
@@ -476,7 +476,6 @@ infer_genotype <- function(
   allele_threshold_table = NULL,
   default_threshold = 1e-04,
   asc_annotation = FALSE,
-  translate_to_asc = FALSE,
   depth_adjusted_threshold = TRUE,
   z_score_threshold = 0
 ) {
@@ -521,7 +520,6 @@ infer_genotype <- function(
     allele_threshold_table = allele_threshold_table,
     default_threshold = default_threshold,
     asc_annotation = asc_annotation,
-    translate_to_asc = translate_to_asc,
     depth_adjusted_threshold = depth_adjusted_threshold,
     z_score_threshold = z_score_threshold
   )
