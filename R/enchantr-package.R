@@ -22,6 +22,7 @@
 #'   \item  \link{convergence_project}:         Create an Immcantation Convergence project
 #'   \item  \link{dowser_lineage_project}:      Create an Immcantation Dowser project
 #'   \item  \link{single_cell_qc_project}:      Create an Immcantation sc QC project
+#'   \item  \link{annotation_qc_project}:       Create an Immcantation annotation QC project
 #' }
 #'
 #'
