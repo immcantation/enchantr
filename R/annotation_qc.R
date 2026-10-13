@@ -30,8 +30,8 @@ annotation_qc_project <- function(path,...) {
 #' @export
 locus_matches <- function(x, locus) {
     wanted <- toupper(trimws(strsplit(locus, ",")[[1]]))
-    valid <- c("IG", "IGH", "IGK", "IGL", "TR", "TRA", "TRB", "TRD", "TRG")
-    if (!all(wanted %in% valid)) {
+    valid <- c("IG", "IGH", "IGI", "IGK", "IGL", "TR", "TRA", "TRB", "TRD", "TRG")
+    if (length(wanted) == 0 || !all(wanted %in% valid)) {
         stop("Unknown locus '", locus, "'. Use one or more of: ", paste(valid, collapse = ", "))
     }
     grepl(paste0("^(", paste(wanted, collapse = "|"), ")"), toupper(x))

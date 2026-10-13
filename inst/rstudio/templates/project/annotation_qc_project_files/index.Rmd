@@ -129,7 +129,7 @@ Checked filters were applied; the parameter that turns each one on or off is in 
 alignment <- !as.logical(params$skip_alignment_filter)
 productive <- as.logical(params$productive_only)
 filters <- data.frame(
-    filter = c("Remove sequences with no gene call: no V, no D and no J (`skip_alignment_filter`)",
+    filter = c("Remove sequences without a V call (`skip_alignment_filter`)",
                "Remove sequences whose V call disagrees with the locus (`skip_alignment_filter`, needs a `locus` column)",
                paste0("Remove sequences with more than ", params$max_n_fraction * 100, "% N (`skip_alignment_filter`)"),
                paste0("Remove sequences shorter than ", params$min_informative_length,
@@ -144,18 +144,19 @@ cat(paste0("- [", ifelse(filters$applied, "x", " "), "] ", filters$filter, "\n")
 
 ```{r eval=!as.logical(params$skip_alignment_filter), results="asis", echo=FALSE}
 cat("
-## Remove sequences with no gene call
+## Remove sequences without a V call
 
 The aligner reports a row for every sequence it was given, including those it could not
-assign to any gene. Sequences with no V, no D and no J call are removed. A sequence
-with any of the three is kept, so light chains, which have no D, are kept.
+assign to a V gene. Without a V call a sequence has no locus to check, and the steps
+that follow (germline reconstruction, clonal assignment, genotyping) cannot use it, so
+it is removed. This includes sequences with no gene call at all.
 ")
 ```
 
-```{r has-call, eval=!as.logical(params$skip_alignment_filter), results="asis"}
+```{r has-v-call, eval=!as.logical(params$skip_alignment_filter), results="asis"}
 before_filter_nrow <- nrow(db)
-db <- db %>% filter(!is.na(v_call) | !is.na(d_call) | !is.na(j_call))
-cat(paste(before_filter_nrow - nrow(db), "sequences with no V, D or J call were removed."))
+db <- db %>% filter(!is.na(v_call))
+cat(paste(before_filter_nrow - nrow(db), "sequences without a V call were removed."))
 ```
 
 ```{r eval=!as.logical(params$skip_alignment_filter) && "locus" %in% colnames(db), results="asis", echo=FALSE}

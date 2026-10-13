@@ -1,11 +1,14 @@
 test_that("locus_matches takes a class, one locus or several", {
     x <- c("IGH", "IGK", "IGL", "TRA", "TRB", "TRD", "TRG", NA)
+    expect_true(locus_matches("IGI", "IG"))
+    expect_true(locus_matches("IGI", "IGI"))
     expect_equal(locus_matches(x, "IG"), c(TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE))
     expect_equal(locus_matches(x, "IGH"), c(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE))
     expect_equal(locus_matches(x, "IGK, igl"), c(FALSE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE))
     expect_equal(locus_matches(x, "TR"), c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE))
     expect_equal(locus_matches(x, "TRB"), c(FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE))
     expect_error(locus_matches(x, "IGX"), "Unknown locus")
+    expect_error(locus_matches(x, ""), "Unknown locus")
 })
 
 # Render the report on db and return what it wrote.
@@ -22,6 +25,7 @@ run_annotation_qc <- function(db, ...) {
         productive_fail = file.path(repertoires, "S1_productive-fail.tsv"),
         locus = read.delim(file.path(tmp, "enchantr", "tables", "locus_summary.tsv")),
         tables = file.path(tmp, "enchantr", "tables"),
+        html = paste(readLines(file.path(tmp, "enchantr", "index.html"), warn = FALSE), collapse = "\n"),
         log = readLines(file.path(tmp, "S1_qc_command_log.txt"), warn = FALSE)
     )
 }
@@ -30,7 +34,7 @@ test_that("annotation_qc report applies each filter and counts it", {
     skip_on_cran()
     ok <- strrep("A", 250)
     # rows: 1 pass, 2 unproductive, 3 no call, 4 IGK, 5 locus mismatch,
-    #       6 12% N, 7 too short, 8 out of frame, 9 no V call -> locus NA
+    #       6 12% N, 7 too short, 8 out of frame, 9 D and J but no V call
     db <- data.frame(
         sequence_id = paste0("s", 1:9),
         v_call = c("IGHV1-2*02", "IGHV1-2*02", NA, "IGKV1-5*01", "IGHV1-2*02", "IGHV1-2*02", "IGHV1-2*02", "IGHV1-2*02", NA),
@@ -45,6 +49,9 @@ test_that("annotation_qc report applies each filter and counts it", {
     out <- run_annotation_qc(db, locus = "IGH", restrict_to_locus = TRUE)
 
     expect_equal(out$pass$sequence_id, "s1")
+    # s3 (no call) and s9 (D and J only) go at the V call step, not as another locus
+    expect_match(out$html, "2 sequences without a V call were removed")
+    expect_match(out$html, "1 sequences whose V call is from another locus were removed")
     expect_equal(out$locus$input[out$locus$locus == "IGH"], 7)
     expect_equal(out$locus$output[out$locus$locus == "IGK"], 0)
     # at the locus step: s1, s2, s8 (IGH) and s4 (IGK) are left
