@@ -103,34 +103,6 @@ test_that("genotype inference 1:1", {
   expect_true(all(is.na(genotype$clone_count)))
 })
 
-test_that("the deprecated genotype report names still render", {
-  skip_on_cran()
-  skip_if_not_installed("ggplot2")
-  input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "data_to_test_novel_alleles.tsv"))
-  tmp_dir <- tempfile("genotype_backcompat_")
-
-  # tigger_bayesian_genotype must still resolve to the unified report, method=bayesian.
-  expect_message(
-    enchantr_report("tigger_bayesian_genotype",
-      report_params = list(
-        "input" = input,
-        "imgt_db" = IMGT_URL,
-        "species" = "human",
-        "outdir" = tmp_dir,
-        "log" = "test_allele_inference_command_log"
-      )
-    ),
-    "deprecated"
-  )
-
-  genotype <- read.delim(
-    list.files(file.path(tmp_dir, "enchantr", "genotypes"), full.names = TRUE),
-    sep = "\t"
-  )
-  expect_equal(nrow(genotype), 41)
-  expect_true("confidence" %in% names(genotype))
-})
-
 test_that("genotype report with novel alleles", {
   skip_on_cran()
   skip_if_not_installed("ggplot2")

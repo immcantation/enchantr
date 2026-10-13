@@ -1,8 +1,6 @@
 # Report names kept for backwards compatibility. Each resolves to the unified
-# "genotype" report with its `method` parameter preset, so existing callers
-# (e.g. nf-core/airrflow) keep working unchanged.
+# "genotype" report with its `method` parameter preset.
 .GENOTYPE_REPORT_ALIASES <- c(
-    tigger_bayesian_genotype = "bayesian",
     piglet_genotype = "allele_based"
 )
 
@@ -71,6 +69,7 @@ enchantr_report <- function(name=c("validate_input",
             "dowser_lineage" = invisible(dowser_lineage_project(outdir)),
             "novel_allele_inference" = invisible(novel_allele_inference_project(outdir)),
             "genotype" = invisible(genotype_project(outdir)),
+            "tigger_bayesian_genotype" = invisible(tigger_bayesian_genotype_project(outdir)),
             "rabhit_haplotype" = invisible(rabhit_haplotype_project(outdir)),
             "reassign_alleles" = invisible(reassign_alleles_project(outdir))
     )
