@@ -417,7 +417,7 @@ cat(
 )
 ```
 
-```{r genotype-inference}
+```{r genotype-inference, warning=TRUE}
 # Method-specific arguments; only those of `method` are used.
 priors <- list(
   v = as.numeric(strsplit(params$v_priors, ",")[[1]]),
@@ -460,13 +460,6 @@ if (identical(method, "allele_based")) {
       "threshold table that carries the names used here."
     )
   }
-  message("THRESHOLD_COVERAGE> ", coverage_summary$alleles_matched, "/",
-          coverage_summary$alleles_observed, " alleles matched (",
-          round(100 * coverage_summary$coverage), "%), ",
-          coverage_summary$alleles_defaulted, " defaulted")
-  message("THRESHOLD_SOURCE> ", threshold_provenance$source,
-          " | release: ", threshold_provenance$release,
-          " | md5: ", threshold_provenance$md5)
 }
 
 # Genotype each segment; output shares one schema across methods.
@@ -766,6 +759,15 @@ cat(paste0("\nGENOTYPE_LOCI> ", paste0(loci, collapse = ",")), file = log_fn, ap
 cat(paste0("\nGENOTYPE_SEGMENTS> ", paste0(segments_to_genotype, collapse = ",")), file = log_fn, append = TRUE)
 cat(paste0("\nOUTPUT> ", basename(genotypes_output_dir)), file = log_fn, append = TRUE)
 cat(paste0("\nOUTPUT_REFERENCE> ", basename(file.path(params$outdir, "references"))), file = log_fn, append = TRUE)
+if (!is.null(threshold_provenance)) {
+  cat(paste0("\nTHRESHOLD_COVERAGE> ", coverage_summary$alleles_matched, "/",
+             coverage_summary$alleles_observed, " alleles matched (",
+             round(100 * coverage_summary$coverage), "%), ",
+             coverage_summary$alleles_defaulted, " defaulted"), file = log_fn, append = TRUE)
+  cat(paste0("\nTHRESHOLD_SOURCE> ", threshold_provenance$source,
+             " | release: ", threshold_provenance$release,
+             " | md5: ", threshold_provenance$md5), file = log_fn, append = TRUE)
+}
 ```
 
 ```{r, child=c('versions.Rmd')}
