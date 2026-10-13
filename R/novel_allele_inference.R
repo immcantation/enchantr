@@ -114,7 +114,7 @@ check_repeated_snp_patterns <- function(novel_df) {
 tigger_upper_bound <- function(data, v_call = "v_call") {
    # Filter to only V gene calls (no commas)
    v_data <- data %>%
-      dplyr::filter(!grepl(',', .data[[v_call]])) %>%
+      dplyr::filter(!grepl(',', .data[[v_call]]), !is.na(v_germline_end)) %>%
       dplyr::select(dplyr::all_of(c(v_call, "v_germline_end")))
 
    # Extract gene name

@@ -170,7 +170,7 @@ genotype_project <- function(path, ...) {
   # Remove duplicated rows to ensure unique allele entries per gene
   g <- g[!duplicated(g),]
   # Remove alleles that were not observed < 1
-  g <- g[g$count >= 1, ]
+  g <- g[which(g$count >= 1), ]
   g$.in_genotype <- !is.na(g$in_genotype) & g$in_genotype
 
   collapse <- function(x) paste(x, collapse = ",")
