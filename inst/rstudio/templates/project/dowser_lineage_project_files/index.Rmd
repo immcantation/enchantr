@@ -150,6 +150,9 @@ input_size <- nrow(db)
 # Formatting clones
 
 ```{r formatClones}
+if (!"locus" %in% colnames(db)) {
+    db[['locus']] <- getLocus(db[['v_call']])
+}
 h <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
 # Initialize empty clones
 clones <- data.frame()
