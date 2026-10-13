@@ -268,7 +268,7 @@ genotype_project <- function(path, ...) {
   allele_based = list(
     label = "PIgLET allele based",
     package = "piglet",
-    params = c("allele_thresholds_db", "default_threshold", "asc_annotation", "translate_to_asc", "z_score_threshold"),
+    params = c("allele_thresholds_db", "allele_thresholds_release", "default_threshold", "asc_annotation", "translate_to_asc", "z_score_threshold"),
     extra_cols = "depth",
     infer = .infer_allele_based,
     normalize = .normalize_piglet,
@@ -341,15 +341,8 @@ check_genotype_params <- function(params, method) {
     unlist(lapply(.GENOTYPE_METHODS, `[[`, "params"), use.names = FALSE),
     spec$params
   )
-  ignored <- intersect(names(params), foreign)
-  if (length(ignored) > 0) {
-    message(
-      "Genotype method '", method, "' does not use these parameters; ignoring: ",
-      paste(ignored, collapse = ", "), "."
-    )
-  }
-
-  params[setdiff(names(params), ignored)]
+  # no message: the template declares every method's parameters, so some are always unused
+  params[setdiff(names(params), foreign)]
 }
 
 #' Was an optional file parameter actually supplied?
