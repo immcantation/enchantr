@@ -151,13 +151,13 @@ input_size <- nrow(db)
 
 ```{r formatClones}
 h <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
+# Initialize empty clones
+clones <- data.frame()
 if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus']] != params[['heavy']],]))) {
     heavy <- unique(db[['locus']][h])
     if (length(heavy)>1) {
         stop("multiple heavy chain locus found.")
     }
-
-    clones <- data.frame()
 
     traits <- trimws(strsplit(params[['traits']], ",")[[1]])
     if (!is.null(traits)) {
@@ -187,8 +187,6 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
     db <- db %>%
         mutate(across(all_of(c(tips)), miss))
 
-    # Initialize empty clones
-    clones <- data.frame()
     try (
         clones <- formatClones(db,
                                traits=traits,
