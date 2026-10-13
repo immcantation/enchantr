@@ -1,9 +1,3 @@
-# Report names kept for backwards compatibility. Each resolves to the unified
-# "genotype" report with its `method` parameter preset.
-.GENOTYPE_REPORT_ALIASES <- c(
-    piglet_genotype = "allele_based"
-)
-
 #' Render an Immcantation project
 #'
 #' @param  name report name
@@ -25,21 +19,9 @@ enchantr_report <- function(name=c("validate_input",
                                    "genotype",
                                    "rabhit_haplotype",
                                    "tigger_bayesian_genotype",
-                                   "piglet_genotype",
                                    "reassign_alleles"), report_params=list()) {
 
     name <- match.arg(name)
-
-    # Resolve a deprecated genotype report name to the unified report.
-    if (name %in% names(.GENOTYPE_REPORT_ALIASES)) {
-        method <- .GENOTYPE_REPORT_ALIASES[[name]]
-        message("Report '", name, "' is deprecated; use enchantr_report('genotype', ",
-                "list(method = '", method, "', ...)) instead.")
-        if (is.null(report_params[['method']])) {
-            report_params[['method']] <- method
-        }
-        name <- "genotype"
-    }
 
     if (is.null(report_params[['outdir']])) {
         report_params[['outdir']] <- getwd()
