@@ -170,8 +170,10 @@ genotype_project <- function(path, ...) {
   }
   # Remove duplicated rows to ensure unique allele entries per gene
   g <- g[!duplicated(g),]
-  # Remove alleles that were not observed < 1
-  g <- g[which(g$count >= 1), ]
+  # Drop germline alleles with no evidence in the data. PIgLET's counts are
+  # ambiguity-weighted, so an allele seen only in ambiguous calls counts below 1;
+  # its own `observed` flag keeps those.
+  g <- g[g$observed %in% TRUE, , drop = FALSE]
   g$.in_genotype <- !is.na(g$in_genotype) & g$in_genotype
 
   collapse <- function(x) paste(x, collapse = ",")
