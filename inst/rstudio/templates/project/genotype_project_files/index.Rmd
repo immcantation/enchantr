@@ -252,6 +252,9 @@ cols_to_read <- unique(c(
 ))
 
 db <- readInput(params[["input"]], col_select = cols_to_read)
+if (!"junction_length" %in% names(db)) {
+  stop("Input is missing required column 'junction_length', needed to retain in-frame sequences.", call. = FALSE)
+}
 
 # Standardize call column names for downstream helpers, which expect
 # v_call/d_call/j_call internally.
