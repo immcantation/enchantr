@@ -546,8 +546,10 @@ infer_genotype <- function(
   }
 
   # Per-group inference: tag each result with the grouping value and bind
-  parts <- lapply(unique(db[[genotypeby]]), function(val) {
-    g <- run_one(db[db[[genotypeby]] == val, ])
+  group_values <- unique(db[[genotypeby]])
+  parts <- lapply(group_values, function(val) {
+    select <- if (is.na(val)) is.na(db[[genotypeby]]) else !is.na(db[[genotypeby]]) & db[[genotypeby]] == val
+    g <- run_one(db[select, , drop = FALSE])
     if (is.data.frame(g)) {
       g[[genotypeby]] <- val
     }
@@ -868,7 +870,9 @@ write_genotypes <- function(genotypes, out_dir, out_fn, genotypeby = NULL) {
     write_one(genotypes, out_fn)
   } else {
     for (val in unique(genotypes[[genotypeby]])) {
-      write_one(genotypes[genotypes[[genotypeby]] == val, ], paste0(val, "_", out_fn))
+      select <- if (is.na(val)) is.na(genotypes[[genotypeby]]) else !is.na(genotypes[[genotypeby]]) & genotypes[[genotypeby]] == val
+      label <- if (is.na(val)) "missing" else as.character(val)
+      write_one(genotypes[select, , drop = FALSE], paste0(label, "_", out_fn))
     }
   }
 }
@@ -919,9 +923,11 @@ generate_genotyped_reference <- function(
   groups <- if (!is.null(genotypeby)) unique(genotypes[[genotypeby]]) else "sample"
 
   for (val in groups) {
-    group_genotypes <- if (is.null(genotypeby)) genotypes else genotypes[genotypes[[genotypeby]] == val, ]
+    select <- if (is.null(genotypeby)) rep(TRUE, nrow(genotypes)) else if (is.na(val)) is.na(genotypes[[genotypeby]]) else !is.na(genotypes[[genotypeby]]) & genotypes[[genotypeby]] == val
+    group_genotypes <- genotypes[select, , drop = FALSE]
 
-    out_dir <- file.path(output_dir, as.character(val), germline_dir, species, "vdj")
+    group_label <- if (is.na(val)) "missing" else as.character(val)
+    out_dir <- file.path(output_dir, group_label, germline_dir, species, "vdj")
     dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
     file.copy(list.files(references_dir, full.names = TRUE), out_dir, recursive = TRUE)
     loci_files <- list.files(out_dir, paste0(loci, collapse = "|"), full.names = TRUE)
