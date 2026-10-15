@@ -603,10 +603,12 @@ The genotype plot provides a visual summary of the inferred alleles for each gen
 
 ```{r plot-genotype-inference, results='asis', echo=FALSE}
 # Group plots by locus for mixed-locus data, otherwise by segment.
-plot_groups <- split(
-  genotypes,
+plot_group_parts <- Filter(Negate(is.null), list(
+  if (!is.null(genotypeby)) ifelse(is.na(genotypes[[genotypeby]]), "missing", as.character(genotypes[[genotypeby]])),
   if (length(loci) > 1) substr(genotypes$gene, 1, 3) else substr(genotypes$gene, 4, 4)
-)
+))
+plot_group_key <- do.call(interaction, c(plot_group_parts, list(drop = TRUE, lex.order = TRUE)))
+plot_groups <- split(genotypes, plot_group_key)
 genotype_plots <- lapply(plot_groups, plot_genotype, method = method)
 
 emit_plot_sections(
