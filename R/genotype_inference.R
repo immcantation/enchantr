@@ -377,7 +377,14 @@ read_allele_thresholds <- function(path) {
   # accept CSV or TSV
   first <- readLines(path, n = 1, warn = FALSE)
   sep <- if (nchar(gsub("[^,]", "", first)) > nchar(gsub("[^\t]", "", first))) "," else "\t"
-  utils::read.delim(path, sep = sep, stringsAsFactors = FALSE)
+  thresholds <- utils::read.delim(path, sep = sep, stringsAsFactors = FALSE)
+  required <- c("allele", "asc_allele", "threshold")
+  missing <- setdiff(required, names(thresholds))
+  if (length(missing)) {
+    stop("Allele threshold table is missing required column(s): ",
+         paste(missing, collapse = ", "), call. = FALSE)
+  }
+  thresholds
 }
 
 #' Explanatory text for a genotype method
