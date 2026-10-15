@@ -14,6 +14,10 @@ General:
   `method = "bayesian"`; its `sequence_count` and `clone_count` follow
   `single_assignments` instead of counting single-assignment calls only.
 + The `piglet_genotype` report is replaced by `genotype` with `method = "allele_based"`.
++ `infer_genotype()` has a new `method` argument in fourth position, before
+  `genotypeby`, so calls that pass `genotypeby` by position must now name it.
+  Its output columns `alleles` and `k_diff` are renamed to `candidate_alleles`
+  and `confidence`.
 + Add RAbHIT haplotype inference project.
 + Add `piglet` and `rabhit` as suggested dependencies.
 + Fix genotype plots being cropped when a segment contained only a few genes.
