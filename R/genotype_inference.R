@@ -378,7 +378,7 @@ read_allele_thresholds <- function(path) {
   first <- readLines(path, n = 1, warn = FALSE)
   sep <- if (nchar(gsub("[^,]", "", first)) > nchar(gsub("[^\t]", "", first))) "," else "\t"
   thresholds <- utils::read.delim(path, sep = sep, stringsAsFactors = FALSE)
-  required <- c("allele", "asc_allele", "threshold")
+  required <- c("allele", "threshold")
   missing <- setdiff(required, names(thresholds))
   if (length(missing)) {
     stop("Allele threshold table is missing required column(s): ",
