@@ -429,6 +429,8 @@ allele_thresholds <- read_allele_thresholds(params$allele_thresholds_db)
 # allele_based: report threshold table coverage per segment; warn where nothing matches.
 threshold_coverage <- NULL
 threshold_provenance <- NULL
+# Passed to infer_genotype for every method; allele_based replaces it with the resolved table.
+allele_thresholds_used <- allele_thresholds
 if (identical(method, "allele_based")) {
   tr_loci <- grep("^TR", loci, value = TRUE)
   if (length(tr_loci) > 0) {
