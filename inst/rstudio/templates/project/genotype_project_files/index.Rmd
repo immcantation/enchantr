@@ -488,7 +488,7 @@ genotypes <- lapply(segments_to_genotype, function(seg) {
     priors = priors[[seg]],
     fraction_to_explain = as.numeric(params$fraction_to_explain),
     gene_cutoff = as.numeric(params$gene_cutoff),
-    allele_threshold_table = allele_thresholds,
+    allele_threshold_table = allele_thresholds_used,
     default_threshold = as.numeric(params$default_threshold),
     asc_annotation = as.logical(params$asc_annotation),
     depth_adjusted_threshold = TRUE,
