@@ -1,7 +1,7 @@
 Package: enchantr
 Type: Package
 Version: 0.1.26.999
-Date: 
+Date: 2026-10-15
 Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="susanna.marquez@yale.edu"),
              person("Edel", "Aron", role=c("aut"),
@@ -18,6 +18,8 @@ Authors@R: c(person("Susanna", "Marquez", role=c("aut", "cre"),
                     email="noah.yann.lee@yale.edu"),
              person("Hailong", "Meng", role=c("aut"),
                     email="hailong.meng@yale.edu"),
+             person("Ayelet", "Peres", role=c("aut"),
+                    email="ayelet.peres@yale.edu"),
              person("Steven", "Kleinstein", role=c("aut", "cph"),
                     email="steven.kleinstein@yale.edu"))
 Title: enchantr
@@ -69,7 +71,11 @@ Imports:
     xfun
 Suggests:
     optparse,
+    piglet (>= 1.5.2),
+    rabhit,
     testthat
+Remotes:
+    ayeletperes/piglet
 RoxygenNote: 7.3.3
 URL: https://enchantr.readthedocs.io/en/stable
 BugReports: https://github.com/immcantation/enchantr/issues

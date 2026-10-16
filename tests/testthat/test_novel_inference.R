@@ -26,3 +26,14 @@ test_that("novel inference 1:1", {
   )
   expect_equal(nrow(novel_alleles), 6)
 })
+
+test_that("tigger_upper_bound reads the V call column it is given", {
+  db <- data.frame(v_call = c("IGKV1-5*01", "IGKV1-5*01", "IGKV3-20*01", "IGKV1-5*01,IGKV1-6*01"),
+                   v_germline_end = c(300, 310, 290, 312))
+  expected <- tigger_upper_bound(db)
+  expect_equal(unname(expected), c("IGKV3-20[*]", "IGKV1-5[*]"))
+  renamed <- dplyr::rename(db, my_v = v_call)
+  expect_identical(tigger_upper_bound(renamed, v_call = "my_v"), expected)
+  # a sequence without v_germline_end is left out instead of stopping the report
+  expect_identical(tigger_upper_bound(rbind(db, data.frame(v_call = "IGKV1-5*01", v_germline_end = NA))), expected)
+})

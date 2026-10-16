@@ -1,12 +1,12 @@
 #' Render an Immcantation project
-#' 
+#'
 #' @param  name report name
 #' @param  report_params params list, needed by report. must include outdir
 #' @export
-enchantr_report <- function(name=c("validate_input", 
-                                   "file_size", 
-                                   "chimera_analysis", 
-                                   "single_cell_qc", 
+enchantr_report <- function(name=c("validate_input",
+                                   "file_size",
+                                   "chimera_analysis",
+                                   "single_cell_qc",
                                    "annotation_qc",
                                    "contamination",
                                    "collapse_duplicates",
@@ -16,11 +16,13 @@ enchantr_report <- function(name=c("validate_input",
                                    "convergence",
                                    "dowser_lineage",
                                    "novel_allele_inference",
+                                   "genotype",
+                                   "rabhit_haplotype",
                                    "tigger_bayesian_genotype",
                                    "reassign_alleles"), report_params=list()) {
-    
+
     name <- match.arg(name)
-    
+
     if (is.null(report_params[['outdir']])) {
         report_params[['outdir']] <- getwd()
     }
@@ -48,7 +50,9 @@ enchantr_report <- function(name=c("validate_input",
             "convergence" = invisible(convergence_project(outdir)),            
             "dowser_lineage" = invisible(dowser_lineage_project(outdir)),
             "novel_allele_inference" = invisible(novel_allele_inference_project(outdir)),
+            "genotype" = invisible(genotype_project(outdir)),
             "tigger_bayesian_genotype" = invisible(tigger_bayesian_genotype_project(outdir)),
+            "rabhit_haplotype" = invisible(rabhit_haplotype_project(outdir)),
             "reassign_alleles" = invisible(reassign_alleles_project(outdir))
     )
     

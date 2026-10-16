@@ -98,7 +98,8 @@ check_repeated_snp_patterns <- function(novel_df) {
 #' and groups genes by their upper bound. Only V gene calls (not J) are considered. This is used for light chain
 #' novel allele inference to set the region of interest for mutation analysis.
 #'
-#' @param data Data.frame with columns 'v_call' (V gene call) and 'v_germline_end' (end position of V germline alignment)
+#' @param data Data.frame with a V call column and 'v_germline_end' (end position of V germline alignment)
+#' @param v_call Name of the V call column.
 #' @return Named character vector: names are unique upper bounds, values are concatenated gene names for each bound
 #' @details J gene sequences are not processed by this function. Only V gene calls without commas are included.
 #' @examples
@@ -110,15 +111,15 @@ check_repeated_snp_patterns <- function(novel_df) {
 #' @importFrom dplyr filter select mutate group_by summarise ungroup
 #' @importFrom alakazam getGene
 #' @export
-tigger_upper_bound <- function(data) {
+tigger_upper_bound <- function(data, v_call = "v_call") {
    # Filter to only V gene calls (no commas)
    v_data <- data %>%
-      dplyr::filter(!grepl(',', .data[['v_call']])) %>%
-      dplyr::select(v_call, v_germline_end)
+      dplyr::filter(!grepl(',', .data[[v_call]]), !is.na(v_germline_end)) %>%
+      dplyr::select(dplyr::all_of(c(v_call, "v_germline_end")))
 
    # Extract gene name
    v_data <- v_data %>%
-      dplyr::mutate(GENE = alakazam::getGene(v_call, strip_d = FALSE))
+      dplyr::mutate(GENE = alakazam::getGene(.data[[v_call]], strip_d = FALSE))
 
    # Calculate 95th percentile (upper bound) for each gene
    v_data <- v_data %>%
@@ -190,7 +191,7 @@ run_find_novel <- function(sub_db, germline_db, pos_range, params, mut_range) {
 #' @return A novel-allele \code{data.frame} (possibly with zero rows).
 #' @keywords internal
 infer_novel_light_chain <- function(db, germline_db, params, mut_range) {
-  gene_range <- tigger_upper_bound(db)
+  gene_range <- tigger_upper_bound(db, v_call = params$v_call)
   dplyr::bind_rows(lapply(seq_along(gene_range), function(i) {
     upper_range <- as.numeric(names(gene_range)[i])
     genes <- gene_range[i]

@@ -114,7 +114,9 @@ save(params, file=file.path(params$outdir,"params.RData"))
 ```{r read, results="asis"}
 db <- read_rearrangement(params$input)
 input_size <- nrow(db)
-locus_in <- if ("locus" %in% colnames(db)) db[["locus"]] else getLocus(db[["v_call"]])
+# whether the input has the AIRR locus column (params$locus is the targeted loci)
+has_locus <- "locus" %in% colnames(db)
+locus_in <- if (has_locus) db[["locus"]] else getLocus(db[["v_call"]])
 productive_fail <- NULL
 
 cat(paste("The repertoire has", input_size, "sequences."))
@@ -137,7 +139,7 @@ filters <- data.frame(
                paste0("Keep the targeted loci, ", params$locus, " (`restrict_to_locus`)"),
                "Keep productive sequences (`productive_only`)",
                "Remove sequences with a junction length not a multiple of 3 (`productive_only`)"),
-    applied = c(alignment, alignment && "locus" %in% colnames(db), alignment, alignment,
+    applied = c(alignment, alignment && has_locus, alignment, alignment,
                 as.logical(params$restrict_to_locus), productive, productive))
 cat(paste0("- [", ifelse(filters$applied, "x", " "), "] ", filters$filter, "\n"), sep = "")
 ```
@@ -159,7 +161,7 @@ db <- db %>% filter(!is.na(v_call))
 cat(paste(before_filter_nrow - nrow(db), "sequences without a V call were removed."))
 ```
 
-```{r eval=!as.logical(params$skip_alignment_filter) && "locus" %in% colnames(db), results="asis", echo=FALSE}
+```{r eval=!as.logical(params$skip_alignment_filter) && has_locus, results="asis", echo=FALSE}
 cat("
 ## Remove sequences whose V call disagrees with the locus
 
@@ -168,7 +170,7 @@ A sequence where the two disagree has an unreliable assignment and is removed.
 ")
 ```
 
-```{r same-locus, eval=!as.logical(params$skip_alignment_filter) && "locus" %in% colnames(db), results="asis"}
+```{r same-locus, eval=!as.logical(params$skip_alignment_filter) && has_locus, results="asis"}
 before_filter_nrow <- nrow(db)
 db <- db %>% filter(getLocus(v_call) == locus)
 cat(paste(before_filter_nrow - nrow(db), "sequences whose V call is from another locus were removed."))
@@ -208,7 +210,7 @@ cat(paste(before_filter_nrow - nrow(db), "sequences shorter than",
 ```
 
 ```{r fill-locus, echo=FALSE}
-if (!"locus" %in% colnames(db)) {
+if (!has_locus) {
     db[["locus"]] <- getLocus(db[["v_call"]])
 }
 ```

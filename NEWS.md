@@ -5,6 +5,22 @@ General:
 + Gzip output repertoires.
 + Single-cell QC report: save the identified sequence contaminants across samples in a file for easy inspecting.
 + Repertoire analysis report: change default region definition for mutation frequency (SHM) analysis to IMGT_V. Also added a `mu_freq_region` parameter that allows passing any region for computing mutation frequency supported by shazam::observedMutations. If mutation frequency values are previously present in the dataset, these are overwritten.
++ Unify genotype inference into a single `genotype` report supporting three methods,
+  selected with the `method` parameter: `bayesian` (TIgGER), `fraction` (TIgGER), and
+  `allele_based` (PIgLET). Each method's output is normalized onto a shared schema, and
+  the genotype plot is shaded by the method's confidence measure where one exists.
+  The `tigger_bayesian_genotype` report is kept as a separate report and its column
+  names are unchanged, but it now runs the same inference as `genotype` with
+  `method = "bayesian"`; its `sequence_count` and `clone_count` follow
+  `single_assignments` instead of counting single-assignment calls only.
++ The `piglet_genotype` report is replaced by `genotype` with `method = "allele_based"`.
++ `infer_genotype()` has a new `method` argument in fourth position, before
+  `genotypeby`, so calls that pass `genotypeby` by position must now name it.
+  Its output columns `alleles` and `k_diff` are renamed to `candidate_alleles`
+  and `confidence`.
++ Add RAbHIT haplotype inference project.
++ Add `piglet` and `rabhit` as suggested dependencies.
++ Fix genotype plots being cropped when a segment contained only a few genes.
 
 
 Version 0.1.25: May 11, 2026
