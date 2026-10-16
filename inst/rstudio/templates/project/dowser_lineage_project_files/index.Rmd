@@ -47,7 +47,7 @@ params:
    num_fields:
       label: "`num_fields`"
       input: text
-      value: "duplicate_count, consensus_count"
+      value: "duplicate_count,consensus_count"
    chain:
       label: "`chain`"
       input: text
@@ -150,16 +150,19 @@ input_size <- nrow(db)
 # Formatting clones
 
 ```{r formatClones}
+if (!"locus" %in% colnames(db)) {
+    db[['locus']] <- getLocus(db[['v_call']])
+}
 h <- isHeavyChain(db[['locus']]) #IGH, TRB, TRD
+# Initialize empty clones
+clones <- data.frame()
 if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus']] != params[['heavy']],]))) {
     heavy <- unique(db[['locus']][h])
     if (length(heavy)>1) {
         stop("multiple heavy chain locus found.")
     }
 
-    clones <- data.frame()
-
-    traits <- strsplit(params[['traits']], ",")[[1]]
+    traits <- trimws(strsplit(params[['traits']], ",")[[1]])
     if (!is.null(traits)) {
         # check that traits exist and have data
         traits <- validateFields(traits, db, na_action="null")
@@ -172,7 +175,7 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
     db <- db %>%
         mutate(across(all_of(c(traits)), miss))
 
-    num_fields <- strsplit(params[['num_fields']], ",")[[1]]
+    num_fields <- trimws(strsplit(params[['num_fields']], ",")[[1]])
     # check that num_fields exist and have data
     num_fields <- validateFields(num_fields, db, na_action="null")
 
@@ -187,8 +190,6 @@ if ((sum(h)>0 & params$chain!="L") || (params$chain == "L" & nrow(db[db[['locus'
     db <- db %>%
         mutate(across(all_of(c(tips)), miss))
 
-    # Initialize empty clones
-    clones <- data.frame()
     try (
         clones <- formatClones(db,
                                traits=traits,
@@ -247,8 +248,10 @@ if (length(trees)>0) {
 
 if (!is.null(params$log)) {
     log_fn <- paste0(params$log,".txt")
+} else if (!is.null(params$outname)) {
+    log_fn <- paste0(params$outname,"_command_log.txt")
 } else {
-    log_fn <- sub("_clone-pass\\.tsv(\\.gz)?$", "_command_log.txt", basename(output_fn))
+    log_fn <- sub("\\.tsv(\\.gz)?$", "_command_log.txt", basename(params$input))
 }
 
 
