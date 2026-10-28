@@ -447,8 +447,8 @@ plot_genotype <- function(genotypes, method = "bayesian", ...) {
 #'   alleles for the selected `seg` are collected from each `locus` in `loci` and
 #'   passed to the method via `germline_db`.
 #' @param find_unmutated Logical. Use `references` to restrict inference to unmutated sequences.
-#' @param single_assignments Logical. If TRUE, only sequences with single allele
-#'   assignments (no commas) are used for inference. Applied once, up front, so
+#' @param single_assignments Logical. If TRUE, only calls naming one allele, or
+#'   alleles with identical `references` sequences, are used for inference. Applied once, up front, so
 #'   that every method sees the same input.
 #' @param seq Column name holding alignment sequences (default: "sequence_alignment").
 #' @param priors `"bayesian"` only. Numeric vector of prior probabilities for the
@@ -511,7 +511,7 @@ infer_genotype <- function(
   }
 
   if (single_assignments) {
-    db <- db[!grepl(",", db[[call_col]]), ]
+    db <- db[.single_assignment(db[[call_col]], references), ]
   }
 
   # Remove NA values
@@ -623,11 +623,13 @@ count_rows_step <- function(steps, label, rows_in, rows_out) {
 #' @param asc_annotation Logical, see [.threshold_key_column()].
 #' @param single_assignments Logical. The rule the inference applied; when FALSE an
 #'   ambiguous call contributes every allele it lists.
+#' @param references Reference list by locus, as given to `infer_genotype()`.
 #' @return A data.frame with one row per observed allele: `allele`,
 #'   `sequence_count`, `matched`, and the `threshold` when one was found.
 #' @export
 allele_threshold_coverage <- function(db, call_col, thresholds,
-                                      asc_annotation = FALSE, single_assignments = FALSE) {
+                                      asc_annotation = FALSE, single_assignments = FALSE,
+                                      references = NULL) {
   if (is.null(thresholds) || nrow(thresholds) == 0 || is.null(db) || nrow(db) == 0 ||
     !call_col %in% colnames(db)) {
     return(data.frame())
@@ -637,10 +639,9 @@ allele_threshold_coverage <- function(db, call_col, thresholds,
   calls <- db[[call_col]]
   calls <- calls[!is.na(calls) & nzchar(calls)]
   if (single_assignments) {
-    calls <- calls[!grepl(",", calls)]
-  } else {
-    calls <- trimws(unlist(strsplit(calls, ",")))
+    calls <- calls[.single_assignment(calls, references)]
   }
+  calls <- trimws(unlist(strsplit(calls, ",")))
   if (length(calls) == 0) {
     return(data.frame())
   }
@@ -722,11 +723,12 @@ allele_threshold_provenance <- function(thresholds, path = NULL, release = NULL)
 #' @param clone_id_column Optional clone identifier column name.
 #' @param single_assignments Logical. The rule `infer_genotype()` applied to the
 #'   same repertoire; pass the value used there, not a new choice.
+#' @param references Reference list by locus, as given to `infer_genotype()`.
 #' @return A data.frame with `gene`, `allele`, `sequence_count`,
 #'   `clone_count`, and the grouping column when `genotypeby` is provided.
 #' @keywords internal
 .genotype_support_counts <- function(db, genotypeby = NULL, clone_id_column = NULL,
-                                    single_assignments = FALSE) {
+                                    single_assignments = FALSE, references = NULL) {
   if (is.null(db) || nrow(db) == 0) {
     return(data.frame())
   }
@@ -739,14 +741,12 @@ allele_threshold_provenance <- function(thresholds, path = NULL, release = NULL)
 
     seg_db <- db[!is.na(db[[call_col]]) & nzchar(db[[call_col]]), , drop = FALSE]
     if (single_assignments) {
-      # the inference saw only unambiguous calls, so count only those
-      seg_db <- seg_db[!grepl(",", seg_db[[call_col]]), , drop = FALSE]
-    } else {
-      # an ambiguous call supports every allele it lists
-      calls <- strsplit(seg_db[[call_col]], ",")
-      seg_db <- seg_db[rep(seq_len(nrow(seg_db)), lengths(calls)), , drop = FALSE]
-      seg_db[[call_col]] <- trimws(unlist(calls))
+      seg_db <- seg_db[.single_assignment(seg_db[[call_col]], references), , drop = FALSE]
     }
+    # a call supports every allele it lists
+    calls <- strsplit(seg_db[[call_col]], ",")
+    seg_db <- seg_db[rep(seq_len(nrow(seg_db)), lengths(calls)), , drop = FALSE]
+    seg_db[[call_col]] <- trimws(unlist(calls))
     if (nrow(seg_db) == 0) {
       return(NULL)
     }
@@ -791,11 +791,12 @@ allele_threshold_provenance <- function(thresholds, path = NULL, release = NULL)
 #' @param method The genotype method that produced `genotypes`. Selects which
 #'   method-specific columns are placed in the presentation order; it is not
 #'   written as a column.
+#' @param references Reference list by locus, as given to `infer_genotype()`.
 #' @return A data.frame with added `sequence_count`/`clone_count` and reordered
 #'   columns.
 #' @export
 augment_genotype_table <- function(genotypes, db_support, genotypeby = NULL, clone_id_column = NULL,
-                                  single_assignments = TRUE, method) {
+                                  single_assignments = TRUE, method, references = NULL) {
   spec <- .genotype_method(method)
   if (is.null(genotypes) || nrow(genotypes) == 0) {
     return(genotypes)
@@ -805,7 +806,8 @@ augment_genotype_table <- function(genotypes, db_support, genotypeby = NULL, clo
     db = db_support,
     genotypeby = genotypeby,
     clone_id_column = clone_id_column,
-    single_assignments = single_assignments
+    single_assignments = single_assignments,
+    references = references
   )
   group_cols <- c(if (!is.null(genotypeby) && genotypeby %in% colnames(genotypes)) genotypeby, "gene")
   has_clone_counts <- nrow(support_counts) > 0 && !all(is.na(support_counts$clone_count))
@@ -969,4 +971,16 @@ generate_genotyped_reference <- function(
       }
     }
   }
+}
+
+#' TRUE for calls that name one allele, or several names of one reference
+#' sequence (e.g. IMGT's identical IGHV2-70*04 and IGHV2-70D*04).
+#' @keywords internal
+.single_assignment <- function(calls, references = NULL) {
+  alleles <- lapply(strsplit(calls, ","), trimws)
+  germ <- unlist(lapply(unname(references), function(r) unlist(unname(r))))
+  germ <- setNames(toupper(gsub("[.-]", "", germ)), names(germ))
+  vapply(alleles, function(a) {
+    length(a) <= 1 || (all(a %in% names(germ)) && length(unique(germ[a])) == 1)
+  }, logical(1))
 }

@@ -236,3 +236,10 @@ test_that("genotype report filters and low confidence genes", {
   no_genotype <- read.delim(file.path(out_dir, "tables", "tab_no_genotype.tsv"))
   expect_true(all(c("low confidence", "no sequences") %in% no_genotype$reason))
 })
+
+test_that("single assignments keep calls naming one reference sequence", {
+  refs <- list(IGH = list(V = c("IGHV1-69*01" = "CAG..GTG", "IGHV1-69D*01" = "CAGGTG", "IGHV1-69*02" = "CAGGTA")))
+  calls <- c("IGHV1-69*01", "IGHV1-69*01,IGHV1-69D*01", "IGHV1-69*01,IGHV1-69*02", "IGHV1-69*01,IGHV9-9*01")
+  expect_equal(enchantr:::.single_assignment(calls, refs), c(TRUE, TRUE, FALSE, FALSE))
+  expect_equal(enchantr:::.single_assignment(calls), c(TRUE, FALSE, FALSE, FALSE))
+})

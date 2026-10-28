@@ -65,7 +65,7 @@ params:
       input: checkbox
       value: FALSE
    single_assignments:
-      label: "`single_assignments`: Filter to single gene assignments only. With IMGT references, duplicate alleles (e.g. IGHV1-69D*01) only appear in ambiguous calls and are then not genotyped."
+      label: "`single_assignments`: Keep only calls that name one allele, or several alleles with identical reference sequences (e.g. IGHV2-70*04,IGHV2-70D*04). With method = 'bayesian', such a call counts fully toward every gene it names."
       input: checkbox
       value: TRUE
    max_mu_freq:
@@ -483,7 +483,8 @@ if (identical(method, "allele_based")) {
       call_col = paste0(seg, "_call"),
       thresholds = allele_thresholds_used,
       asc_annotation = as.logical(params$asc_annotation),
-      single_assignments = single_assignments
+      single_assignments = single_assignments,
+      references = references
     )
     if (nrow(seg_coverage) > 0) data.frame(segment = toupper(seg), seg_coverage) else NULL
   }))
@@ -541,7 +542,8 @@ genotypes <- augment_genotype_table(
   genotypeby = genotypeby,
   clone_id_column = params$clone_id_column,
   single_assignments = single_assignments,
-  method = method
+  method = method,
+  references = references
 )
 ```
 

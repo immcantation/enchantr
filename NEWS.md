@@ -3,7 +3,8 @@ Version 0.1.26.999 (unreleased)
 General:
 
 + Gzip output repertoires.
-+ Genotype report: `single_assignments` defaults to TRUE; new `max_mu_freq` and
++ Genotype report: `single_assignments` defaults to TRUE and keeps calls whose
+  alleles share one reference sequence; new `max_mu_freq` and
   `unswitched_only` filters; with `method = "bayesian"`, genes with `k_diff` below
   `min_confidence` (default 1) keep all their reference alleles; a table lists the
   reference genes without a genotype.
