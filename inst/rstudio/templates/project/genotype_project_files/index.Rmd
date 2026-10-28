@@ -65,9 +65,21 @@ params:
       input: checkbox
       value: FALSE
    single_assignments:
-      label: "`single_assignments`: Filter to single gene assignments only. Keep FALSE for IMGT references with duplicate alleles (e.g. IGHV1-69D*01), which only appear in ambiguous multi-allele calls and would otherwise never be genotyped."
+      label: "`single_assignments`: Filter to single gene assignments only. With IMGT references, duplicate alleles (e.g. IGHV1-69D*01) only appear in ambiguous calls and are then not genotyped."
+      input: checkbox
+      value: TRUE
+   max_mu_freq:
+      label: "`max_mu_freq`: Keep sequences with V-region mutation frequency below this value. Empty: no filter."
+      input: text
+      value: ""
+   unswitched_only:
+      label: "`unswitched_only`: Keep only IgM and IgD heavy chains. Light chains, TR and heavy chains without c_call are kept."
       input: checkbox
       value: FALSE
+   min_confidence:
+      label: "`min_confidence`: [method='bayesian'] Genes with k_diff below this value keep all their reference alleles."
+      input: numeric
+      value: 1
    method:
       label: "`method`: Genotype inference method. One of 'bayesian' (TIgGER Bayesian), 'fraction' (TIgGER cumulative fraction), or 'allele_based' (PIgLET allele-specific thresholds)."
       input: select
@@ -248,7 +260,7 @@ cols_to_read <- unique(c(
   "sequence_id", "productive", "junction_length", params$seq_column,
   params$v_call, params$d_call, params$j_call,
   params$germline_column, params$clone_id_column,
-  params$genotypeby, "locus", "subject_id", "sample_id", "species"
+  params$genotypeby, "locus", "subject_id", "sample_id", "species", "c_call", "mu_freq"
 ))
 
 db <- readInput(params[["input"]], col_select = cols_to_read)
@@ -282,6 +294,7 @@ if (params$species == "auto") {
 if (!"locus" %in% colnames(db)) {
   db[["locus"]] <- getLocus(db[["v_call"]])
 }
+genes_seen <- unique(getGene(unlist(strsplit(c(db$v_call, db$d_call, db$j_call), ",")), strip_d = FALSE))
 heavy_chains <- isHeavyChain(db[["locus"]])
 
 # segment to genotype
@@ -327,6 +340,23 @@ filter_steps <- count_rows_step(filter_steps, "productive == TRUE", rows_in, nro
 rows_in <- nrow(db)
 db <- db %>% dplyr::filter(.data[["junction_length"]] %% 3 == 0)
 filter_steps <- count_rows_step(filter_steps, "junction_length %% 3 == 0", rows_in, nrow(db))
+
+if (has_path(params$max_mu_freq)) {
+  if (!"mu_freq" %in% names(db)) {
+    db <- shazam::observedMutations(db, sequenceColumn = params$seq_column, germlineColumn = params$germline_column,
+                                    regionDefinition = shazam::IMGT_V, frequency = TRUE, combine = TRUE)
+  }
+  rows_in <- nrow(db)
+  db <- db[as.numeric(db$mu_freq) < as.numeric(params$max_mu_freq), ]
+  filter_steps <- count_rows_step(filter_steps, paste("mu_freq <", params$max_mu_freq), rows_in, nrow(db))
+}
+
+if (as.logical(params$unswitched_only)) {
+  if (!"c_call" %in% names(db)) stop("'unswitched_only' needs a c_call column.")
+  rows_in <- nrow(db)
+  db <- db[!db$locus %in% "IGH" | is.na(db$c_call) | db$c_call == "" | grepl("^IGH?[MD]", db$c_call, ignore.case = TRUE), ]
+  filter_steps <- count_rows_step(filter_steps, "IgM/IgD heavy chains", rows_in, nrow(db))
+}
 
 if (nrow(db) == 0) {
   stop("No sequences are left after filtering. See the row counts above: ",
@@ -750,9 +780,12 @@ This yields a personal reference restricted to genotype-validated alleles for se
 ```{r build-reference, message=TRUE}
 # create the germline output directory
 references_dir <- file.path(imgt_db, species, "vdj")
+# genes with a low confidence call keep all their alleles
+low <- rep(FALSE, nrow(genotypes))
+if (method == "bayesian") low <- (as.numeric(genotypes$confidence) < params$min_confidence) %in% TRUE
 # generate the personal genotyped reference
 generate_genotyped_reference(
-  genotypes = genotypes,
+  genotypes = genotypes[!low, ],
   references = references,
   output_dir = file.path(params$outdir, "references"),
   germline_dir = "db_genotype",
@@ -762,6 +795,17 @@ generate_genotyped_reference(
   genotypeby = genotypeby,
   quiet = FALSE
 )
+```
+
+```{r genes-without-genotype, results='asis'}
+ref_genes <- unique(getGene(unlist(lapply(references[loci], function(r) lapply(r[toupper(segments_to_genotype)], names))), strip_d = FALSE))
+no_genotype <- data.frame(gene = setdiff(ref_genes, genotypes$gene[!low]))
+no_genotype$reason <- ifelse(!no_genotype$gene %in% genes_seen, "no sequences",
+                      ifelse(no_genotype$gene %in% genotypes$gene[low], "low confidence", "not genotyped"))
+tab_no_genotype <- eetable(no_genotype,
+  caption = "Reference genes without a genotype. They keep all their alleles in the personal reference.",
+  outdir = params$outdir, file = "tab_no_genotype")
+tab_no_genotype$table
 ```
 
 ```{r log-end}

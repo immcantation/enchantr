@@ -476,7 +476,7 @@ infer_genotype <- function(
   method = "bayesian",
   genotypeby = NULL,
   references = NULL,
-  single_assignments = FALSE,
+  single_assignments = TRUE,
   find_unmutated = FALSE,
   seq = "sequence_alignment",
   priors = c(0.6, 0.4, 0.4, 0.35, 0.25, 0.25, 0.25, 0.25, 0.25),
@@ -795,7 +795,7 @@ allele_threshold_provenance <- function(thresholds, path = NULL, release = NULL)
 #'   columns.
 #' @export
 augment_genotype_table <- function(genotypes, db_support, genotypeby = NULL, clone_id_column = NULL,
-                                  single_assignments = FALSE, method) {
+                                  single_assignments = TRUE, method) {
   spec <- .genotype_method(method)
   if (is.null(genotypes) || nrow(genotypes) == 0) {
     return(genotypes)

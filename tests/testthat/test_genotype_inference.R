@@ -205,3 +205,34 @@ test_that("single_clone_representative needs a clone id only when there are heav
   genotype <- read.delim(list.files(file.path(tmp_dir, "enchantr", "genotypes"), full.names = TRUE)[1])
   expect_true(all(grepl("^IG[KL]", genotype$gene)))
 })
+
+test_that("genotype report filters and low confidence genes", {
+  skip_on_cran()
+  input <- normalizePath(file.path("..", "data-tests", "novel_genotype", "data_to_test_novel_alleles.tsv"))
+  db <- read.delim(input, sep = "\t", quote = "")
+  db$locus <- "IGH"
+  db$mu_freq <- rep_len(c(0, 0.05, 0.2), nrow(db))
+  db$c_call <- rep_len(c("IGHM*01", "IgD", "IGHG1", NA), nrow(db))
+  with_c_call <- tempfile(fileext = ".tsv")
+  write.table(db, with_c_call, sep = "\t", row.names = FALSE, quote = FALSE)
+
+  tmp_dir <- tempfile("genotype_filters_")
+  enchantr_report("genotype", report_params = list(
+    "input" = with_c_call, "imgt_db" = IMGT_URL, "species" = "human",
+    "max_mu_freq" = "0.1", "unswitched_only" = TRUE, "min_confidence" = 1e9,
+    "outdir" = tmp_dir, "log" = "test_filters_command_log"
+  ))
+  out_dir <- file.path(tmp_dir, "enchantr")
+
+  steps <- read.delim(file.path(out_dir, "tables", "tab_filters.tsv"))
+  kept <- db[db$mu_freq < 0.1, ]
+  expect_equal(steps$rows_out[steps$step == "IgM/IgD heavy chains"],
+               sum(is.na(kept$c_call) | grepl("^IGH?[MD]", kept$c_call, ignore.case = TRUE)))
+
+  # every gene is below min_confidence, so the personal reference keeps all alleles
+  ref_file <- list.files(file.path(prepareIMGT(IMGT_URL), "human", "vdj"), "IGHV\\.fasta$", full.names = TRUE)
+  out_file <- file.path(out_dir, "references", "sample", "db_genotype", "human", "vdj", basename(ref_file))
+  expect_equal(sort(names(tigger::readIgFasta(out_file))), sort(names(tigger::readIgFasta(ref_file))))
+  no_genotype <- read.delim(file.path(out_dir, "tables", "tab_no_genotype.tsv"))
+  expect_true(all(c("low confidence", "no sequences") %in% no_genotype$reason))
+})
