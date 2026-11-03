@@ -255,6 +255,7 @@ if(!params$checkcontamination){
 }else{
   calculate_contamination <- TRUE
 }
+remove_contamination <- calculate_contamination && isTRUE(params$removecontamination)
 dups_found <- FALSE
 ```
 
@@ -281,9 +282,13 @@ num_cells_with_dups <- dups$dups %>%
                          distinct() %>%
                          nrow()
 
-cat(paste(sum(dups$dups$sc_duplicate), "duplicated sequences detected. Removing ",
+if(remove_contamination){
+  cat(paste(sum(dups$dups$sc_duplicate), "duplicated sequences detected. Removing ",
           sum(dups$dups$sc_duplicate_cell), "sequences belonging to",
           num_cells_with_dups , "suspicious cells."))
+}else{
+  cat(paste(sum(dups$dups$sc_duplicate), "duplicated sequences detected. No sequences were removed because parameter `removecontamination` is set to `FALSE`."))
+}
 
 dups_summary <- dups[["dups"]] %>%
     group_by(sample_id) %>%
@@ -428,6 +433,8 @@ if (dups_found) {
   pass <- rep(TRUE, nrow(db))
 }
 
+output_pass <- if (remove_contamination) pass else rep(TRUE, nrow(db))
+
 if (!is.null(params$outname)) {
   output_fn <- paste0(params$outname, "_scqc-pass.tsv.gz")
   failed_fn <- paste0(params$outname, "_scqc-contamination-fail.tsv.gz")
@@ -443,8 +450,8 @@ if (!is.null(params$log)) {
 }
 ```
 
-```{r dbpass, results="asis", echo=FALSE}
-output_groups <- db[pass, , drop=FALSE] %>%
+```{r db_output, results="asis", echo=FALSE}
+output_groups <- db[output_pass, , drop=FALSE] %>%
                    ungroup() %>%
                    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
                    group_by(!!!rlang::syms(params$outputby)) %>%
@@ -482,7 +489,7 @@ for (i in 1:nrow(output_groups)) {
     group_db <- data.frame()
     
     if (this_group[["output_size"]]>0) {
-        group_db <- right_join(db[pass, , drop=FALSE], this_group,
+        group_db <- right_join(db[output_pass, , drop=FALSE], this_group,
                                by = c(params$outputby, "input_file")) %>%
             select(-input_file, -num_input_files, -input_size, -output_size)
         
@@ -501,12 +508,47 @@ for (i in 1:nrow(output_groups)) {
 }
 ```
 
+```{r dbfailed-heading, eval=dups_found, results="asis", echo=FALSE}
+cat("Find sequences that failed the contamination check here, saved by ",
+    paste(params$outputby, collapse=", "), ".\n\n", sep = "")
+```
+
 ```{r dbfailed-save, eval=dups_found, results="asis", echo=FALSE}
 # Save the failed sequences into a separate file if duplicates found
-failed_db <- db[!pass, , drop=FALSE]
-write_rearrangement(failed_db, file = file.path(params$outdir, "repertoires", failed_fn))
-cat("\n\nSequences that were removed due to contamination are saved in [",
-    failed_fn, "](", file.path("repertoires", failed_fn), ").\n\n", sep = "")
+
+failed_output_groups <- db[!pass, , drop=FALSE] %>%
+    ungroup() %>%
+    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
+    group_by(!!!rlang::syms(params$outputby)) %>%
+    summarize(output_size = n(),
+              num_input_files = length(unique(input_file)),
+              input_file = paste(unique(input_file), collapse=","))
+
+if (any(failed_output_groups[["num_input_files"]] > 1)) {
+  stop("Unhandled.")
+}
+
+for (i in 1:nrow(failed_output_groups)) {
+    this_group <- failed_output_groups[i, , drop = F]
+    group_fn <- ""
+    group_db <- data.frame()
+
+    if (this_group[["output_size"]]>0) {
+        group_db <- right_join(db[!pass, , drop=FALSE], this_group,
+                               by = c(params$outputby, "input_file")) %>%
+            select(-input_file, -num_input_files, -output_size)
+
+        group_db_label <- gsub("^id_", "",
+                               makeLabel(group_db, fields = params$outputby))
+        group_fn <- file.path(params$outdir, "repertoires",
+                              paste0(group_db_label, "_", failed_fn))
+
+        write_rearrangement(group_db, file = group_fn)
+        cat("- [", group_db_label,
+            "](", file.path("repertoires", basename(group_fn)), ")\n", sep = "")
+    }
+}
+
 ```
 
 ```{r log, echo=FALSE}

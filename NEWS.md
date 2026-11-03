@@ -3,7 +3,8 @@ Version 0.1.26.999 (unreleased)
 General:
 
 + Gzip output repertoires.
-+ Single-cell QC report: save the identified sequence contaminants across samples in a file for easy inspecting.
++ Single-cell QC report: save the identified sequence contaminants across samples in a file for easy inspecting if `checkcontamination` is `TRUE`. 
++ Single-cell QC report: add a parameter `removecontamination`. If both `checkcontamination` and `removecontamination` are `TRUE`, check sequence contaminants across samples and remove contaminated sequences from output repertoires. If `checkcontamination` is `TRUE` but `removecontamination` is `FALSE`, do not remove contaminated sequences from output repertoires. 
 + Repertoire analysis report: change default region definition for mutation frequency (SHM) analysis to IMGT_V. Also added a `mu_freq_region` parameter that allows passing any region for computing mutation frequency supported by shazam::observedMutations. If mutation frequency values are previously present in the dataset, these are overwritten.
 + Unify genotype inference into a single `genotype` report supporting three methods,
   selected with the `method` parameter: `bayesian` (TIgGER), `fraction` (TIgGER), and
