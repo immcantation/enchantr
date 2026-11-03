@@ -13,7 +13,7 @@ description: "enchantR Single Cell QC Report"
 output: enchantr::immcantation
 params:
    author:
-       value: "Authors: Susanna Marquez, Edel Aron"
+       value: "Authors: Susanna Marquez, Edel Aron, Huimin Lyu"
    input: 
       label: "`input`: Path to repertoires file"
       input: file
@@ -28,6 +28,10 @@ params:
       value: "sample_id"      
    checkcontamination:
       label: "`checkcontamination`: Check contamination among samples. "
+      input: checkbox
+      value: TRUE
+   removecontamination:
+      label: "`removecontamination`: Remove contaminated sequences. "
       input: checkbox
       value: TRUE
    log:
@@ -61,6 +65,10 @@ params:
 editor_options: 
   chunk_output_type: console
 ---
+
+<div class="introduction_paragraph">
+The single-cell quality control report documents the steps used to identify and filter sequences and cells with quality issues. Cells lacking a heavy chain or containing multiple heavy chains are removed. Cross-sample contamination is also checked.
+</div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width = 7, fig.height = 4, fig.path = "figures/",
@@ -142,7 +150,9 @@ print_table_caption(tag = "input_summary", text = caption_text)
 
 # Sequence distribution
 
+<div class="introduction_paragraph">
 Distribution of the number of sequences per cell and locus
+</div>
 
 ```{r, results="asis"}
 seqs_per_cell <- countSequencesPerCell(db)
@@ -167,11 +177,11 @@ print_table_caption(tag = "seqs_per_cell", text = tab$caption)
 
 # Filtration
 
-## Keep only productive cells
-
 ## Remove cells without heavy chains
 
+<div class="introduction_paragraph">
 Since most of the analyses are based on heavy chains, we remove cells with only light chains.
+</div>
 
 ```{r findLightOnlyCells, eval=nrow(db)>0, results="asis"}
 db <- findLightOnlyCells(db, sample_id = "sample_id", cell_id = "cell_id",
@@ -210,9 +220,9 @@ print_table_caption(tag = "light_only", text = tab$caption)
 
 ## Remove cells with multiple heavy chains
 
-When calling clones (B cells that descend from a common naive B cell ancestor) from single cell data, SCOPer will throw an error message such as “xxx cell(s) with multiple heavy chains found. One heavy chain per cell is expected” if any cells in the data contain multiple heavy chains and then stop running.
-
-A simple solution is just to remove cells with multiple heavy chains from the single cell data:
+<div class="introduction_paragraph">
+One heavy chain per cell is expected when assigning clones to single-cell BCR data using the `hierarchicalClones` function from the <a href="https://scoper.readthedocs.io/en/stable/" target="_blank">SCOPer</a> package. Cells containing multiple heavy chains are removed prior to clone assignment to prevent errors during clonal inference.
+</div>
 
 ```{r removeDoublets, eval=nrow(db)>0, results = 'asis'}
 db <- removeDoublets(db, cell_id = "cell_id", locus = "locus",
@@ -229,7 +239,9 @@ if(nrow(db)==0){
 
 # Check for contamination
 
+<div class="introduction_paragraph">
 Sequences in different samples that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) can indicate contamination.
+</div>
 
 ```{r results="asis"}
 sample_count <- n_distinct(db$sample_id)
@@ -303,7 +315,19 @@ tab_dups_summary$table %>%
 print_table_caption(tag = "dups_summary", text = tab_dups_summary$caption)
 ```
 
-```{r p-sc-duplicates, fig.cap=p_sc_duplicates$enchantr$html_caption, results="asis", eval=dups_found}
+```{r eval=TRUE, echo=F}
+getPrettyWidth <- function(n_samples, min_w=5, max_w=10) {
+    min(max_w, max(n_samples, min_w))
+}
+
+getPrettyHeight <- function(n_samples, min_h=4, max_h=7) {
+    min(max_h, max(n_samples, min_h))
+}
+
+n_samples <- length(unique(db[['sample_id']]))
+```
+
+```{r p-sc-duplicates, fig.width=getPrettyWidth(n_samples), fig.height=getPrettyHeight(n_samples), fig.cap=p_sc_duplicates$enchantr$html_caption, results="asis", eval=dups_found}
 
 cat("## Stacked bar plot")
 
@@ -320,8 +344,6 @@ p_sc_duplicates <- eeplot(p_sc_duplicates, params$outdir,
 ggplotly(p_sc_duplicates) %>% layout(barmode = "stack")
 ```
 
-
-
 ```{r overlap-summary, eval=dups_found, results="asis"}
 
 cat("## Cell overlaps matrix")
@@ -331,6 +353,7 @@ dup_count <- singleCellSharingCounts(dups)
 
 if (nrow(dup_count) > 0) {
     overlap_summary <- dup_count %>%
+        mutate(overlap_percent = round(overlap_percent, 4)) %>%
         filter(overlap_percent > 0 ) %>%
         filter(sc_duplicate_group != name)
     
@@ -355,11 +378,14 @@ if (nrow(dup_count) > 0) {
 print_table_caption(tag = "overlap_summary", text = overlap_summary_tab$caption)
 ```
 
-```{r p-overlap-matrix, eval=TRUE, fig.cap=caption, eval=dups_found}
+```{r p-overlap-matrix, fig.width=getPrettyWidth(n_samples), fig.height=getPrettyHeight(n_samples), fig.cap=caption, eval=dups_found}
 # plot duplicated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
-  p_overlap_matrix <- plotOverlapSingleCell(dup_count) + theme_enchantr()
+  p_overlap_matrix <- plotOverlapSingleCell(dup_count) + theme_enchantr() + 
+    theme(
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
   p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir,
                              knitr::opts_current$get("label"),
                              caption = "Duplicated cells.")
@@ -371,6 +397,7 @@ if (nrow(dup_count) > 0) {
 
 # Make cell_id and sequence_id unique
 
+<div class="introduction_paragraph">
 There could still exist duplicated `cell_id` or `sequence_id`,
 that are not doublets or suspected contaminants, between samples. This
 could cause issues downstream. For example, when finding clones by subject, if
@@ -379,12 +406,22 @@ different samples of the same subject happen to share `cell_id`,
 
 To avoid this, we add a numeric suffix (`-1`, `-2`,... up to the number of 
 samples) to `sequence_id` and `cell_id`.
+</div>
+
+```{r results="asis", echo=FALSE}
+
+# Global unique cell_id
+sample_ids <- unique(db[["sample_id"]])
+db <- db %>%
+        mutate(cell_id = paste(cell_id, match(sample_id, sample_ids),
+                               sep = "-"),
+               sequence_id = paste(sequence_id, match(sample_id, sample_ids),
+                                   sep = "-"))
+```
 
 # Final repertoires 
 
 ```{r outsetup, echo=FALSE}
-# Remove cells (all sequences in cells) with duplicated sequences
-# pass <- qc_results$log$scqc_pass
 if (dups_found) {
   pass <- dups[["dups"]][["sc_duplicate_cell"]] == FALSE
 } else {
@@ -407,18 +444,7 @@ if (!is.null(params$log)) {
 ```
 
 ```{r dbpass, results="asis", echo=FALSE}
-# Save data, sequences that pass, while making cell_id and sequence id unique
-db <- db[pass, , drop=FALSE]
-
-# Global unique cell_id
-sample_ids <- unique(db[["sample_id"]])
-db <- db %>%
-        mutate(cell_id = paste(cell_id, match(sample_id, sample_ids),
-                               sep = "-"),
-               sequence_id = paste(sequence_id, match(sample_id, sample_ids),
-                                   sep = "-"))
-
-output_groups <- db %>%
+output_groups <- db[pass, , drop=FALSE] %>%
                    ungroup() %>%
                    select(!!!rlang::syms(c(params$outputby, "input_file"))) %>%
                    group_by(!!!rlang::syms(params$outputby)) %>%
@@ -456,7 +482,7 @@ for (i in 1:nrow(output_groups)) {
     group_db <- data.frame()
     
     if (this_group[["output_size"]]>0) {
-        group_db <- right_join(db, this_group,
+        group_db <- right_join(db[pass, , drop=FALSE], this_group,
                                by = c(params$outputby, "input_file")) %>%
             select(-input_file, -num_input_files, -input_size, -output_size)
         
@@ -475,7 +501,7 @@ for (i in 1:nrow(output_groups)) {
 }
 ```
 
-```{r dbfailed-save, evaluate=dups_found, results="asis", echo=FALSE}
+```{r dbfailed-save, eval=dups_found, results="asis", echo=FALSE}
 # Save the failed sequences into a separate file if duplicates found
 failed_db <- db[!pass, , drop=FALSE]
 write_rearrangement(failed_db, file = file.path(params$outdir, "repertoires", failed_fn))
