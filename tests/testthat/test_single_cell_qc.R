@@ -110,8 +110,19 @@ test_that("single cell qc example", {
                   report_params=list('outdir'=tmp_dir,
                                      'log'='test_scqc_command_log'))
   report_scqc_dir <- file.path(tmp_dir,"enchantr")
-  repertoire_analyzed <- list.files(file.path(report_scqc_dir, "repertoires"), full.names = TRUE)
-  expect_equal(length(repertoire_analyzed),2)
+  repertoire_dir <- file.path(report_scqc_dir, "repertoires")
+  pass_files <- list.files(
+    repertoire_dir,
+    pattern = "_scqc-pass\\.tsv\\.gz$",
+    full.names = TRUE
+  )
+  fail_files <- list.files(
+    repertoire_dir,
+    pattern = "_scqc-contamination-fail\\.tsv\\.gz$",
+    full.names = TRUE
+  )
+  expect_length(pass_files, 1)
+  expect_length(fail_files, 0)
 })
 
 test_that("single cell qc contamination checking and removal are independent", {
