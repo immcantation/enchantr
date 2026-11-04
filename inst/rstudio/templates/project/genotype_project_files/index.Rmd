@@ -77,7 +77,7 @@ params:
       input: checkbox
       value: FALSE
    min_confidence:
-      label: "`min_confidence`: [method='bayesian'] Genes with k_diff below this value keep all their reference alleles."
+      label: "`min_confidence`: [method='bayesian'] Genes with k_diff below this value could not be confidently genotyped and keep all their reference alleles."
       input: numeric
       value: 1
    method:
