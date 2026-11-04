@@ -189,7 +189,7 @@ test_that("single cell qc contamination checking and removal are independent", {
     )
     fail_files <- list.files(
       repertoire_dir,
-      pattern = "_scqc-contamination-fail\\.tsv\\.gz$",
+      pattern = "_scqc-contaminated\\.tsv\\.gz$",
       full.names = TRUE
     )
 

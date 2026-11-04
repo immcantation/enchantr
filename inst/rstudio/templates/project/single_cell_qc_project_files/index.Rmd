@@ -15,7 +15,7 @@ params:
    author:
        value: "Authors: Susanna Marquez, Edel Aron, Huimin Lyu"
    input: 
-      label: "`input`: Path to repertoires file"
+      label: "`input`: Path to repertoire file"
       input: file
       value: "scExampleDb.tsv.gz"
    outname:
@@ -102,7 +102,7 @@ file.copy(params$logo,
 printParams(params)
 ```
 
-```{r echo=FALSE, results="asis", echo=FALSE}
+```{r echo=FALSE, results="asis"}
 print_table_caption(tag = "input", text = "Input parameters.")
 save(params, file = file.path(params$outdir, "params.RData"))
 ```
@@ -175,7 +175,7 @@ tab$table
 print_table_caption(tag = "seqs_per_cell", text = tab$caption)
 ```
 
-# Filtration
+# Filtering
 
 ## Remove cells without heavy chains
 
@@ -259,18 +259,18 @@ remove_contamination <- calculate_contamination && isTRUE(params$removecontamina
 dups_found <- FALSE
 ```
 
-```{r sc-duplicates, eval=calculate_contamination, results="asis"}
-## Find duplicated sequences
+```{r sc-contaminants, eval=calculate_contamination, results="asis"}
+## Find sequence contamination
 dups <- findSingleCellDuplicates(db, fields = "sample_id", cell_id = "cell_id",
                                  seq = "sequence_alignment", mode = "sequences")
 dups_found <- sum(dups$dups$sc_duplicate, na.rm = T) > 0
 ```
 
-```{r sc-duplicates-zero, results="asis", eval=calculate_contamination && !dups_found, echo=FALSE}
+```{r sc-contaminants-zero, results="asis", eval=calculate_contamination && !dups_found, echo=FALSE}
 cat("No suspicious overlaps detected.\n\n")
 ```
 
-```{r sc-duplicates-summary, results="asis", eval=dups_found}
+```{r sc-contaminants-summary, results="asis", eval=dups_found}
 dups$dups <- dups$dups %>%
                group_by(sample_id, cell_id) %>%
                mutate(sc_duplicate_cell = if_else(any(sc_duplicate),
@@ -283,32 +283,28 @@ num_cells_with_dups <- dups$dups %>%
                          nrow()
 
 if(remove_contamination){
-  cat(paste(sum(dups$dups$sc_duplicate), "sequence contaminations were detected. Removing ",
+  cat(paste(sum(dups$dups$sc_duplicate), "sequences were detected that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) among different samples. Removing ",
           sum(dups$dups$sc_duplicate_cell), "sequences belonging to",
           num_cells_with_dups , "suspicious cells."))
 }else{
-  cat(paste(sum(dups$dups$sc_duplicate), "sequence contaminations were detected. No sequences were removed because parameter `removecontamination` is set to `FALSE`."))
+  cat(paste(sum(dups$dups$sc_duplicate), "sequences detected that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) among different samples. No sequences were removed because parameter `removecontamination` is set to `FALSE`."))
 }
 
 dups_summary <- dups[["dups"]] %>%
     group_by(sample_id) %>%
-    summarize(duplicates = sum(sc_duplicate_cell, na.rm = TRUE),
-              not_duplicates = sum(!sc_duplicate_cell, na.rm = TRUE)
+    summarize(contaminants = sum(sc_duplicate_cell, na.rm = TRUE),
+              not_contaminants= sum(!sc_duplicate_cell, na.rm = TRUE)
               ) %>%
     rowwise() %>%
-    mutate(duplication_percent = 100 * duplicates /
-               sum(duplicates + not_duplicates))
+    mutate(contaminants_percent = 100 * contaminants /
+               sum(contaminants + not_contaminants))
 
 tab_dups_summary <- eetable(
-    dups_summary %>% mutate(duplication_percent = round(duplication_percent, 2)),
-    caption = "Summary of duplicated sequences: sequences belonging to cells
-               with suspicious sequences (sequences that have the same cell_id
-               and sequence across samples). The percent represents the number
-               of duplicated sequences over the total of sequences in the
-               sample.")
+    dups_summary %>% mutate(contaminants_percent = round(contaminants_percent, 2)),
+    caption = "Summary of contaminants: Sequences are defined as contaminated if they belong to contaminated cells (cells that contain sequences that share the same `cell_id` and nucleotide sequence (`sequence_alignment`) among different samples.). The contamination percentage is calculated as the number of contaminated sequences divided by the total number of sequences in each sample.")
 
 tab_dups_summary$table %>% 
-    formatStyle("duplication_percent", target = "cell",
+    formatStyle("contaminants_percent", target = "cell",
                 backgroundColor =
                   styleInterval(0:100, round(seq(255, 40,
                                                  length.out = length(0:100) + 1), 0) %>%
@@ -353,7 +349,7 @@ ggplotly(p_sc_duplicates) %>% layout(barmode = "stack")
 
 cat("## Cell overlaps matrix")
 
-# find the number of cells having same seq and cell barcode
+# find the number of cells having the same seq and cell barcode
 dup_count <- singleCellSharingCounts(dups)
 
 if (nrow(dup_count) > 0) {
@@ -364,9 +360,7 @@ if (nrow(dup_count) > 0) {
     
     overlap_summary_tab <- eetable(
         overlap_summary,
-        caption = "Summary of duplicated cells: cells that have sequences with a
-                   combination of cell_id and sequence found in multiple
-                   samples."
+        caption = "Summary of contaminated cells: cells that have the same cell_id and identical sequences found in multiple samples."
     )
     
     overlap_summary_tab$table %>% 
@@ -384,7 +378,7 @@ print_table_caption(tag = "overlap_summary", text = overlap_summary_tab$caption)
 ```
 
 ```{r p-overlap-matrix, fig.width=getPrettyWidth(n_samples), fig.height=getPrettyHeight(n_samples), fig.cap=caption, eval=dups_found}
-# plot duplicated cells
+# plot contaminated cells
 caption <- NULL
 if (nrow(dup_count) > 0) {
   p_overlap_matrix <- plotOverlapSingleCell(dup_count) + theme_enchantr() + 
@@ -393,7 +387,7 @@ if (nrow(dup_count) > 0) {
   )
   p_overlap_matrix <- eeplot(p_overlap_matrix, params$outdir,
                              knitr::opts_current$get("label"),
-                             caption = "Duplicated cells.")
+                             caption = "Contaminated cells.")
   caption <- p_overlap_matrix$enchantr$html_caption
   
   ggplotly(p_overlap_matrix)
@@ -403,8 +397,7 @@ if (nrow(dup_count) > 0) {
 # Make cell_id and sequence_id unique
 
 <div class="introduction_paragraph">
-There could still exist duplicated `cell_id` or `sequence_id`,
-that are not doublets or suspected contaminants, between samples. This
+Duplicated `cell_id` or `sequence_id` between samples, that are not doublets or suspected contaminants, may still exist. This
 could cause issues downstream. For example, when finding clones by subject, if
 different samples of the same subject happen to share `cell_id`, 
 `scoper::hierarchicalClones` would stop with an error.
@@ -437,10 +430,10 @@ output_pass <- if (remove_contamination) pass else rep(TRUE, nrow(db))
 
 if (!is.null(params$outname)) {
   output_fn <- paste0(params$outname, "_scqc-pass.tsv.gz")
-  failed_fn <- paste0(params$outname, "_scqc-contamination-fail.tsv.gz")
+  failed_fn <- paste0(params$outname, "_scqc-contaminated.tsv.gz")
 } else {
   output_fn <- sub("\\.tsv(\\.gz)?$", "_scqc-pass.tsv.gz", basename(params$input))
-  failed_fn <- sub("\\.tsv(\\.gz)?$", "_scqc-contamination-fail.tsv.gz", basename(params$input))
+  failed_fn <- sub("\\.tsv(\\.gz)?$", "_scqc-contaminated.tsv.gz", basename(params$input))
 }
 
 if (!is.null(params$log)) {
@@ -509,12 +502,17 @@ for (i in 1:nrow(output_groups)) {
 ```
 
 ```{r dbfailed-heading, eval=dups_found, results="asis", echo=FALSE}
-cat("Find sequences that failed the contamination check here, saved by ",
+cat("Find contaminated sequences here, saved by ",
     paste(params$outputby, collapse=", "), ".\n\n", sep = "")
+if (remove_contamination) {
+  cat("These sequences were removed from the output repertoires.")
+} else{
+  cat("These sequences were not removed from the output repertoires because parameter `removecontamination` is set to FALSE.")
+}
 ```
 
 ```{r dbfailed-save, eval=dups_found, results="asis", echo=FALSE}
-# Save the failed sequences into a separate file if duplicates found
+# Save the contaminated sequences into a separate file if sequence contamination found. If parameter `removecontamination` is FALSE, these sequences were not removed from the output repertoires. 
 
 failed_output_groups <- db[!pass, , drop=FALSE] %>%
     ungroup() %>%
