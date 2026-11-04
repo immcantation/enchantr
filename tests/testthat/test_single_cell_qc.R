@@ -110,6 +110,128 @@ test_that("single cell qc example", {
                   report_params=list('outdir'=tmp_dir,
                                      'log'='test_scqc_command_log'))
   report_scqc_dir <- file.path(tmp_dir,"enchantr")
-  repertoire_analyzed <- list.files(file.path(report_scqc_dir, "repertoires"), full.names = TRUE)
-  expect_equal(length(repertoire_analyzed),2)
+  repertoire_dir <- file.path(report_scqc_dir, "repertoires")
+  pass_files <- list.files(
+    repertoire_dir,
+    pattern = "_scqc-pass\\.tsv\\.gz$",
+    full.names = TRUE
+  )
+  fail_files <- list.files(
+    repertoire_dir,
+    pattern = "_scqc-contamination-fail\\.tsv\\.gz$",
+    full.names = TRUE
+  )
+  expect_length(pass_files, 1)
+  expect_length(fail_files, 0)
+})
+
+test_that("single cell qc contamination checking and removal are independent", {
+  skip_on_cran()
+
+  example_file <- system.file(
+    "rstudio", "templates", "project", "single_cell_qc_project_files",
+    "scExampleDb.tsv.gz",
+    package = "enchantr"
+  )
+  example_db <- airr::read_rearrangement(example_file)
+  example_db[["sample_id"]] <- "sample_1"
+
+  # Copy several complete cells into a second sample. Their cell IDs and
+  # sequences deliberately match sample_1, so the contamination check must
+  # classify those cells as duplicates while leaving other sample_1 cells.
+  eligible_db <- findLightOnlyCells(
+    example_db,
+    sample_id = "sample_id",
+    cell_id = "cell_id",
+    locus = "locus",
+    fields = NULL
+  )
+  eligible_db <- eligible_db[!eligible_db[["light_only_cell"]], , drop = FALSE]
+  eligible_db <- removeDoublets(
+    eligible_db,
+    cell_id = "cell_id",
+    locus = "locus",
+    sequence_id = "sequence_id",
+    fields = "sample_id"
+  )
+  contaminated_cell_ids <- head(unique(eligible_db[["cell_id"]]), 10)
+  expect_gt(length(contaminated_cell_ids), 0)
+  contaminated_db <- example_db[
+    example_db[["cell_id"]] %in% contaminated_cell_ids,
+    ,
+    drop = FALSE
+  ]
+  contaminated_db[["sample_id"]] <- "sample_2"
+  test_db <- rbind(example_db, contaminated_db)
+  test_input <- tempfile("scqc_contamination_input_", fileext = ".tsv.gz")
+  airr::write_rearrangement(test_db, test_input)
+
+  render_scqc <- function(checkcontamination, removecontamination) {
+    tmp_dir <- tempfile("scqc_contamination_")
+    dir.create(tmp_dir)
+
+    enchantr_report(
+      "single_cell_qc",
+      report_params = list(
+        outdir = tmp_dir,
+        input = test_input,
+        log = "test_scqc_command_log",
+        checkcontamination = checkcontamination,
+        removecontamination = removecontamination
+      )
+    )
+
+    repertoire_dir <- file.path(tmp_dir, "enchantr", "repertoires")
+    pass_files <- list.files(
+      repertoire_dir,
+      pattern = "_scqc-pass\\.tsv\\.gz$",
+      full.names = TRUE
+    )
+    fail_files <- list.files(
+      repertoire_dir,
+      pattern = "_scqc-contaminated\\.tsv\\.gz$",
+      full.names = TRUE
+    )
+
+    read_sequence_ids <- function(files) {
+      if (length(files) == 0) {
+        return(character())
+      }
+      unlist(lapply(files, function(file) {
+        airr::read_rearrangement(file)[["sequence_id"]]
+      }), use.names = FALSE)
+    }
+
+    list(
+      pass = read_sequence_ids(pass_files),
+      fail = read_sequence_ids(fail_files)
+    )
+  }
+
+  unchecked <- render_scqc(
+    checkcontamination = FALSE,
+    removecontamination = TRUE
+  )
+  checked <- render_scqc(
+    checkcontamination = TRUE,
+    removecontamination = FALSE
+  )
+  removed <- render_scqc(
+    checkcontamination = TRUE,
+    removecontamination = TRUE
+  )
+
+  # Skipping the check retains every sequence and creates no failure output.
+  expect_length(unchecked$fail, 0)
+
+  # Check-only mode retains every sequence but saves detected duplicates.
+  expect_setequal(checked$pass, unchecked$pass)
+  expect_gt(length(checked$fail), 0)
+
+  # Removal mode saves the same failures and excludes them from final output.
+  expect_setequal(removed$fail, checked$fail)
+  expect_setequal(
+    removed$pass,
+    setdiff(checked$pass, checked$fail)
+  )
 })
