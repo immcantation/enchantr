@@ -65,7 +65,7 @@ params:
       input: checkbox
       value: FALSE
    single_assignments:
-      label: "`single_assignments`: Keep only calls that name one allele, or several alleles with identical reference sequences (e.g. IGHV2-70*04,IGHV2-70D*04). With method = 'bayesian', such a call counts fully toward every gene added to the genotype."
+      label: "`single_assignments`: If TRUE, use only sequences with a single allele call, or several allele calls with identical reference sequences (e.g. IGHV2-70*04,IGHV2-70D*04). If FALSE, all sequences are used, including ambiguous calls. With method = 'bayesian', an ambiguous call counts toward every gene it names."
       input: checkbox
       value: TRUE
    max_mu_freq:
@@ -73,7 +73,7 @@ params:
       input: numeric
       value: NULL
    unswitched_only:
-      label: "`unswitched_only`: Use only IGH sequences with IGHM and IGHD c_call to infer the IGHV and IGHJ genotype. IGH sequences without c_call are kept. All other loci are not affected."
+      label: "`unswitched_only`: Use only IGH sequences with IGHM and IGHD c_call to infer the IGH genotype. IGH sequences without c_call are kept. All other loci are not affected."
       input: checkbox
       value: FALSE
    min_confidence:
@@ -354,7 +354,7 @@ if (!is.null(params$max_mu_freq)) {
 if (as.logical(params$unswitched_only)) {
   if (!"c_call" %in% names(db)) stop("'unswitched_only' needs a c_call column.")
   rows_in <- nrow(db)
-  db <- db[!db$locus %in% "IGH" | is.na(db$c_call) | db$c_call == "" | grepl("^IGH?[MD]", db$c_call, ignore.case = TRUE), ]
+  db <- db[!db$locus %in% "IGH" | is.na(db$c_call) | db$c_call == "" | grepl("^IGH[MD]", db$c_call), ]
   filter_steps <- count_rows_step(filter_steps, "IgM/IgD heavy chains", rows_in, nrow(db))
 }
 
@@ -785,7 +785,7 @@ references_dir <- file.path(imgt_db, species, "vdj")
 # genes with a low confidence call keep all their alleles
 low <- rep(FALSE, nrow(genotypes))
 if (method == "bayesian") {
-    low <- (as.numeric(genotypes$confidence) < params$min_confidence) %in% TRUE
+  low <- (as.numeric(genotypes$confidence) < params$min_confidence) %in% TRUE
 }
 # generate the personal genotyped reference
 generate_genotyped_reference(
@@ -807,7 +807,7 @@ no_genotype <- data.frame(gene = setdiff(ref_genes, genotypes$gene[!low]))
 no_genotype$reason <- ifelse(!no_genotype$gene %in% genes_seen, "no sequences",
                       ifelse(no_genotype$gene %in% genotypes$gene[low], "low confidence", "not genotyped"))
 tab_no_genotype <- eetable(no_genotype,
-  caption = "Reference genes that could not be confidently genotyped. These genes will keep all their alleles in the personalized germline reference.",
+  caption = "Reference genes without a confident genotype (no sequences, low confidence, or not genotyped). These genes keep all their alleles in the personalized germline reference.",
   outdir = params$outdir, file = "tab_no_genotype")
 tab_no_genotype$table
 ```

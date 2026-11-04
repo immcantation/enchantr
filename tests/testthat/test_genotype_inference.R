@@ -212,7 +212,7 @@ test_that("genotype report filters and low confidence genes", {
   db <- read.delim(input, sep = "\t", quote = "")
   db$locus <- "IGH"
   db$mu_freq <- rep_len(c(0, 0.05, 0.2), nrow(db))
-  db$c_call <- rep_len(c("IGHM*01", "IgD", "IGHG1", NA), nrow(db))
+  db$c_call <- rep_len(c("IGHM*01", "IGHD", "IGHG1", NA), nrow(db))
   with_c_call <- tempfile(fileext = ".tsv")
   write.table(db, with_c_call, sep = "\t", row.names = FALSE, quote = FALSE)
 
@@ -227,7 +227,7 @@ test_that("genotype report filters and low confidence genes", {
   steps <- read.delim(file.path(out_dir, "tables", "tab_filters.tsv"))
   kept <- db[db$mu_freq < 0.1, ]
   expect_equal(steps$rows_out[steps$step == "IgM/IgD heavy chains"],
-               sum(is.na(kept$c_call) | grepl("^IGH?[MD]", kept$c_call, ignore.case = TRUE)))
+               sum(is.na(kept$c_call) | grepl("^IGH[MD]", kept$c_call)))
 
   # every gene is below min_confidence, so the personal reference keeps all alleles
   ref_file <- list.files(file.path(prepareIMGT(IMGT_URL), "human", "vdj"), "IGHV\\.fasta$", full.names = TRUE)
