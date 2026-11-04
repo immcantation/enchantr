@@ -65,7 +65,7 @@ params:
       input: checkbox
       value: FALSE
    single_assignments:
-      label: "`single_assignments`: Keep only calls that name one allele, or several alleles with identical reference sequences (e.g. IGHV2-70*04,IGHV2-70D*04). With method = 'bayesian', such a call counts fully toward every gene it names."
+      label: "`single_assignments`: Keep only calls that name one allele, or several alleles with identical reference sequences (e.g. IGHV2-70*04,IGHV2-70D*04). With method = 'bayesian', such a call counts fully toward every gene added to the genotype."
       input: checkbox
       value: TRUE
    max_mu_freq:
