@@ -287,7 +287,7 @@ if(remove_contamination){
           sum(dups$dups$sc_duplicate_cell), "sequences belonging to",
           num_cells_with_dups , "suspicious cells."))
 }else{
-  cat(paste(sum(dups$dups$sc_duplicate), "duplicated sequences detected. No sequences were removed because parameter `removecontamination` is set to `FALSE`."))
+  cat(paste(sum(dups$dups$sc_duplicate), "sequence contaminations were detected. No sequences were removed because parameter `removecontamination` is set to `FALSE`."))
 }
 
 dups_summary <- dups[["dups"]] %>%
