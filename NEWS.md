@@ -27,6 +27,7 @@ General:
 + Add RAbHIT haplotype inference project.
 + Add `piglet` and `rabhit` as suggested dependencies.
 + Fix genotype plots being cropped when a segment contained only a few genes.
++ Fix report rendering for Pandoc >=3.x.
 
 
 Version 0.1.25: May 11, 2026
