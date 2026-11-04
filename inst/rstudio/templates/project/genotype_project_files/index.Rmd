@@ -73,7 +73,7 @@ params:
       input: text
       value: ""
    unswitched_only:
-      label: "`unswitched_only`: Keep only IgM and IgD heavy chains. Light chains, TR and heavy chains without c_call are kept."
+      label: "`unswitched_only`: Use only IGH sequences with IGHM and IGHD c_call to infer the IGHV and IGHJ genotype. IGH sequences without c_call are kept. All other loci are not affected."
       input: checkbox
       value: FALSE
    min_confidence:
