@@ -71,7 +71,7 @@ params:
    max_mu_freq:
       label: "`max_mu_freq`: Use only sequences below this V-region mutation frequency value to infer the genotype. Empty: no filter."
       input: numeric
-      value: ""
+      value: NULL
    unswitched_only:
       label: "`unswitched_only`: Use only IGH sequences with IGHM and IGHD c_call to infer the IGHV and IGHJ genotype. IGH sequences without c_call are kept. All other loci are not affected."
       input: checkbox
