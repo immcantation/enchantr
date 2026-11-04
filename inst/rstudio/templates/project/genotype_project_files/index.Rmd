@@ -784,7 +784,9 @@ This yields a personal reference restricted to genotype-validated alleles for se
 references_dir <- file.path(imgt_db, species, "vdj")
 # genes with a low confidence call keep all their alleles
 low <- rep(FALSE, nrow(genotypes))
-if (method == "bayesian") low <- (as.numeric(genotypes$confidence) < params$min_confidence) %in% TRUE
+if (method == "bayesian") {
+    low <- (as.numeric(genotypes$confidence) < params$min_confidence) %in% TRUE
+}
 # generate the personal genotyped reference
 generate_genotyped_reference(
   genotypes = genotypes[!low, ],
