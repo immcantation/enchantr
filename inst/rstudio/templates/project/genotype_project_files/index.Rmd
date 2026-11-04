@@ -341,7 +341,7 @@ rows_in <- nrow(db)
 db <- db %>% dplyr::filter(.data[["junction_length"]] %% 3 == 0)
 filter_steps <- count_rows_step(filter_steps, "junction_length %% 3 == 0", rows_in, nrow(db))
 
-if (has_path(params$max_mu_freq)) {
+if (!is.null(params$max_mu_freq)) {
   if (!"mu_freq" %in% names(db)) {
     db <- shazam::observedMutations(db, sequenceColumn = params$seq_column, germlineColumn = params$germline_column,
                                     regionDefinition = shazam::IMGT_V, frequency = TRUE, combine = TRUE)
