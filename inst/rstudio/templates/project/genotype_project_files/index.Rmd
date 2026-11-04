@@ -69,7 +69,7 @@ params:
       input: checkbox
       value: TRUE
    max_mu_freq:
-      label: "`max_mu_freq`: Keep sequences with V-region mutation frequency below this value. Empty: no filter."
+      label: "`max_mu_freq`: Use only sequences below this V-region mutation frequency value to infer the genotype. Empty: no filter."
       input: text
       value: ""
    unswitched_only:
