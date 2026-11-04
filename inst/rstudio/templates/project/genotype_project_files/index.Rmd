@@ -805,7 +805,7 @@ no_genotype <- data.frame(gene = setdiff(ref_genes, genotypes$gene[!low]))
 no_genotype$reason <- ifelse(!no_genotype$gene %in% genes_seen, "no sequences",
                       ifelse(no_genotype$gene %in% genotypes$gene[low], "low confidence", "not genotyped"))
 tab_no_genotype <- eetable(no_genotype,
-  caption = "Reference genes without a genotype. They keep all their alleles in the personal reference.",
+  caption = "Reference genes that could not be confidently genotyped. These genes will keep all their alleles in the personalized germline reference.",
   outdir = params$outdir, file = "tab_no_genotype")
 tab_no_genotype$table
 ```
