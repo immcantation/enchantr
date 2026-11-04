@@ -87,7 +87,7 @@ gitbook_dependency = function(table_css, config = list()) {
     fuse = htmltools::htmlDependency(
         'fuse', '6.4.6', c('file' = system.file("js","fuse.js", package = "enchantr", lib.loc = NULL,
                                                 mustWork = FALSE)),
-        script = 'fuse.js@6.4.6'
+        script = 'fuse.min.js'
     )
     if (is.logical(config$search)) {
         lunr = FALSE
