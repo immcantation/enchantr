@@ -283,7 +283,7 @@ num_cells_with_dups <- dups$dups %>%
                          nrow()
 
 if(remove_contamination){
-  cat(paste(sum(dups$dups$sc_duplicate), "duplicated sequences detected. Removing ",
+  cat(paste(sum(dups$dups$sc_duplicate), "sequence contaminations were detected. Removing ",
           sum(dups$dups$sc_duplicate_cell), "sequences belonging to",
           num_cells_with_dups , "suspicious cells."))
 }else{
