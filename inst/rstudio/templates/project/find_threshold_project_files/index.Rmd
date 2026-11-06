@@ -93,7 +93,7 @@ editor_options:
 ---
 
 <div class="introduction_paragraph">
-Find threshold report containing the process to calculate and report the optimal distance threshold for partitioning clonally related sequences. The threshold estimation is accomplished by calculating the distance from each sequence in the data set to its nearest neighbor and finding the break point in the resulting bi-modal distribution that separates clonally related from unrelated sequences. The calculation is done by the Immcantation package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a>. 
+The find threshold report contains the process to calculate and report the optimal distance threshold for partitioning clonally related BCRs using the Immcantation package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a>. 
 </div>
 
 ```{r global-options, include=FALSE, cache=FALSE}
