@@ -631,7 +631,7 @@ BCRs <- any(db$locus %in% c("IGH", "IGL", "IGK"))
 ```{r eval=BCRs, results='asis'}
 cat("# Mutation frequency\n")
 cat('<div class="introduction_paragraph">
-Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence to the germline reference. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations for each entire sequence. 
+Somatic Hypermutation frequency (mu_freq) is determined by comparing a sequence to the germline reference. Function `observedMutations` from package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a> is used to calculate the observed number of mutations in the V region (by default) of each sequence. 
 </div>')
 ```
 
@@ -915,11 +915,6 @@ cat(
 )
 ```
 
-# Isotype distribution
-<div class="introduction_paragraph">
-The isotype distribution in each of the sample is represented below. Function `countGenes` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used to calculate the count and relative abundance of isotypes within groups. 
-</div>
-
 ```{r results='asis'}
 no_c_call <-  all(is.na(db$c_call))
 if(no_c_call){
@@ -927,21 +922,31 @@ if(no_c_call){
 }
 ```
 
-```{r isotype-distribution, eval= !no_c_call, echo=F, fig.width=8, fig.height=4, fig.cap=caption, results='asis'}
+```{r isotype-distribution-introduction, eval=BCRs && !no_c_call, echo=FALSE, results='asis'}
+cat(
+  '# Isotype distribution\n',
+  '<div class="introduction_paragraph">\n',
+  'The isotype distribution in each of the sample is represented below. Function `countGenes` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used to calculate the count and relative abundance of isotypes within groups.\n',
+  '</div>\n',
+  sep = ''
+)
+```
+
+```{r isotype-distribution, eval= BCRs && !no_c_call, echo=F, fig.width=6, fig.height=3, fig.cap=caption, results='asis'}
 
 caption <- "Isotype Distribution"
 
-isotype_distribution <- countGenes(db, gene="c_call", groups=c("sample_id","subject_id","locus"), mode="family") %>%    
-                       arrange(sample_id, subject_id, locus)
+
+isotype_distribution <- countGenes(db %>% filter(isHeavyChain(locus)), gene="c_gene", groups=c("sample_id","subject_id"), mode="family") %>%    
+                       arrange(sample_id, subject_id)
 
 isotype_distribution_plot <- ggplot(isotype_distribution, aes(x=gene, y=seq_freq, fill=sample_id, group=sample_id)) +
-    facet_grid(. ~ locus, scales = "free_x", space = "free_x") +
     geom_bar(position = "dodge", stat="identity") +
     theme_classic() +
     ggtitle("Isotype Distribution") +
     theme(axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
     ylab("Frequency") +
-    xlab("") +
+    xlab("Isotype") +
     theme(legend.position = "right")
 
 
@@ -975,8 +980,9 @@ cat("- [V_family_usage_bySequence](tables/V_family_usage_bySequence.tsv)\n", sep
 cat("- [V_family_usage_byClone](tables/V_family_usage_byClone.tsv)\n", sep="")
 cat("- [V_usage_bySequence](tables/V_usage_bySequence.tsv)\n", sep="")
 cat("- [V_usage_byClone](tables/V_usage_byClone.tsv)\n", sep="")
-cat("- [Isotype_Distribution](tables/Isotype_Distribution.tsv)\n", sep="")
-
+if(BCRs && !no_c_call){
+  cat("- [Isotype_Distribution](tables/Isotype_Distribution.tsv)\n", sep="")
+}
 ```
 
 Find your final repertoires here:
