@@ -67,7 +67,7 @@ immcantation <- function(...) {
                       config=c(immcantation_config[['config']],
                                immcantation_config['fontsettings']
                                ),
-                      code_folding="hide", self_contained=FALSE,
+                      code_folding="hide", self_contained= FALSE,
                       split_by = "none"
                       )
     invisible(b)
