@@ -92,6 +92,10 @@ editor_options:
   chunk_output_type: console
 ---
 
+<div class="introduction_paragraph">
+The find threshold report contains the process to calculate and report the optimal distance threshold for partitioning clonally related BCRs using the Immcantation package <a href="https://shazam.readthedocs.io/en/stable/" target="_blank">SHazaM</a>. 
+</div>
+
 ```{r global-options, include=FALSE, cache=FALSE}
 knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.path = "figures/",
                       echo=params$echo,cache=params$cache,
@@ -208,9 +212,11 @@ print_table_caption(tag="input_summary", text="Input data summary.")
 
 # Calculate Threshold for Clonal Relationships
 
+<div class="introduction_paragraph">
 The `shazam` package provides methods to find an appropriate distance threshold to determine clonal relationships for each dataset (`distToNearest` and `findThreshold`) by generating a distribution of distances between each sequence and its closest non-identical neighbor. Typically, the distance-to-nearest distribution for a repertoire is bimodal. The first mode (on the left) represents sequences that have at least one clonal relative in the dataset, while the second mode (on the right) is representative of the sequences that do not have any clonal relatives in the data. A reasonable threshold will separate these two modes of the distribution. The distance may be selected manually, or `findThreshold` can be used to automatically select a threshold.
 
-Specifying the `cross` argument to `distToNearest` forces distance calculations to be performed across groups, such that the nearest neighbor of each sequence will always be a sequence in a different group. 
+Specifying the `cross` argument to `distToNearest` forces distance calculations to be performed across groups (typically different subjects), such that the nearest neighbor of each sequence will always be a sequence in a different group. This allows comparison of within-subject and cross-subject distance distributions, based on the assumption that sequences from different subjects are unlikely to be clonally related.
+</div>
 
 ```{r sum_heavy_0, eval=sum(is_heavy)==0, echo=sum(is_heavy)==0, results='asis'}
 cat("0 heavy chain sequences present. `distToNearest` requires heavy chain data. Setting `dist_neartest` to 'NA'")
@@ -277,7 +283,7 @@ if (any(db[[singlecell]] == T) && sum(sc_heavy)>0) {
 
 ## `distToNearest` plot
 
-```{r dtnplot, fig.width=8, fig.height=min(50,max(4, nrow(unique(db[,unique(c("sample_id", params$cloneby, singlecell))], drop=F))/2)), fig.cap=caption}
+```{r dtnplot, fig.width=8, fig.height=min(50,max(4, nrow(unique(db[,unique(c("sample_id", params$cloneby, singlecell))], drop=F)))), fig.cap=caption}
 
 caption <- paste0("Distribution of the distance to the nearest sequence within ",
             paste(params$cloneby, collapse=","),", displayed by sample_id. When ",
@@ -346,7 +352,9 @@ caption <- dtnplot$enchantr$html_caption
 
 ## Find threshold
 
+<div class="introduction_paragraph">
 `findThreshold` uses the distribution of distances calculated in the previous step to determine an appropriate threshold for the dataset. 
+</div>
 
 
 ### Threshold(s) summary table
@@ -383,7 +391,7 @@ threshold_summary <- gmmSummary(threshold) %>%
     mutate(mean_threshold=mean(threshold, na.rm=TRUE))
 mean_threshold <- round(threshold_summary$mean_threshold[1],2)
 
-tab_caption <- paste0("Summary of threshold values, p-value from Hartigans’ dip statistic (HDS) test with <0.05 indicating significant bimodality. Mean threshold is: ", mean_threshold)
+tab_caption <- paste0("Summary of threshold values, p-value from Hartigans's dip statistic (HDS) test with <0.05 indicating significant bimodality. Mean threshold is: ", mean_threshold, ".")
 if (!is.null(subsample)) {
     tab_caption <- paste0(tab_caption," Subsampling requested: ", subsample, ".")
 }
@@ -427,6 +435,18 @@ tmp <- lapply(threshold, function(thr) {
     print(p)
     caption_list <<- c(caption_list, p$enchantr$html_caption)    
 })
+```
+
+
+```{r, eval=!all(is.na(db[['dist_nearest']])), results='asis'}
+cat("### Threshold Result \n")
+
+cat(paste0(
+  "The mean threshold across all samples is ", mean_threshold,
+  ". This value can be used for clonal inference. ",
+  "Alternatively, you can select a more appropriate threshold ",
+  "based on prior biological knowledge and the `distToNearest` plot.\n"
+))
 ```
 
 # Save
