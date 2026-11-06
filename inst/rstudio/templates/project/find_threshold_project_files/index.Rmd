@@ -215,7 +215,7 @@ print_table_caption(tag="input_summary", text="Input data summary.")
 <div class="introduction_paragraph">
 The `shazam` package provides methods to find an appropriate distance threshold to determine clonal relationships for each dataset (`distToNearest` and `findThreshold`) by generating a distribution of distances between each sequence and its closest non-identical neighbor. Typically, the distance-to-nearest distribution for a repertoire is bimodal. The first mode (on the left) represents sequences that have at least one clonal relative in the dataset, while the second mode (on the right) is representative of the sequences that do not have any clonal relatives in the data. A reasonable threshold will separate these two modes of the distribution. The distance may be selected manually, or `findThreshold` can be used to automatically select a threshold.
 
-Specifying the `cross` argument to `distToNearest` forces distance calculations to be performed across groups, such that the nearest neighbor of each sequence will always be a sequence in a different group. This can provide a sense of overlap between samples or a way to compare within-sample variation to cross-sample variation.
+Specifying the `cross` argument to `distToNearest` forces distance calculations to be performed across groups (typically different subjects), such that the nearest neighbor of each sequence will always be a sequence in a different group. This allows comparison of within-subject and cross-subject distance distributions, based on the assumption that sequences from different subjects are unlikely to be clonally related.
 </div>
 
 ```{r sum_heavy_0, eval=sum(is_heavy)==0, echo=sum(is_heavy)==0, results='asis'}
