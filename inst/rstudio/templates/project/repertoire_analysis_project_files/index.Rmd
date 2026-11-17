@@ -918,7 +918,7 @@ cat(
 ```{r results='asis'}
 no_c_call <-  all(is.na(db$c_call))
 if(no_c_call){
-  cat("Istype distribution skipped becasue no constant region is present in the sequences.\n ")
+  cat("Isotype distribution skipped becasue no constant region is present in the sequences.\n ")
 }
 ```
 
