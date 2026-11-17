@@ -24,6 +24,14 @@ params:
       label: "`collapse_count_colname`"
       input: text
       value: "collapse_count"
+   num_fields:
+      label: "`num_fields`: names of numeric columns to collapse, as a character vector or a comma-separated string. The numeric annotations of duplicate sequences will be summed. `consensus_count` and `duplicate_count` are always included if present."
+      input: text
+      value: ""
+   text_fields:
+      label: "`text_fields`: names of textual columns to collapse, as a character vector or a comma-separated string. The textual annotations of duplicate sequences will be merged into a single string with each unique value alphabetized and delimited by sep."
+      input: text
+      value: ""
    outname:
       label: "`outname`"
       input: text
@@ -241,12 +249,38 @@ table(duplicated(db[['sequence_alignment']]))
 ```
 
 ```{r findDuplicates, warning=TRUE}
-num_fields <- c("consensus_count","duplicate_count")
-num_fields <- num_fields[num_fields %in% colnames(db)]
+# Parse field parameters: accepts a character vector, a list,
+# or a comma-separated string (e.g. from the command line)
+user_num_fields <- parse_fields(params$num_fields)
+user_text_fields <- parse_fields(params$text_fields)
+
+# append default numeric fields if not already included
+default_num_fields <- c("consensus_count","duplicate_count")
+num_fields <- unique(c(user_num_fields, default_num_fields))
+# Give warning if any of the user-requested numeric fields are not present in the data
+missing_num_fields <- setdiff(user_num_fields, colnames(db))
+if (length(missing_num_fields) > 0) {
+  warning("The following numeric fields are not present in the data: ", paste(missing_num_fields, collapse=", "))
+}
+# keep only the numeric fields present in the data, and make sure they are numeric
+num_fields <- intersect(num_fields, colnames(db))
+for (f in num_fields) {
+  if (!is.numeric(db[[f]])) {
+    db[[f]] <- suppressWarnings(as.numeric(db[[f]]))
+  }
+}
 if (length(num_fields)<1) {num_fields <- NULL}
 
+# Give warning if any of the text fields are not present in the data
+missing_text_fields <- setdiff(user_text_fields, colnames(db))
+if (length(missing_text_fields) > 0) {
+  warning("The following text fields are not present in the data: ", paste(missing_text_fields, collapse=", "))
+}
+text_fields <- intersect(unique(user_text_fields), colnames(db))
+if (length(text_fields)<1) {text_fields <- NULL}
+
 if (params$collapse_count_colname %in% colnames(db)){
-    cat(paste0(
+    warning(paste0(
       "⚠️ Column '", params$collapse_count_colname, "' already exists in the input data.\n",
       "Change the parameter 'collapse_count_colname' to name the new column for collapsed counts.\n",
       "Otherwise, the old one will be overwritten by the new one.\n"
@@ -274,7 +308,7 @@ if (params$collapseby=='subject_id'){
 
 db <- findDuplicates(db, 
                groups=params$collapseby, 
-               text_fields=NULL,
+               text_fields=text_fields,
                num_fields=num_fields,
                seq_fields=NULL,
                nproc=params[['nproc']])

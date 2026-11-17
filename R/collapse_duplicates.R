@@ -178,6 +178,26 @@ findDuplicates <- function (db,
       select(!any_of(c('collapse_idx', 'finddups_row_idx')))
 }
 
+#' Parse a field-name parameter into a character vector
+#'
+#' Normalizes report parameters such as \code{num_fields} and \code{text_fields}
+#' that may be given as a character vector, a list, or a comma-separated
+#' string (e.g. from the command line).
+#'
+#' @param x a character vector, list, comma-separated string, or \code{NULL}.
+#' @return a character vector of trimmed, non-empty field names
+#'         (\code{character(0)} if none).
+#' @examples
+#' parse_fields("consensus_count, umi_count")
+#' parse_fields(c("consensus_count", "umi_count"))
+#' parse_fields(NULL)
+#' @export
+parse_fields <- function(x) {
+    if (is.null(x)) return(character(0))
+    x <- trimws(unlist(strsplit(as.character(unlist(x)), ",")))
+    x[!is.na(x) & x != ""]
+}
+
 #' This is the function to mask a single sequence at a specific IMGT position from 5' end
 #' @export
 mask_single_5_prime_seq <- function(sequence_aligned, mask_imgt_position) {
