@@ -266,7 +266,7 @@ if (length(missing_num_fields) > 0) {
 num_fields <- intersect(num_fields, colnames(db))
 for (f in num_fields) {
   if (!is.numeric(db[[f]])) {
-    db[[f]] <- suppressWarnings(as.numeric(db[[f]]))
+    db[[f]] <- as.numeric(db[[f]])
   }
 }
 if (length(num_fields)<1) {num_fields <- NULL}
