@@ -9,6 +9,8 @@
 #' @param input Path to repertoires file. (index.Rmd: input)
 #' @param collapseby Name of the column(s) in the input data that will be used to group sequences for collapsing. (index.Rmd: collapseby)
 #' @param collapse_count_colname Name of the column to store the collapsed count. (index.Rmd: collapse_count_colname)
+#' @param num_fields Names of numeric columns whose values are summed across duplicates, as a character vector or a comma-separated string. `consensus_count` and `duplicate_count` are always included if present. (index.Rmd: num_fields)
+#' @param text_fields Names of text columns whose unique values are merged across duplicates, as a character vector or a comma-separated string. (index.Rmd: text_fields)
 #' @param outname Output file name prefix. (index.Rmd: outname)
 #' @param outputby Name of the column in input that contains sample identifiers used to split the output db. (index.Rmd: outputby)  
 #' @param nproc Number of processors to use for parallel processing. (index.Rmd: nproc)
@@ -176,6 +178,26 @@ findDuplicates <- function (db,
       left_join(collapse_pass %>% select(any_of(c("finddups_row_idx", "collapse_count",text_fields, num_fields, seq_fields))), by="finddups_row_idx") %>%
       arrange(finddups_row_idx) %>%
       select(!any_of(c('collapse_idx', 'finddups_row_idx')))
+}
+
+#' Parse a field-name parameter into a character vector
+#'
+#' Normalizes report parameters such as \code{num_fields} and \code{text_fields}
+#' that may be given as a character vector, a list, or a comma-separated
+#' string (e.g. from the command line).
+#'
+#' @param x a character vector, list, comma-separated string, or \code{NULL}.
+#' @return a character vector of trimmed, non-empty field names
+#'         (\code{character(0)} if none).
+#' @examples
+#' parse_fields("consensus_count, umi_count")
+#' parse_fields(c("consensus_count", "umi_count"))
+#' parse_fields(NULL)
+#' @export
+parse_fields <- function(x) {
+    if (is.null(x)) return(character(0))
+    x <- trimws(unlist(strsplit(as.character(unlist(x)), ",")))
+    x[!is.na(x) & x != ""]
 }
 
 #' This is the function to mask a single sequence at a specific IMGT position from 5' end
