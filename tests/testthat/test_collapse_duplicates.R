@@ -241,3 +241,83 @@ test_that("c_call is filled from c_region whatever the locus", {
   ))
   expect_setequal(unique(out$c_call), c("IGHM", "IGHG1", NA))
 })
+
+#### num_fields and text_fields parameters ####
+
+test_that("parse_fields accepts vectors, lists and comma-separated strings", {
+  expect_equal(parse_fields(c("a", "b")), c("a", "b"))
+  expect_equal(parse_fields(list("a", "b")), c("a", "b"))
+  expect_equal(parse_fields("a, b"), c("a", "b"))
+  expect_equal(parse_fields(" a ,b,, "), c("a", "b"))
+  expect_equal(parse_fields(""), character(0))
+  expect_equal(parse_fields(NULL), character(0))
+  expect_equal(parse_fields(NA), character(0))
+})
+
+# Input with an extra numeric column (umi_count) and text column (barcode)
+# to collapse via num_fields and text_fields.
+write_collapse_fields_input <- function() {
+  db <- read.delim(file.path("..", "data-tests", "subj_multiple_files",
+                             "data_to_test_collapse_duplicates.tsv"))
+  db$umi_count <- db$consensus_count * 10
+  db$barcode <- tolower(db$sequence_id)
+  input <- tempfile(fileext = ".tsv")
+  write.table(db, input, sep = "\t", quote = FALSE, row.names = FALSE)
+  input
+}
+
+run_collapse_fields_report <- function(input, num_fields, text_fields) {
+  tmp_dir <- tempfile("collapse_fields_")
+  suppressWarnings(enchantr_report("collapse_duplicates", report_params = list(
+    input = input, collapseby = "sample_id", outputby = "sample_id",
+    num_fields = num_fields, text_fields = text_fields,
+    outdir = tmp_dir, nproc = 1, log = "test_collapse_fields_log"
+  )))
+  report_dir <- file.path(tmp_dir, "enchantr")
+  list(
+    db_s2 = suppressWarnings(read_rearrangement(file.path(
+      report_dir, "repertoires", "S2_collapse_collapse-pass.tsv.gz"))),
+    html = paste(readLines(file.path(report_dir, "index.html"), warn = FALSE),
+                 collapse = "\n")
+  )
+}
+
+test_that("Collapse duplicates report collapses num_fields and text_fields", {
+  skip_on_cran()
+  input <- write_collapse_fields_input()
+  # Same fields as a character vector and as a comma-separated string
+  # (as passed from the command line); both include a missing column.
+  res_vector <- run_collapse_fields_report(input,
+                                           num_fields = c("umi_count", "missing_num"),
+                                           text_fields = c("barcode", "missing_txt"))
+  res_string <- run_collapse_fields_report(input,
+                                           num_fields = "umi_count, missing_num",
+                                           text_fields = "barcode,missing_txt")
+
+  for (res in list(res_vector, res_string)) {
+    db_s2 <- res$db_s2
+    # S2: D,E,F (IGHV1) collapse together; G,H (IGHV2) collapse; I is unique
+    expect_equal(db_s2$collapse_count, c("3", "2", "1"))
+    # user numeric field is summed, default consensus_count is still summed
+    expect_equal(as.numeric(db_s2$umi_count), c(150, 150, 90))
+    expect_equal(as.numeric(db_s2$consensus_count), c(15, 15, 9))
+    # user text field is merged
+    expect_equal(db_s2$barcode, c("d,e,f", "g,h", "i"))
+    # only the user-requested missing fields are reported
+    expect_match(res$html, "Warning: The following numeric fields are not present in the data: missing_num")
+    expect_match(res$html, "Warning: The following text fields are not present in the data: missing_txt")
+    expect_false(grepl("Warning: The following numeric fields are not present in the data: [^<]*duplicate_count", res$html))
+  }
+})
+
+test_that("Collapse duplicates report default num_fields and text_fields don't warn", {
+  skip_on_cran()
+  input <- write_collapse_fields_input()
+  res <- run_collapse_fields_report(input, num_fields = "", text_fields = "")
+  expect_equal(as.numeric(res$db_s2$consensus_count), c(15, 15, 9))
+  # umi_count was not requested, so it's not summed: values are the
+  # original S2 values (40-90) kept from each group's representative
+  expect_true(all(as.numeric(res$db_s2$umi_count) %in% seq(40, 90, by = 10)))
+  # match the rendered warning output, not the echoed code
+  expect_false(grepl("Warning: The following [a-z]+ fields are not present", res$html))
+})
