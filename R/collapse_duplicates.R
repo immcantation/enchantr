@@ -9,6 +9,8 @@
 #' @param input Path to repertoires file. (index.Rmd: input)
 #' @param collapseby Name of the column(s) in the input data that will be used to group sequences for collapsing. (index.Rmd: collapseby)
 #' @param collapse_count_colname Name of the column to store the collapsed count. (index.Rmd: collapse_count_colname)
+#' @param num_fields Names of numeric columns whose values are summed across duplicates, as a character vector or a comma-separated string. `consensus_count` and `duplicate_count` are always included if present. (index.Rmd: num_fields)
+#' @param text_fields Names of text columns whose unique values are merged across duplicates, as a character vector or a comma-separated string. (index.Rmd: text_fields)
 #' @param outname Output file name prefix. (index.Rmd: outname)
 #' @param outputby Name of the column in input that contains sample identifiers used to split the output db. (index.Rmd: outputby)  
 #' @param nproc Number of processors to use for parallel processing. (index.Rmd: nproc)
