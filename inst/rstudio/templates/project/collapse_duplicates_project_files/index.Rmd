@@ -277,6 +277,11 @@ if (length(missing_text_fields) > 0) {
   warning("The following text fields are not present in the data: ", paste(missing_text_fields, collapse=", "))
 }
 text_fields <- intersect(unique(user_text_fields), colnames(db))
+for (f in text_fields) {
+  if (!is.character(db[[f]])) {
+    db[[f]] <- as.character(db[[f]])
+  }
+}
 if (length(text_fields)<1) {text_fields <- NULL}
 
 if (params$collapse_count_colname %in% colnames(db)){
