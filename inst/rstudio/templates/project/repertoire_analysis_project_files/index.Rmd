@@ -926,7 +926,7 @@ if(no_c_call){
 cat(
   '# Isotype distribution\n',
   '<div class="introduction_paragraph">\n',
-  'The isotype distribution in each of the sample is represented below. Function `countGenes` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used to calculate the count and relative abundance of isotypes within groups.\n',
+  'The isotype distribution in each sample is represented below. Function `countGenes` from package <a href="https://alakazam.readthedocs.io/en/stable/" target="_blank">Alakazam</a> is used to calculate the count and relative abundance of isotypes within groups.\n',
   '</div>\n',
   sep = ''
 )
