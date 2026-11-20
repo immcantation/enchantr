@@ -85,9 +85,8 @@ enchantr_report <- function(name=c("validate_input",
     book
 }
 
-# Print the parameters declared in the YAML header of a report template.
-# The descriptions are taken from each parameter's `label` field.
-print_report_params <- function(name) {
+# Path to the index.Rmd template of report `name`
+report_template <- function(name) {
     # Template folders are named <name>_project_files, except validate_input
     template_name <- switch(name,
                             "validate_input" = "input_validation",
@@ -98,6 +97,13 @@ print_report_params <- function(name) {
     if (rmd == "") {
         stop("Report template not found for '", name, "'.")
     }
+    rmd
+}
+
+# Print the parameters declared in the YAML header of a report template.
+# The report description is taken from the `description` field and the
+# parameter descriptions from each parameter's `label` field.
+print_report_params <- function(name, rmd=report_template(name)) {
     report_params <- knitr::knit_params(readLines(rmd, warn=FALSE))
 
     format_default <- function(p) {
@@ -129,7 +135,7 @@ print_report_params <- function(name) {
         }
         cat("\n")
     }
-    report_params
+    invisible(report_params)
 }
 
 #' @export
