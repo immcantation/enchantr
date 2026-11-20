@@ -2,6 +2,12 @@
 #'
 #' @param  name report name
 #' @param  report_params params list, needed by report. must include outdir
+#' @param  help if \code{TRUE}, print the parameters accepted by report
+#'               \code{name}, with their default values and descriptions,
+#'               and return them invisibly without rendering the report.
+#'
+#' @examples
+#' enchantr_report("collapse_duplicates", help=TRUE)
 #' @export
 enchantr_report <- function(name=c("validate_input",
                                    "file_size",
@@ -19,9 +25,14 @@ enchantr_report <- function(name=c("validate_input",
                                    "genotype",
                                    "rabhit_haplotype",
                                    "tigger_bayesian_genotype",
-                                   "reassign_alleles"), report_params=list()) {
+                                   "reassign_alleles"), report_params=list(),
+                            help=FALSE) {
 
     name <- match.arg(name)
+
+    if (help) {
+        return(invisible(print_report_params(name)))
+    }
 
     if (is.null(report_params[['outdir']])) {
         report_params[['outdir']] <- getwd()
@@ -72,6 +83,59 @@ enchantr_report <- function(name=c("validate_input",
             params=report_params)
     )
     book
+}
+
+# Path to the index.Rmd template of report `name`
+report_template <- function(name) {
+    # Template folders are named <name>_project_files, except validate_input
+    template_name <- switch(name,
+                            "validate_input" = "input_validation",
+                            name)
+    rmd <- system.file("rstudio", "templates", "project",
+                       paste0(template_name, "_project_files"), "index.Rmd",
+                       package="enchantr")
+    if (rmd == "") {
+        stop("Report template not found for '", name, "'.")
+    }
+    rmd
+}
+
+# Print the parameters declared in the YAML header of a report template.
+# The report description is taken from the `description` field and the
+# parameter descriptions from each parameter's `label` field.
+print_report_params <- function(name, rmd=report_template(name)) {
+    report_params <- knitr::knit_params(readLines(rmd, warn=FALSE))
+
+    format_default <- function(p) {
+        # Defaults set with `!r` are evaluated in the current session,
+        # so show the expression instead of a machine-specific value.
+        if (!is.null(p$expr)) return(paste0("!r ", p$expr))
+        if (is.character(p$value)) return(paste0('"', p$value, '"'))
+        paste(format(p$value), collapse=", ")
+    }
+    format_label <- function(p) {
+        label <- if (is.null(p$label)) "" else p$label
+        # Drop the leading "`name`:" prefix, as the name is printed already
+        label <- sub(paste0("^`?", p$name, "`?:?\\s*"), "", label)
+        gsub("`", "", label)
+    }
+
+    width <- getOption("width", 80)
+    description <- rmarkdown::yaml_front_matter(rmd)$description
+    if (is.null(description) || !nzchar(trimws(description))) {
+        description <- paste("Parameter description for enchantR report", name)
+    }
+    cat(strwrap(description, width=width), sep="\n")
+    cat("\n")
+    for (p in report_params) {
+        cat(p$name, "  [default: ", format_default(p), "]\n", sep="")
+        label <- format_label(p)
+        if (nchar(label) > 0) {
+            cat(strwrap(label, width=width - 4, indent=4, exdent=4), sep="\n")
+        }
+        cat("\n")
+    }
+    invisible(report_params)
 }
 
 #' @export

@@ -13,63 +13,63 @@ description: "enchantr collapse duplicates report"
 output: enchantr::immcantation
 params:
    input: 
-      label: "`input`: Path to repertoires file"
+      label: "`input`: Path(s) to the AIRR rearrangement file(s) (.tsv) to collapse. Multiple files can be given as a comma-separated string."
       input: file
       value: "input.tsv"
    collapseby:
-      label: "`collapseby`"
+      label: "`collapseby`: Column(s) used to group sequences before looking for duplicates. Sequences are only collapsed within the same group (e.g. `sample_id`, or `subject_id` to collapse across samples of a subject)."
       input: text
       value: "sample_id"
    collapse_count_colname:
-      label: "`collapse_count_colname`"
+      label: "`collapse_count_colname`: Name of the output column that stores the number of duplicate sequences collapsed into each sequence. Must not already exist in `input`."
       input: text
       value: "collapse_count"
    num_fields:
-      label: "`num_fields`: names of numeric columns to collapse, as a character vector or a comma-separated string. The numeric annotations of duplicate sequences will be summed. `consensus_count` and `duplicate_count` are always included if present."
+      label: "`num_fields`: Names of numeric columns to collapse, as a character vector or a comma-separated string. The numeric annotations of duplicate sequences will be summed. `consensus_count` and `duplicate_count` are always included if present."
       input: text
       value: ""
    text_fields:
-      label: "`text_fields`: names of textual columns to collapse, as a character vector or a comma-separated string. The textual annotations of duplicate sequences will be merged into a single string with each unique value alphabetized and delimited by sep."
+      label: "`text_fields`: Names of textual columns to collapse, as a character vector or a comma-separated string. The textual annotations of duplicate sequences will be merged into a single string with each unique value alphabetized and delimited by sep."
       input: text
       value: ""
    outname:
-      label: "`outname`"
+      label: "`outname`: Prefix for the output files (`<outname>_collapse-pass.tsv.gz`)."
       input: text
       value: "collapse"
    outputby:
-      label: "`outputby` name of the column in `input` that contains sample identifiers that will be used to split the output db." 
+      label: "`outputby`: Column in `input` with sample identifiers, used to split the output into one file per sample."
       input: text
       value: "sample_id"
    nproc:
-      label: "`nproc`"
+      label: "`nproc`: Number of cores to use."
       input: numeric
       value: 1
    c_primer_column:
-      label: "`c_primer_column`"
+      label: "`c_primer_column`: Column with the C primer annotation. Used to fill missing `c_call` values with the isotype if `c_region_column` is not present."
       input: text
       value: "c_primer"
    c_region_column:
-      label: "`c_region_column`"
+      label: "`c_region_column`: Column with the C region annotation. Used to fill missing `c_call` values with the isotype."
       input: text
       value: "c_region"
    locus:
-      label: "`locus`"
+      label: "`locus`: Receptor type, `IG` or `TR`. Determines the isotype patterns used to fill missing `c_call` values."
       input: text
       value: "IG"
    mask_imgt_position:
-      label: "mask_imgt_position"
+      label: "`mask_imgt_position`: Mask the sequence alignment from the 5' end up to this IMGT position before collapsing. 0 disables masking."
       input: numeric
       value: 0
    mask_length_to_3end:
-      label: "mask_length_to_3end"
+      label: "`mask_length_to_3end`: Mask this many bases at the 3' end of the sequence alignment before collapsing. 0 disables masking."
       input: numeric
       value: 0
    collapse_filter_threshold:
-      label: "collapse_filter_threshold"
+      label: "`collapse_filter_threshold`: Remove collapsed sequences with a `collapse_count_colname` value below this threshold. 0 keeps all sequences."
       input: numeric
       value: 0
    log:
-      label: "`log`"
+      label: "`log`: Prefix for the log file (`<log>.txt`)."
       input: text
       value: "command_log"
    outdir:
